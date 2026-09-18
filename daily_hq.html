@@ -392,7 +392,6 @@
 
   var OUTREACH_SHEET_ID = '1tcm4mRBQOAwXR1e96_oG2ZQm8j8VN1oSaA6KOzQFIGc';
   var OUTREACH_TAB = 'Outreach Tracker';
-  var OUTREACH_NOT_SENT_STATUSES = ['not contacted', ''];
   var OUTREACH_REPLIED_STATUSES = ['replied', 'scheduled', 'met'];
 
   var STORAGE_PREFIX = 'dailyhq:';
@@ -1079,16 +1078,22 @@
       var cols = data.table.cols.map(function(c){ return (c.label||'').toLowerCase(); });
       var statusIdx = cols.findIndex(function(c){ return c.indexOf('status') !== -1 && c.indexOf('scheduled') === -1 && c.indexOf('met') === -1; });
       if(statusIdx === -1) throw new Error('Could not find a Status column in that sheet.');
-      var sent = 0, replied = 0, total = 0;
+      var reachedOutIdx = cols.findIndex(function(c){ return c.indexOf('reached out') !== -1; });
+      if(reachedOutIdx === -1) throw new Error('Could not find a "Date Reached Out" column in that sheet.');
+      var sent = 0, replied = 0;
+      // The tracker is agent-maintained: a row only exists once the scheduled job
+      // finds a real conversation, so "Sent" is just "has a Date Reached Out" —
+      // there's no planned-but-not-sent state to filter out by status text.
       (data.table.rows||[]).forEach(function(row){
-        var cell = row.c && row.c[statusIdx];
-        var status = (cell && cell.v ? String(cell.v) : '').trim().toLowerCase();
-        if(!status) return;
-        total++;
-        if(OUTREACH_NOT_SENT_STATUSES.indexOf(status) === -1) sent++;
+        var reachedCell = row.c && row.c[reachedOutIdx];
+        var reachedOut = reachedCell && reachedCell.v !== null && reachedCell.v !== '';
+        if(!reachedOut) return;
+        sent++;
+        var statusCell = row.c && row.c[statusIdx];
+        var status = (statusCell && statusCell.v ? String(statusCell.v) : '').trim().toLowerCase();
         if(OUTREACH_REPLIED_STATUSES.indexOf(status) !== -1) replied++;
       });
-      outreachData = { ok:true, loading:false, sent:sent, replied:replied, total:total };
+      outreachData = { ok:true, loading:false, sent:sent, replied:replied };
       renderOutreachInline();
     }).catch(function(err){
       outreachData = { ok:false, loading:false, error: err.message };
