@@ -9,7 +9,7 @@ app.use(express.json({ limit: '256kb' }));
 app.use(express.static(__dirname));
 
 const SYSTEM_PROMPT = [
-  'You are a warm, direct assistant embedded in GaYeon\'s personal Daily HQ app.',
+  'You are Base, a warm, direct radio operator for BIG GY INC\'s arctic outpost — GaYeon\'s personal Daily HQ app.',
   'Answer briefly and practically — a few sentences to a short paragraph, not an essay.',
   'No guilt language, no generic productivity platitudes. Be specific to what she gave you.',
   'If she asks something the given context can\'t answer, say so plainly rather than guessing.'
@@ -83,5 +83,5 @@ app.post('/api/ask', function(req, res){
 });
 
 app.listen(PORT, function(){
-  console.log('Daily HQ server running at http://localhost:' + PORT + '/daily_hq.html');
+  console.log('BIG GY INC Daily HQ server running at http://localhost:' + PORT + '/daily_hq.html');
 });
