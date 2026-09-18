@@ -1,4 +1,4 @@
-const CACHE_NAME = 'biggyinc-v1';
+const CACHE_NAME = 'biggyinc-v2';
 // Requests whose content actually changes between deploys (the app's own HTML —
 // everything, including all JS, lives inside daily_hq.html) must go network-first.
 // Cache-first here would mean a feature added after someone's first visit stays
@@ -27,8 +27,16 @@ const CORE_ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
+  // cache.addAll() is all-or-nothing: if a single one of these fails to fetch (a
+  // transient blip, a typo, anything), the whole install rejects and this service
+  // worker is discarded — permanently stuck on whatever version installed last,
+  // with every future deploy silently failing to take effect. Fetch each asset
+  // independently instead, so one failure can't block the rest from being cached
+  // or block this version from installing and taking over at all.
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS))
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.allSettled(CORE_ASSETS.map((url) => cache.add(url)))
+    )
   );
   self.skipWaiting();
 });
