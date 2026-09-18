@@ -1,0 +1,12 @@
+{
+  "name": "gayeon-daily-hq",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local server for Daily HQ — serves the static app and the Claude-powered Ask endpoint.",
+  "scripts": {
+    "server": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

@@ -108,6 +108,9 @@
 
   .morning{ margin-bottom:18px; }
   .reminder-banner{ margin-bottom:18px; border-color:var(--mint-deep); background:rgba(34,211,189,0.08); font-size:15px; }
+  .ask-result{ background:var(--panel-2); border:2px solid var(--border); border-radius:8px; padding:10px 12px; font-size:15px; line-height:1.5; white-space:pre-wrap; }
+  .ask-result.err{ border-color:var(--danger); color:var(--danger); }
+  .ask-result.loading{ color:var(--text-dim); font-style:italic; }
   .settings-row{ display:flex; align-items:center; gap:10px; margin:10px 0; flex-wrap:wrap; }
   .settings-row label{ font-size:14px; color:var(--text-dim); min-width:140px; }
   .settings-note{ font-size:13px; color:var(--text-faint); margin-top:10px; line-height:1.5; }
@@ -296,6 +299,16 @@
     <div id="leftoverBox" class="hidden" style="margin-top:16px;">
       <h3>From yesterday (unchecked)</h3>
       <div id="leftoverList"></div>
+    </div>
+
+    <div style="margin-top:18px; border-top:2px dashed var(--border); padding-top:14px;">
+      <h3>Ask</h3>
+      <p style="font-size:13px; color:var(--text-faint); margin:0 0 8px;">Needs the local server running (<code>npm run server</code>) — e.g. "what should I focus on this week?"</p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <input type="text" id="askInput" placeholder="Ask a question..." style="flex:1; min-width:220px;">
+        <button class="pink" id="askBtn">Ask Claude</button>
+      </div>
+      <div id="askResult" style="margin-top:10px;"></div>
     </div>
   </section>
 
@@ -746,6 +759,40 @@
     });
   }
   document.getElementById('remindersBtn').addEventListener('click', openRemindersModal);
+
+  /* ===================== Ask (real Claude, via the local server) ===================== */
+
+  function submitAsk(){
+    var input = document.getElementById('askInput');
+    var resultBox = document.getElementById('askResult');
+    var question = input.value.trim();
+    if(!question) return;
+    resultBox.className = 'ask-result loading';
+    resultBox.textContent = 'Thinking…';
+    var goalsState = ensureGoals();
+    fetch('/api/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: question, goals: goalsState.goals, todayTasks: currentDay.tasks })
+    }).then(function(res){
+      return res.json().then(function(data){ return { status: res.status, data: data }; });
+    }).then(function(r){
+      if(r.data && r.data.ok){
+        resultBox.className = 'ask-result';
+        resultBox.textContent = r.data.answer;
+      } else {
+        resultBox.className = 'ask-result err';
+        resultBox.textContent = (r.data && r.data.error) || ('Request failed (HTTP ' + r.status + ').');
+      }
+    }).catch(function(err){
+      resultBox.className = 'ask-result err';
+      resultBox.textContent = "Can't reach the local server. Make sure it's running: npm run server (then open this page via http://localhost:8787/daily_hq.html, not as a file).";
+    });
+  }
+  document.getElementById('askBtn').addEventListener('click', submitAsk);
+  document.getElementById('askInput').addEventListener('keydown', function(e){
+    if(e.key === 'Enter') submitAsk();
+  });
 
   /* ===================== Header / HUD ===================== */
 
