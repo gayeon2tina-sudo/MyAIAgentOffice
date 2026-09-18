@@ -124,7 +124,7 @@
   .del-btn:hover{ color:var(--danger); }
 
   .office-wrap{ margin-bottom:18px; }
-  .office-wrap canvas{ width:100%; height:auto; display:block; border-radius:10px; }
+  .office-wrap canvas{ width:100%; max-width:440px; height:auto; display:block; margin:0 auto; border-radius:10px; cursor:default; }
   .office-caption{ font-size:12px; color:var(--text-faint); margin-top:6px; }
 
   /* Room task panels */
@@ -166,6 +166,11 @@
   .room[data-cat="budget"]{ grid-area:budget; }
   .room[data-cat="health"]{ grid-area:health; }
   .room.hub{ grid-area:hub; border-color:var(--gold); border-width:4px; background:var(--cream); }
+  .room.room-flash{ animation:roomFlash .9s ease; }
+  @keyframes roomFlash{
+    0%{ outline:4px solid var(--pink); outline-offset:-4px; }
+    100%{ outline:4px solid transparent; outline-offset:-4px; }
+  }
 
   .room-floor{ padding:8px 10px 4px; display:flex; align-items:center; justify-content:space-between; }
   .room-floor h3{ margin:0; font-size:14px; color:#1a1a2e; text-shadow:0 1px 0 rgba(255,255,255,.4); }
@@ -1501,7 +1506,73 @@
       }
       drawCharacterSprite(ctx, ch, pos.x, pos.y, state);
     });
+
+    if(hoveredRoomId){
+      var hr = ROOM_RECTS[hoveredRoomId];
+      ctx.save();
+      ctx.fillStyle = 'rgba(255,79,147,0.16)';
+      roundRectPath(ctx, hr.x1, hr.y1, hr.x2 - hr.x1, hr.y2 - hr.y1, 18);
+      ctx.fill();
+      ctx.strokeStyle = '#ff4f93';
+      ctx.lineWidth = 6;
+      ctx.stroke();
+      ctx.restore();
+    }
   }
+
+  /* ===================== Office: room hover/click (canvas coords calibrated against reference-art/office-floorplan-background.png) ===================== */
+
+  var ROOM_RECTS = {
+    job:       { x1:20,  y1:20,   x2:480, y2:500  },
+    cv:        { x1:20,  y1:545,  x2:480, y2:995  },
+    portfolio: { x1:20,  y1:1010, x2:480, y2:1500 },
+    backpack:  { x1:544, y1:20,   x2:1004,y2:500  },
+    budget:    { x1:544, y1:545,  x2:1004,y2:995  },
+    health:    { x1:544, y1:1010, x2:1004,y2:1500 },
+    hub:       { x1:460, y1:1140, x2:565, y2:1260 }
+  };
+  var ROOM_LABELS = { job:'Job Search', cv:'CV & Applications', portfolio:'Portfolio Site', backpack:'Backpack Content', budget:'Budget & Life', health:'Health', hub:"GaYeon's Hub" };
+  var hoveredRoomId = null;
+
+  function canvasPointFromEvent(canvas, evt){
+    var rect = canvas.getBoundingClientRect();
+    return {
+      x: (evt.clientX - rect.left) * (canvas.width / rect.width),
+      y: (evt.clientY - rect.top) * (canvas.height / rect.height)
+    };
+  }
+  function roomAtPoint(pt){
+    var found = null;
+    Object.keys(ROOM_RECTS).forEach(function(id){
+      var r = ROOM_RECTS[id];
+      if(pt.x >= r.x1 && pt.x <= r.x2 && pt.y >= r.y1 && pt.y <= r.y2) found = id;
+    });
+    return found;
+  }
+  (function(){
+    var canvas = document.getElementById('officeCanvas');
+    canvas.addEventListener('mousemove', function(e){
+      var id = roomAtPoint(canvasPointFromEvent(canvas, e));
+      if(id === hoveredRoomId) return;
+      hoveredRoomId = id;
+      canvas.style.cursor = id ? 'pointer' : 'default';
+      canvas.title = id ? ROOM_LABELS[id] : '';
+    });
+    canvas.addEventListener('mouseleave', function(){
+      hoveredRoomId = null;
+      canvas.style.cursor = 'default';
+      canvas.title = '';
+    });
+    canvas.addEventListener('click', function(e){
+      var id = roomAtPoint(canvasPointFromEvent(canvas, e));
+      if(!id) return;
+      var card = document.querySelector('.room[data-cat="'+id+'"]');
+      if(!card) return;
+      card.scrollIntoView({ behavior:'smooth', block:'center' });
+      card.classList.add('room-flash');
+      setTimeout(function(){ card.classList.remove('room-flash'); }, 900);
+    });
+  })();
 
   var animTick = 0, lastFrameTime = 0;
   function isNarrow(){ return window.matchMedia('(max-width:600px)').matches; }
