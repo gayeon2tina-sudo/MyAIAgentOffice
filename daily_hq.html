@@ -255,6 +255,26 @@
   .trophy-item{ background:var(--panel-2); border:2px solid var(--gold); border-radius:8px; padding:8px; font-size:13px; }
   .trophy-item .t-date{ color:var(--text-faint); font-size:11px; }
 
+  .view-tabs{ display:flex; gap:8px; margin-bottom:16px; }
+  .tab-btn.active{ background:var(--pink); color:#fff; border-color:var(--pink-deep); font-weight:bold; box-shadow:0 3px 0 var(--pink-deep); }
+
+  .calendar-header{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+  .calendar-header h3{ margin:0; font-size:16px; color:var(--pink-deep); }
+  .calendar-grid{ display:grid; grid-template-columns:repeat(7, 1fr); gap:4px; }
+  .cal-dow{ text-align:center; font-size:12px; color:var(--text-dim); padding-bottom:4px; }
+  .cal-day{ aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    border:2px solid var(--border); border-radius:8px; background:var(--panel-2); box-shadow:none; padding:2px; }
+  .cal-day.pad{ visibility:hidden; border:none; background:none; }
+  .cal-day .cal-daynum{ font-size:14px; }
+  .cal-day .cal-marker{ font-size:13px; min-height:14px; }
+  .cal-day.active{ background:rgba(34,211,189,0.18); border-color:var(--mint-deep); }
+  .cal-day.milestone{ background:rgba(255,180,0,0.18); border-color:var(--gold); }
+  .cal-day.empty{ opacity:.55; }
+  .cal-day.future{ opacity:.3; cursor:default; }
+  .cal-day.is-today{ border-width:3px; border-color:var(--pink); }
+  .calendar-legend{ display:flex; gap:16px; flex-wrap:wrap; font-size:13px; color:var(--text-dim); margin-top:10px; }
+  .cal-dot-sample{ display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--panel-3); border:1px solid var(--border); vertical-align:middle; }
+
   .hidden{ display:none !important; }
   .footer-note{ text-align:center; color:var(--text-faint); font-size:13px; margin-top:28px; }
 </style>
@@ -276,6 +296,12 @@
 </div>
 
 <main>
+  <div class="view-tabs">
+    <button class="tab-btn active" id="tabOfficeBtn">🏢 The Office</button>
+    <button class="tab-btn" id="tabCalendarBtn">📅 Achievements</button>
+  </div>
+
+  <div id="officeView">
   <div class="toolbar">
     <button id="goalsBtn">🎯 Goals</button>
     <button id="remindersBtn">🔔 Reminders</button>
@@ -327,6 +353,24 @@
   </section>
 
   <section class="floorplan" id="floorplan"></section>
+  </div>
+
+  <div id="calendarView" class="hidden">
+    <section class="calendar-wrap panel-box">
+      <div class="calendar-header">
+        <button class="icon-btn" id="calPrevBtn">← Prev</button>
+        <h3 id="calMonthLabel"></h3>
+        <button class="icon-btn" id="calNextBtn">Next →</button>
+      </div>
+      <div class="calendar-grid" id="calendarGrid"></div>
+      <div class="calendar-legend">
+        <span><span class="cal-marker">🌟</span> milestone</span>
+        <span><span class="cal-marker">●</span> tasks done</span>
+        <span><span class="cal-dot-sample empty"></span> nothing logged</span>
+      </div>
+      <p class="office-caption">Browsing past days only — this doesn't change any logged data, it just looks back at it. Click a day to open its Daily Review.</p>
+    </section>
+  </div>
 
   <p class="footer-note">Data lives only in this browser (localStorage). Export regularly if you don't want to depend on one browser.</p>
 </main>
@@ -1544,7 +1588,7 @@
           '<h3 style="color:var(--mint);">Done</h3>' +
           '<ul class="review-list">' + (done.length ? done.map(function(t){ var cat=CAT_BY_ID[t.category]; return '<li>'+(t.milestone?'⭐ ':'')+escapeHtml(t.text)+' <span class="cat-tag">'+(cat?cat.icon+' '+cat.name:'')+'</span></li>'; }).join('') : '<li class="unchecked">Nothing checked off.</li>') + '</ul>' +
           '<h3 style="color:var(--text-faint);">Not checked off</h3>' +
-          '<ul class="review-list">' + (undone.length ? undone.map(function(t){ var cat=CAT_BY_ID[t.category]; return '<li class="unchecked">'+(t.milestone?'⭐ ':'')+escapeHtml(t.text)+' <span class="cat-tag">'+(cat?cat.icon+' '+cat.name:'')+'</span></li>'; }).join('') : '<li>Everything on the list got done.</li>') + '</ul>' +
+          '<ul class="review-list">' + (undone.length ? undone.map(function(t){ var cat=CAT_BY_ID[t.category]; return '<li class="unchecked">'+(t.milestone?'⭐ ':'')+escapeHtml(t.text)+' <span class="cat-tag">'+(cat?cat.icon+' '+cat.name:'')+'</span></li>'; }).join('') : '<li>'+(day.tasks.length ? 'Everything on the list got done.' : 'No tasks were logged this day.')+'</li>') + '</ul>' +
           '<h3>Your note</h3>' +
           '<textarea class="note-area" id="dailyNoteArea" placeholder="What would you do differently? (your words, not mine)">'+escapeHtml(day.note||'')+'</textarea>' +
           '<div style="margin-top:10px; text-align:right;"><button class="primary" id="saveDailyNoteBtn">Save note & close</button></div>' +
@@ -1712,6 +1756,78 @@
     document.getElementById('weeklyModalBackdrop').addEventListener('click', function(e){ if(e.target.id==='weeklyModalBackdrop') closeModal(); });
   }
   document.getElementById('weeklyReviewBtn').addEventListener('click', openWeeklyReview);
+
+  /* ===================== Achievements calendar (read-only browse of existing per-day data) ===================== */
+
+  var todayD = new Date();
+  var calendarState = { year: todayD.getFullYear(), month: todayD.getMonth() };
+
+  function pad2(n){ return String(n).padStart(2,'0'); }
+  function isoDate(y, m, d){ return y + '-' + pad2(m+1) + '-' + pad2(d); }
+  function monthLabel(year, month){ return new Date(year, month, 1).toLocaleDateString(undefined, { month:'long', year:'numeric' }); }
+  function isCurrentCalendarMonth(){ return calendarState.year === todayD.getFullYear() && calendarState.month === todayD.getMonth(); }
+
+  function dayActivity(dateStr){
+    var day = loadDay(dateStr);
+    var done = day.tasks.filter(function(t){ return t.done; });
+    return { hasActivity: done.length > 0, hasMilestone: done.some(function(t){ return t.milestone; }) };
+  }
+
+  function renderCalendar(){
+    document.getElementById('calMonthLabel').textContent = monthLabel(calendarState.year, calendarState.month);
+    document.getElementById('calNextBtn').disabled = isCurrentCalendarMonth();
+    var firstWeekday = new Date(calendarState.year, calendarState.month, 1).getDay();
+    var daysInMonth = new Date(calendarState.year, calendarState.month + 1, 0).getDate();
+    var html = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(function(d){ return '<div class="cal-dow">'+d+'</div>'; }).join('');
+    for(var i=0; i<firstWeekday; i++) html += '<div class="cal-day pad"></div>';
+    for(var d=1; d<=daysInMonth; d++){
+      var dateStr = isoDate(calendarState.year, calendarState.month, d);
+      var isFuture = dateStr > today;
+      var cls = 'cal-day';
+      var marker = '';
+      if(isFuture){
+        cls += ' future';
+      } else {
+        var act = dayActivity(dateStr);
+        if(act.hasMilestone){ cls += ' milestone'; marker = '🌟'; }
+        else if(act.hasActivity){ cls += ' active'; marker = '●'; }
+        else { cls += ' empty'; }
+      }
+      if(dateStr === today) cls += ' is-today';
+      html += '<button class="'+cls+'" data-date="'+dateStr+'"'+(isFuture?' disabled':'')+'>' +
+                '<span class="cal-daynum">'+d+'</span><span class="cal-marker">'+marker+'</span>' +
+              '</button>';
+    }
+    document.getElementById('calendarGrid').innerHTML = html;
+  }
+
+  document.getElementById('calendarGrid').addEventListener('click', function(e){
+    var btn = e.target.closest('.cal-day[data-date]');
+    if(!btn || btn.disabled) return;
+    openDailyReview(btn.dataset.date, false);
+  });
+  document.getElementById('calPrevBtn').addEventListener('click', function(){
+    calendarState.month--;
+    if(calendarState.month < 0){ calendarState.month = 11; calendarState.year--; }
+    renderCalendar();
+  });
+  document.getElementById('calNextBtn').addEventListener('click', function(){
+    if(isCurrentCalendarMonth()) return;
+    calendarState.month++;
+    if(calendarState.month > 11){ calendarState.month = 0; calendarState.year++; }
+    renderCalendar();
+  });
+
+  function showTab(tab){
+    var isOffice = tab === 'office';
+    document.getElementById('officeView').classList.toggle('hidden', !isOffice);
+    document.getElementById('calendarView').classList.toggle('hidden', isOffice);
+    document.getElementById('tabOfficeBtn').classList.toggle('active', isOffice);
+    document.getElementById('tabCalendarBtn').classList.toggle('active', !isOffice);
+    if(!isOffice) renderCalendar();
+  }
+  document.getElementById('tabOfficeBtn').addEventListener('click', function(){ showTab('office'); });
+  document.getElementById('tabCalendarBtn').addEventListener('click', function(){ showTab('calendar'); });
 
   /* ===================== Export ===================== */
 
