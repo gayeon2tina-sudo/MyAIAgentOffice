@@ -1,5 +1,6 @@
-const CACHE_NAME = 'dailyhq-v1';
+const CACHE_NAME = 'dailyhq-v2';
 const CORE_ASSETS = [
+  './index.html',
   './daily_hq.html',
   './manifest.json',
   './icons/icon-32.png',
