@@ -541,16 +541,18 @@
 
   function initDayRollover(){
     var meta = loadMeta();
+    var pendingReviewDate = null;
     if(meta.lastOpenedDate && meta.lastOpenedDate !== today){
       var prevDay = loadDay(meta.lastOpenedDate);
       if(prevDay.tasks.length > 0 && !prevDay.reviewed){
-        openDailyReview(meta.lastOpenedDate, true);
+        pendingReviewDate = meta.lastOpenedDate;
         prevDay.reviewed = true;
         saveDay(prevDay);
       }
     }
     meta.lastOpenedDate = today;
     saveMeta(meta);
+    return pendingReviewDate;
   }
 
   /* ===================== Goals ===================== */
@@ -593,7 +595,8 @@
     return last;
   }
 
-  function openGoalsModal(){
+  function openGoalsModal(afterClose){
+    modalAfterClose = afterClose || null;
     var state = ensureGoals();
     var goals = state.goals;
     var html = '' +
@@ -630,7 +633,13 @@
       closeModal();
     });
   }
-  function closeModal(){ document.getElementById('modalRoot').innerHTML = ''; }
+  var modalAfterClose = null;
+  function closeModal(){
+    var cb = modalAfterClose;
+    modalAfterClose = null;
+    document.getElementById('modalRoot').innerHTML = '';
+    if(cb) cb();
+  }
 
   document.getElementById('goalsBtn').addEventListener('click', openGoalsModal);
 
@@ -1516,7 +1525,8 @@
     if(editBtn) editBtn.addEventListener('click', function(){ closeModal(); openGoalsModal(); });
   }
 
-  function openDailyReview(dateStrArg, autoTriggered){
+  function openDailyReview(dateStrArg, autoTriggered, afterClose){
+    modalAfterClose = afterClose || null;
     var day = loadDay(dateStrArg);
     var done = day.tasks.filter(function(t){ return t.done; });
     var undone = day.tasks.filter(function(t){ return !t.done; });
@@ -1549,6 +1559,106 @@
     });
   }
   document.getElementById('dailyReviewBtn').addEventListener('click', function(){ openDailyReview(today, false); });
+
+  /* ===================== Daily entry pop-up (shows only while today has zero tasks) ===================== */
+
+  var dailyEntryPreview = [];
+
+  function openDailyEntryModal(){
+    modalAfterClose = null;
+    dailyEntryPreview = [];
+    var html = '' +
+      '<div class="modal-backdrop" id="dailyEntryBackdrop">' +
+        '<div class="modal">' +
+          '<button class="close-x icon-btn" id="closeDailyEntryModal">✕</button>' +
+          '<h2>What are you working on today?</h2>' +
+          '<p style="color:var(--text-dim); font-size:14px;">One task per line. Skip this if you\'d rather add them later — the same box is further down the page.</p>' +
+          '<textarea id="dailyEntryInput" placeholder="e.g. Review today\'s leads&#10;30 min run&#10;Draft backpack post idea"></textarea>' +
+          '<div style="margin-top:8px; display:flex; gap:8px;">' +
+            '<button class="primary" id="dailyEntryPreviewBtn">Preview tasks →</button>' +
+            '<button class="ghost" id="dailyEntryDismissBtn">Not now</button>' +
+          '</div>' +
+          '<div id="dailyEntryPreviewList" style="margin-top:10px;"></div>' +
+          '<div id="dailyEntryConfirmRow" class="hidden" style="margin-top:8px;">' +
+            '<button class="pink" id="dailyEntryConfirmBtn">Add to today\'s list</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    document.getElementById('modalRoot').innerHTML = html;
+
+    function renderDailyEntryPreview(){
+      var box = document.getElementById('dailyEntryPreviewList');
+      var confirmRow = document.getElementById('dailyEntryConfirmRow');
+      if(dailyEntryPreview.length === 0){ box.innerHTML=''; confirmRow.classList.add('hidden'); return; }
+      confirmRow.classList.remove('hidden');
+      box.innerHTML = dailyEntryPreview.map(function(p, idx){
+        var opts = '<option value="">— pick category —</option>' + CATEGORIES.map(function(c){
+          return '<option value="'+c.id+'"'+(p.category===c.id?' selected':'')+'>'+c.icon+' '+c.name+'</option>';
+        }).join('');
+        return '' +
+          '<div class="preview-row" data-idx="'+idx+'">' +
+            '<span class="txt">'+escapeHtml(p.text)+'</span>' +
+            '<select data-role="cat">'+opts+'</select>' +
+            '<button class="star-btn '+(p.milestone?'':'off')+'" data-role="star" title="milestone">⭐</button>' +
+            '<label style="font-size:13px;color:var(--text-dim);"><input type="checkbox" data-role="repeats" '+(p.repeats?'checked':'')+'> repeats</label>' +
+            '<button class="del-btn" data-role="remove" title="remove">✕</button>' +
+          '</div>';
+      }).join('');
+    }
+
+    document.getElementById('dailyEntryPreviewBtn').addEventListener('click', function(){
+      var raw = document.getElementById('dailyEntryInput').value;
+      var lines = raw.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+      dailyEntryPreview = lines.map(function(line){ return { text: line, category: detectCategory(line), milestone:false, repeats:false }; });
+      renderDailyEntryPreview();
+    });
+    document.getElementById('dailyEntryPreviewList').addEventListener('click', function(e){
+      var row = e.target.closest('.preview-row'); if(!row) return;
+      var idx = Number(row.dataset.idx);
+      if(e.target.dataset.role === 'star'){ dailyEntryPreview[idx].milestone = !dailyEntryPreview[idx].milestone; renderDailyEntryPreview(); }
+      else if(e.target.dataset.role === 'remove'){ dailyEntryPreview.splice(idx,1); renderDailyEntryPreview(); }
+    });
+    document.getElementById('dailyEntryPreviewList').addEventListener('change', function(e){
+      var row = e.target.closest('.preview-row'); if(!row) return;
+      var idx = Number(row.dataset.idx);
+      if(e.target.dataset.role === 'cat') dailyEntryPreview[idx].category = e.target.value;
+      if(e.target.dataset.role === 'repeats') dailyEntryPreview[idx].repeats = e.target.checked;
+    });
+    document.getElementById('dailyEntryConfirmBtn').addEventListener('click', function(){
+      var recurring = loadRecurring();
+      var recurringChanged = false;
+      dailyEntryPreview.forEach(function(p){
+        if(!p.category) return;
+        var recurringId = null;
+        if(p.repeats){
+          var tpl = recurring.find(function(r){ return r.text === p.text && r.category === p.category; });
+          if(tpl){ recurringId = tpl.id; tpl.active = true; }
+          else{ tpl = { id: makeId('rec'), text: p.text, category: p.category, active:true }; recurring.push(tpl); recurringId = tpl.id; }
+          recurringChanged = true;
+        }
+        currentDay.tasks.push({ id: makeId('t'), text: p.text, category: p.category, done:false, milestone: p.milestone, recurringId: recurringId, createdAt: Date.now() });
+      });
+      var skipped = dailyEntryPreview.filter(function(p){ return !p.category; }).length;
+      saveDay(currentDay);
+      if(recurringChanged) saveRecurring(recurring);
+      dailyEntryPreview = [];
+      closeModal();
+      renderAll();
+      if(skipped > 0) alert(skipped + ' line(s) had no category picked and were not added. Add them from the box further down the page.');
+    });
+    document.getElementById('closeDailyEntryModal').addEventListener('click', closeModal);
+    document.getElementById('dailyEntryDismissBtn').addEventListener('click', closeModal);
+    document.getElementById('dailyEntryBackdrop').addEventListener('click', function(e){ if(e.target.id==='dailyEntryBackdrop') closeModal(); });
+    document.getElementById('dailyEntryInput').focus();
+  }
+
+  // Checked fresh at each app open against today's live task count — never a
+  // stored "dismissed" flag. Dismissing and adding nothing all day must still
+  // show this again tomorrow, but dismissing and later adding a task through
+  // the normal entry point must not bring it back later today.
+  function maybeShowDailyEntryModal(){
+    if(currentDay.tasks.length === 0) openDailyEntryModal();
+  }
 
   /* ===================== Weekly review ===================== */
 
@@ -1639,11 +1749,10 @@
   /* ===================== Boot ===================== */
 
   buildFloorplan();
-  initDayRollover();
+  var pendingReviewDate = initDayRollover();
   currentDay = loadDay(today);
   applyRecurring();
   currentDay = loadDay(today);
-  var goalState = ensureGoals();
   renderStaticOffice();
   renderAll();
   fetchOutreach();
@@ -1653,7 +1762,24 @@
   if(bootReminderSettings.enabled && typeof Notification !== 'undefined' && Notification.permission === 'granted'){
     startReminderLoop();
   }
-  if(goalState.firstRun) openGoalsModal();
+
+  // Sequenced, not simultaneous: an auto-triggered Daily Review from
+  // yesterday, a first-run Goals modal, and the daily-entry pop-up all share
+  // modalRoot, so each must wait for the previous one to close (via
+  // modalAfterClose) rather than overwriting it outright.
+  function afterOpeningReview(){
+    var goalState = ensureGoals();
+    if(goalState.firstRun){
+      openGoalsModal(maybeShowDailyEntryModal);
+    } else {
+      maybeShowDailyEntryModal();
+    }
+  }
+  if(pendingReviewDate){
+    openDailyReview(pendingReviewDate, true, afterOpeningReview);
+  } else {
+    afterOpeningReview();
+  }
 
 })();
 </script>
