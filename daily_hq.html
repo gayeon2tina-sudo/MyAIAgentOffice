@@ -255,6 +255,26 @@
   .trophy-item{ background:var(--panel-2); border:2px solid var(--gold); border-radius:8px; padding:8px; font-size:13px; }
   .trophy-item .t-date{ color:var(--text-faint); font-size:11px; }
 
+  .view-tabs{ display:flex; gap:8px; margin-bottom:16px; }
+  .tab-btn.active{ background:var(--pink); color:#fff; border-color:var(--pink-deep); font-weight:bold; box-shadow:0 3px 0 var(--pink-deep); }
+
+  .calendar-header{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+  .calendar-header h3{ margin:0; font-size:16px; color:var(--pink-deep); }
+  .calendar-grid{ display:grid; grid-template-columns:repeat(7, 1fr); gap:4px; }
+  .cal-dow{ text-align:center; font-size:12px; color:var(--text-dim); padding-bottom:4px; }
+  .cal-day{ aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    border:2px solid var(--border); border-radius:8px; background:var(--panel-2); box-shadow:none; padding:2px; }
+  .cal-day.pad{ visibility:hidden; border:none; background:none; }
+  .cal-day .cal-daynum{ font-size:14px; }
+  .cal-day .cal-marker{ font-size:13px; min-height:14px; }
+  .cal-day.active{ background:rgba(34,211,189,0.18); border-color:var(--mint-deep); }
+  .cal-day.milestone{ background:rgba(255,180,0,0.18); border-color:var(--gold); }
+  .cal-day.empty{ opacity:.55; }
+  .cal-day.future{ opacity:.3; cursor:default; }
+  .cal-day.is-today{ border-width:3px; border-color:var(--pink); }
+  .calendar-legend{ display:flex; gap:16px; flex-wrap:wrap; font-size:13px; color:var(--text-dim); margin-top:10px; }
+  .cal-dot-sample{ display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--panel-3); border:1px solid var(--border); vertical-align:middle; }
+
   .hidden{ display:none !important; }
   .footer-note{ text-align:center; color:var(--text-faint); font-size:13px; margin-top:28px; }
 </style>
@@ -276,6 +296,12 @@
 </div>
 
 <main>
+  <div class="view-tabs">
+    <button class="tab-btn active" id="tabOfficeBtn">🏢 The Office</button>
+    <button class="tab-btn" id="tabCalendarBtn">📅 Achievements</button>
+  </div>
+
+  <div id="officeView">
   <div class="toolbar">
     <button id="goalsBtn">🎯 Goals</button>
     <button id="remindersBtn">🔔 Reminders</button>
@@ -327,6 +353,24 @@
   </section>
 
   <section class="floorplan" id="floorplan"></section>
+  </div>
+
+  <div id="calendarView" class="hidden">
+    <section class="calendar-wrap panel-box">
+      <div class="calendar-header">
+        <button class="icon-btn" id="calPrevBtn">← Prev</button>
+        <h3 id="calMonthLabel"></h3>
+        <button class="icon-btn" id="calNextBtn">Next →</button>
+      </div>
+      <div class="calendar-grid" id="calendarGrid"></div>
+      <div class="calendar-legend">
+        <span><span class="cal-marker">🌟</span> milestone</span>
+        <span><span class="cal-marker">●</span> tasks done</span>
+        <span><span class="cal-dot-sample empty"></span> nothing logged</span>
+      </div>
+      <p class="office-caption">Browsing past days only — this doesn't change any logged data, it just looks back at it. Click a day to open its Daily Review.</p>
+    </section>
+  </div>
 
   <p class="footer-note">Data lives only in this browser (localStorage). Export regularly if you don't want to depend on one browser.</p>
 </main>
@@ -392,7 +436,6 @@
 
   var OUTREACH_SHEET_ID = '1tcm4mRBQOAwXR1e96_oG2ZQm8j8VN1oSaA6KOzQFIGc';
   var OUTREACH_TAB = 'Outreach Tracker';
-  var OUTREACH_NOT_SENT_STATUSES = ['not contacted', ''];
   var OUTREACH_REPLIED_STATUSES = ['replied', 'scheduled', 'met'];
 
   var STORAGE_PREFIX = 'dailyhq:';
@@ -542,16 +585,18 @@
 
   function initDayRollover(){
     var meta = loadMeta();
+    var pendingReviewDate = null;
     if(meta.lastOpenedDate && meta.lastOpenedDate !== today){
       var prevDay = loadDay(meta.lastOpenedDate);
       if(prevDay.tasks.length > 0 && !prevDay.reviewed){
-        openDailyReview(meta.lastOpenedDate, true);
+        pendingReviewDate = meta.lastOpenedDate;
         prevDay.reviewed = true;
         saveDay(prevDay);
       }
     }
     meta.lastOpenedDate = today;
     saveMeta(meta);
+    return pendingReviewDate;
   }
 
   /* ===================== Goals ===================== */
@@ -594,7 +639,8 @@
     return last;
   }
 
-  function openGoalsModal(){
+  function openGoalsModal(afterClose){
+    modalAfterClose = afterClose || null;
     var state = ensureGoals();
     var goals = state.goals;
     var html = '' +
@@ -631,7 +677,13 @@
       closeModal();
     });
   }
-  function closeModal(){ document.getElementById('modalRoot').innerHTML = ''; }
+  var modalAfterClose = null;
+  function closeModal(){
+    var cb = modalAfterClose;
+    modalAfterClose = null;
+    document.getElementById('modalRoot').innerHTML = '';
+    if(cb) cb();
+  }
 
   document.getElementById('goalsBtn').addEventListener('click', openGoalsModal);
 
@@ -1079,16 +1131,22 @@
       var cols = data.table.cols.map(function(c){ return (c.label||'').toLowerCase(); });
       var statusIdx = cols.findIndex(function(c){ return c.indexOf('status') !== -1 && c.indexOf('scheduled') === -1 && c.indexOf('met') === -1; });
       if(statusIdx === -1) throw new Error('Could not find a Status column in that sheet.');
-      var sent = 0, replied = 0, total = 0;
+      var reachedOutIdx = cols.findIndex(function(c){ return c.indexOf('reached out') !== -1; });
+      if(reachedOutIdx === -1) throw new Error('Could not find a "Date Reached Out" column in that sheet.');
+      var sent = 0, replied = 0;
+      // The tracker is agent-maintained: a row only exists once the scheduled job
+      // finds a real conversation, so "Sent" is just "has a Date Reached Out" —
+      // there's no planned-but-not-sent state to filter out by status text.
       (data.table.rows||[]).forEach(function(row){
-        var cell = row.c && row.c[statusIdx];
-        var status = (cell && cell.v ? String(cell.v) : '').trim().toLowerCase();
-        if(!status) return;
-        total++;
-        if(OUTREACH_NOT_SENT_STATUSES.indexOf(status) === -1) sent++;
+        var reachedCell = row.c && row.c[reachedOutIdx];
+        var reachedOut = reachedCell && reachedCell.v !== null && reachedCell.v !== '';
+        if(!reachedOut) return;
+        sent++;
+        var statusCell = row.c && row.c[statusIdx];
+        var status = (statusCell && statusCell.v ? String(statusCell.v) : '').trim().toLowerCase();
         if(OUTREACH_REPLIED_STATUSES.indexOf(status) !== -1) replied++;
       });
-      outreachData = { ok:true, loading:false, sent:sent, replied:replied, total:total };
+      outreachData = { ok:true, loading:false, sent:sent, replied:replied };
       renderOutreachInline();
     }).catch(function(err){
       outreachData = { ok:false, loading:false, error: err.message };
@@ -1511,7 +1569,8 @@
     if(editBtn) editBtn.addEventListener('click', function(){ closeModal(); openGoalsModal(); });
   }
 
-  function openDailyReview(dateStrArg, autoTriggered){
+  function openDailyReview(dateStrArg, autoTriggered, afterClose){
+    modalAfterClose = afterClose || null;
     var day = loadDay(dateStrArg);
     var done = day.tasks.filter(function(t){ return t.done; });
     var undone = day.tasks.filter(function(t){ return !t.done; });
@@ -1529,7 +1588,7 @@
           '<h3 style="color:var(--mint);">Done</h3>' +
           '<ul class="review-list">' + (done.length ? done.map(function(t){ var cat=CAT_BY_ID[t.category]; return '<li>'+(t.milestone?'⭐ ':'')+escapeHtml(t.text)+' <span class="cat-tag">'+(cat?cat.icon+' '+cat.name:'')+'</span></li>'; }).join('') : '<li class="unchecked">Nothing checked off.</li>') + '</ul>' +
           '<h3 style="color:var(--text-faint);">Not checked off</h3>' +
-          '<ul class="review-list">' + (undone.length ? undone.map(function(t){ var cat=CAT_BY_ID[t.category]; return '<li class="unchecked">'+(t.milestone?'⭐ ':'')+escapeHtml(t.text)+' <span class="cat-tag">'+(cat?cat.icon+' '+cat.name:'')+'</span></li>'; }).join('') : '<li>Everything on the list got done.</li>') + '</ul>' +
+          '<ul class="review-list">' + (undone.length ? undone.map(function(t){ var cat=CAT_BY_ID[t.category]; return '<li class="unchecked">'+(t.milestone?'⭐ ':'')+escapeHtml(t.text)+' <span class="cat-tag">'+(cat?cat.icon+' '+cat.name:'')+'</span></li>'; }).join('') : '<li>'+(day.tasks.length ? 'Everything on the list got done.' : 'No tasks were logged this day.')+'</li>') + '</ul>' +
           '<h3>Your note</h3>' +
           '<textarea class="note-area" id="dailyNoteArea" placeholder="What would you do differently? (your words, not mine)">'+escapeHtml(day.note||'')+'</textarea>' +
           '<div style="margin-top:10px; text-align:right;"><button class="primary" id="saveDailyNoteBtn">Save note & close</button></div>' +
@@ -1544,6 +1603,106 @@
     });
   }
   document.getElementById('dailyReviewBtn').addEventListener('click', function(){ openDailyReview(today, false); });
+
+  /* ===================== Daily entry pop-up (shows only while today has zero tasks) ===================== */
+
+  var dailyEntryPreview = [];
+
+  function openDailyEntryModal(){
+    modalAfterClose = null;
+    dailyEntryPreview = [];
+    var html = '' +
+      '<div class="modal-backdrop" id="dailyEntryBackdrop">' +
+        '<div class="modal">' +
+          '<button class="close-x icon-btn" id="closeDailyEntryModal">✕</button>' +
+          '<h2>What are you working on today?</h2>' +
+          '<p style="color:var(--text-dim); font-size:14px;">One task per line. Skip this if you\'d rather add them later — the same box is further down the page.</p>' +
+          '<textarea id="dailyEntryInput" placeholder="e.g. Review today\'s leads&#10;30 min run&#10;Draft backpack post idea"></textarea>' +
+          '<div style="margin-top:8px; display:flex; gap:8px;">' +
+            '<button class="primary" id="dailyEntryPreviewBtn">Preview tasks →</button>' +
+            '<button class="ghost" id="dailyEntryDismissBtn">Not now</button>' +
+          '</div>' +
+          '<div id="dailyEntryPreviewList" style="margin-top:10px;"></div>' +
+          '<div id="dailyEntryConfirmRow" class="hidden" style="margin-top:8px;">' +
+            '<button class="pink" id="dailyEntryConfirmBtn">Add to today\'s list</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    document.getElementById('modalRoot').innerHTML = html;
+
+    function renderDailyEntryPreview(){
+      var box = document.getElementById('dailyEntryPreviewList');
+      var confirmRow = document.getElementById('dailyEntryConfirmRow');
+      if(dailyEntryPreview.length === 0){ box.innerHTML=''; confirmRow.classList.add('hidden'); return; }
+      confirmRow.classList.remove('hidden');
+      box.innerHTML = dailyEntryPreview.map(function(p, idx){
+        var opts = '<option value="">— pick category —</option>' + CATEGORIES.map(function(c){
+          return '<option value="'+c.id+'"'+(p.category===c.id?' selected':'')+'>'+c.icon+' '+c.name+'</option>';
+        }).join('');
+        return '' +
+          '<div class="preview-row" data-idx="'+idx+'">' +
+            '<span class="txt">'+escapeHtml(p.text)+'</span>' +
+            '<select data-role="cat">'+opts+'</select>' +
+            '<button class="star-btn '+(p.milestone?'':'off')+'" data-role="star" title="milestone">⭐</button>' +
+            '<label style="font-size:13px;color:var(--text-dim);"><input type="checkbox" data-role="repeats" '+(p.repeats?'checked':'')+'> repeats</label>' +
+            '<button class="del-btn" data-role="remove" title="remove">✕</button>' +
+          '</div>';
+      }).join('');
+    }
+
+    document.getElementById('dailyEntryPreviewBtn').addEventListener('click', function(){
+      var raw = document.getElementById('dailyEntryInput').value;
+      var lines = raw.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+      dailyEntryPreview = lines.map(function(line){ return { text: line, category: detectCategory(line), milestone:false, repeats:false }; });
+      renderDailyEntryPreview();
+    });
+    document.getElementById('dailyEntryPreviewList').addEventListener('click', function(e){
+      var row = e.target.closest('.preview-row'); if(!row) return;
+      var idx = Number(row.dataset.idx);
+      if(e.target.dataset.role === 'star'){ dailyEntryPreview[idx].milestone = !dailyEntryPreview[idx].milestone; renderDailyEntryPreview(); }
+      else if(e.target.dataset.role === 'remove'){ dailyEntryPreview.splice(idx,1); renderDailyEntryPreview(); }
+    });
+    document.getElementById('dailyEntryPreviewList').addEventListener('change', function(e){
+      var row = e.target.closest('.preview-row'); if(!row) return;
+      var idx = Number(row.dataset.idx);
+      if(e.target.dataset.role === 'cat') dailyEntryPreview[idx].category = e.target.value;
+      if(e.target.dataset.role === 'repeats') dailyEntryPreview[idx].repeats = e.target.checked;
+    });
+    document.getElementById('dailyEntryConfirmBtn').addEventListener('click', function(){
+      var recurring = loadRecurring();
+      var recurringChanged = false;
+      dailyEntryPreview.forEach(function(p){
+        if(!p.category) return;
+        var recurringId = null;
+        if(p.repeats){
+          var tpl = recurring.find(function(r){ return r.text === p.text && r.category === p.category; });
+          if(tpl){ recurringId = tpl.id; tpl.active = true; }
+          else{ tpl = { id: makeId('rec'), text: p.text, category: p.category, active:true }; recurring.push(tpl); recurringId = tpl.id; }
+          recurringChanged = true;
+        }
+        currentDay.tasks.push({ id: makeId('t'), text: p.text, category: p.category, done:false, milestone: p.milestone, recurringId: recurringId, createdAt: Date.now() });
+      });
+      var skipped = dailyEntryPreview.filter(function(p){ return !p.category; }).length;
+      saveDay(currentDay);
+      if(recurringChanged) saveRecurring(recurring);
+      dailyEntryPreview = [];
+      closeModal();
+      renderAll();
+      if(skipped > 0) alert(skipped + ' line(s) had no category picked and were not added. Add them from the box further down the page.');
+    });
+    document.getElementById('closeDailyEntryModal').addEventListener('click', closeModal);
+    document.getElementById('dailyEntryDismissBtn').addEventListener('click', closeModal);
+    document.getElementById('dailyEntryBackdrop').addEventListener('click', function(e){ if(e.target.id==='dailyEntryBackdrop') closeModal(); });
+    document.getElementById('dailyEntryInput').focus();
+  }
+
+  // Checked fresh at each app open against today's live task count — never a
+  // stored "dismissed" flag. Dismissing and adding nothing all day must still
+  // show this again tomorrow, but dismissing and later adding a task through
+  // the normal entry point must not bring it back later today.
+  function maybeShowDailyEntryModal(){
+    if(currentDay.tasks.length === 0) openDailyEntryModal();
+  }
 
   /* ===================== Weekly review ===================== */
 
@@ -1598,6 +1757,78 @@
   }
   document.getElementById('weeklyReviewBtn').addEventListener('click', openWeeklyReview);
 
+  /* ===================== Achievements calendar (read-only browse of existing per-day data) ===================== */
+
+  var todayD = new Date();
+  var calendarState = { year: todayD.getFullYear(), month: todayD.getMonth() };
+
+  function pad2(n){ return String(n).padStart(2,'0'); }
+  function isoDate(y, m, d){ return y + '-' + pad2(m+1) + '-' + pad2(d); }
+  function monthLabel(year, month){ return new Date(year, month, 1).toLocaleDateString(undefined, { month:'long', year:'numeric' }); }
+  function isCurrentCalendarMonth(){ return calendarState.year === todayD.getFullYear() && calendarState.month === todayD.getMonth(); }
+
+  function dayActivity(dateStr){
+    var day = loadDay(dateStr);
+    var done = day.tasks.filter(function(t){ return t.done; });
+    return { hasActivity: done.length > 0, hasMilestone: done.some(function(t){ return t.milestone; }) };
+  }
+
+  function renderCalendar(){
+    document.getElementById('calMonthLabel').textContent = monthLabel(calendarState.year, calendarState.month);
+    document.getElementById('calNextBtn').disabled = isCurrentCalendarMonth();
+    var firstWeekday = new Date(calendarState.year, calendarState.month, 1).getDay();
+    var daysInMonth = new Date(calendarState.year, calendarState.month + 1, 0).getDate();
+    var html = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(function(d){ return '<div class="cal-dow">'+d+'</div>'; }).join('');
+    for(var i=0; i<firstWeekday; i++) html += '<div class="cal-day pad"></div>';
+    for(var d=1; d<=daysInMonth; d++){
+      var dateStr = isoDate(calendarState.year, calendarState.month, d);
+      var isFuture = dateStr > today;
+      var cls = 'cal-day';
+      var marker = '';
+      if(isFuture){
+        cls += ' future';
+      } else {
+        var act = dayActivity(dateStr);
+        if(act.hasMilestone){ cls += ' milestone'; marker = '🌟'; }
+        else if(act.hasActivity){ cls += ' active'; marker = '●'; }
+        else { cls += ' empty'; }
+      }
+      if(dateStr === today) cls += ' is-today';
+      html += '<button class="'+cls+'" data-date="'+dateStr+'"'+(isFuture?' disabled':'')+'>' +
+                '<span class="cal-daynum">'+d+'</span><span class="cal-marker">'+marker+'</span>' +
+              '</button>';
+    }
+    document.getElementById('calendarGrid').innerHTML = html;
+  }
+
+  document.getElementById('calendarGrid').addEventListener('click', function(e){
+    var btn = e.target.closest('.cal-day[data-date]');
+    if(!btn || btn.disabled) return;
+    openDailyReview(btn.dataset.date, false);
+  });
+  document.getElementById('calPrevBtn').addEventListener('click', function(){
+    calendarState.month--;
+    if(calendarState.month < 0){ calendarState.month = 11; calendarState.year--; }
+    renderCalendar();
+  });
+  document.getElementById('calNextBtn').addEventListener('click', function(){
+    if(isCurrentCalendarMonth()) return;
+    calendarState.month++;
+    if(calendarState.month > 11){ calendarState.month = 0; calendarState.year++; }
+    renderCalendar();
+  });
+
+  function showTab(tab){
+    var isOffice = tab === 'office';
+    document.getElementById('officeView').classList.toggle('hidden', !isOffice);
+    document.getElementById('calendarView').classList.toggle('hidden', isOffice);
+    document.getElementById('tabOfficeBtn').classList.toggle('active', isOffice);
+    document.getElementById('tabCalendarBtn').classList.toggle('active', !isOffice);
+    if(!isOffice) renderCalendar();
+  }
+  document.getElementById('tabOfficeBtn').addEventListener('click', function(){ showTab('office'); });
+  document.getElementById('tabCalendarBtn').addEventListener('click', function(){ showTab('calendar'); });
+
   /* ===================== Export ===================== */
 
   function exportData(){
@@ -1634,11 +1865,10 @@
   /* ===================== Boot ===================== */
 
   buildFloorplan();
-  initDayRollover();
+  var pendingReviewDate = initDayRollover();
   currentDay = loadDay(today);
   applyRecurring();
   currentDay = loadDay(today);
-  var goalState = ensureGoals();
   renderStaticOffice();
   renderAll();
   fetchOutreach();
@@ -1648,7 +1878,24 @@
   if(bootReminderSettings.enabled && typeof Notification !== 'undefined' && Notification.permission === 'granted'){
     startReminderLoop();
   }
-  if(goalState.firstRun) openGoalsModal();
+
+  // Sequenced, not simultaneous: an auto-triggered Daily Review from
+  // yesterday, a first-run Goals modal, and the daily-entry pop-up all share
+  // modalRoot, so each must wait for the previous one to close (via
+  // modalAfterClose) rather than overwriting it outright.
+  function afterOpeningReview(){
+    var goalState = ensureGoals();
+    if(goalState.firstRun){
+      openGoalsModal(maybeShowDailyEntryModal);
+    } else {
+      maybeShowDailyEntryModal();
+    }
+  }
+  if(pendingReviewDate){
+    openDailyReview(pendingReviewDate, true, afterOpeningReview);
+  } else {
+    afterOpeningReview();
+  }
 
 })();
 </script>
