@@ -1928,7 +1928,11 @@
 
   if('serviceWorker' in navigator){
     window.addEventListener('load', function(){
-      navigator.serviceWorker.register('service-worker.js').catch(function(err){
+      // updateViaCache:'none' is required on GitHub Pages specifically: its Fastly CDN
+      // can serve a stale cached copy of service-worker.js itself, so without this the
+      // browser never even sees a new version to install — the whole app silently
+      // freezes on whatever build first got cached, no matter what's actually deployed.
+      navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' }).catch(function(err){
         console.warn('Service worker registration failed:', err);
       });
     });
