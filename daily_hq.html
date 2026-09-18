@@ -1198,35 +1198,99 @@
     ctx.moveTo(x, y); ctx.lineTo(x+len*0.4, y+len*0.3); ctx.lineTo(x+len*0.7, y+len*0.15); ctx.lineTo(x+len, y+len*0.45);
     ctx.stroke();
   }
+  function iceFill(ctx, x, y, w, h, r){
+    ctx.fillStyle = 'rgba(180,225,250,0.6)';
+    roundRectPath(ctx, x, y, w, h, r||3); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x+w*0.15, y+h*0.15); ctx.lineTo(x+w*0.35, y+h*0.85); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x+w*0.65, y+h*0.1); ctx.lineTo(x+w*0.85, y+h*0.8); ctx.stroke();
+  }
   function drawDraftingTable(ctx, x, y){
-    ctx.fillStyle = '#6b4a2e';
+    ctx.fillStyle = 'rgba(180,225,250,0.6)';
     ctx.beginPath(); ctx.moveTo(x,y+18); ctx.lineTo(x+40,y+18); ctx.lineTo(x+40,y+10); ctx.lineTo(x+6,y); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.beginPath(); ctx.moveTo(x+4,y+15); ctx.lineTo(x+36,y+15); ctx.lineTo(x+36,y+11); ctx.lineTo(x+10,y+4); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x+10,y+16); ctx.lineTo(x+16,y+5); ctx.stroke();
   }
   function drawSideTable(ctx, x, y){
-    ctx.fillStyle = '#c9924a'; roundRectPath(ctx, x, y, 24, 11, 2); ctx.fill();
-    ctx.fillStyle = '#8a6a3a'; ctx.fillRect(x+2, y+11, 3, 9); ctx.fillRect(x+18, y+11, 3, 9);
+    iceFill(ctx, x, y, 24, 11, 2);
+    ctx.fillStyle = 'rgba(140,200,235,0.6)'; ctx.fillRect(x+2, y+11, 3, 9); ctx.fillRect(x+18, y+11, 3, 9);
   }
   function drawCorkboard(ctx, x, y){
-    ctx.fillStyle = '#c9924a'; ctx.fillRect(x, y, 30, 22);
+    iceFill(ctx, x, y, 30, 22, 2);
     ['#ff4f93','#22d3bd','#ffce1f'].forEach(function(c,i){ ctx.fillStyle = c; ctx.fillRect(x+4+i*8, y+4, 6, 6); });
   }
   function drawCabinet(ctx, x, y){
-    ctx.fillStyle = '#8a7256'; ctx.fillRect(x, y, 20, 28);
-    ctx.fillStyle = '#5b4636'; ctx.fillRect(x, y+8, 20, 2); ctx.fillRect(x, y+18, 20, 2);
+    iceFill(ctx, x, y, 20, 28, 2);
+    ctx.strokeStyle = 'rgba(90,134,168,0.6)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, y+8); ctx.lineTo(x+20, y+8); ctx.moveTo(x, y+18); ctx.lineTo(x+20, y+18); ctx.stroke();
     ctx.fillStyle = '#3a2a4a'; ctx.fillRect(x+8, y+3, 4, 1); ctx.fillRect(x+8, y+13, 4, 1);
   }
   function drawShelf(ctx, x, y){
-    ctx.fillStyle = '#8a5a2b'; ctx.fillRect(x, y, 28, 6);
+    ctx.fillStyle = 'rgba(180,225,250,0.7)'; ctx.fillRect(x, y, 28, 6);
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x+2, y+1); ctx.lineTo(x+26, y+1); ctx.stroke();
     ['#ff4f93','#22d3bd','#ffce1f','#7c4fe0'].forEach(function(c,i){ ctx.fillStyle = c; ctx.fillRect(x+2+i*6, y+6, 4, 16); });
+  }
+  function drawIceBookshelf(ctx, x, y){
+    iceFill(ctx, x, y, 22, 34, 2);
+    ctx.strokeStyle = 'rgba(90,134,168,0.6)'; ctx.lineWidth = 1;
+    [10,20].forEach(function(dy){ ctx.beginPath(); ctx.moveTo(x, y+dy); ctx.lineTo(x+22, y+dy); ctx.stroke(); });
+    var colors = ['#ff4f93','#22d3bd','#ffce1f','#7c4fe0'];
+    for(var i=0;i<4;i++){ ctx.fillStyle = colors[i]; ctx.fillRect(x+2+i*4.5, y+2, 3, 7); }
+    for(var j=0;j<4;j++){ ctx.fillStyle = colors[(j+2)%4]; ctx.fillRect(x+2+j*4.5, y+12, 3, 7); }
+  }
+  function drawIceCouch(ctx, x, y){
+    iceFill(ctx, x, y, 36, 16, 4);
+    ctx.fillStyle = 'rgba(200,235,255,0.7)'; ctx.fillRect(x, y-6, 6, 12); ctx.fillRect(x+30, y-6, 6, 12);
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(x+6, y+2, 24, 4);
+  }
+  function drawIceStand(ctx, x, y){
+    ctx.fillStyle = 'rgba(180,225,250,0.6)'; ctx.fillRect(x+4, y+10, 4, 12);
+    iceFill(ctx, x, y, 12, 10, 3);
+    ctx.fillStyle = '#ffce1f'; ctx.fillRect(x+4, y+3, 4, 4);
+  }
+  function drawGymEquipment(ctx, x, y){
+    ctx.strokeStyle = 'rgba(140,200,235,0.9)'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x+16, y); ctx.stroke();
+    ctx.fillStyle = 'rgba(140,200,235,0.75)';
+    ctx.fillRect(x-3, y-4, 5, 8); ctx.fillRect(x+14, y-4, 5, 8);
+    iceFill(ctx, x-2, y+8, 20, 5, 2);
+  }
+  function drawKitchenCounter(ctx, x, y){
+    iceFill(ctx, x, y, 34, 14, 3);
+    ctx.fillStyle = 'rgba(140,200,235,0.6)'; ctx.fillRect(x+2, y+14, 4, 8); ctx.fillRect(x+28, y+14, 4, 8);
+    ctx.fillStyle = '#ff4f93'; ctx.fillRect(x+6, y+3, 5, 6);
+    ctx.fillStyle = '#22d3bd'; ctx.fillRect(x+13, y+3, 5, 6);
+  }
+  function drawIgloo(ctx, x, y, size){
+    size = size || 1;
+    var widths = [14,13,11,9,6]; // widest first: this is the BASE-to-APEX order
+    var unit = 3*size;
+    ctx.fillStyle = 'rgba(220,240,255,0.92)';
+    for(var i=0;i<widths.length;i++){
+      var w = widths[i]*size;
+      var rowY = y - (i+1)*unit; // i=0 (widest) sits closest to the base
+      ctx.fillRect(Math.round(x-w), Math.round(rowY), Math.round(w*2), Math.ceil(unit)+1);
+    }
+    ctx.strokeStyle = 'rgba(120,175,210,0.7)'; ctx.lineWidth = 1;
+    for(var b=1;b<widths.length;b++){
+      var seamY = y - b*unit;
+      ctx.beginPath();
+      ctx.moveTo(x-widths[b]*size, seamY);
+      ctx.lineTo(x+widths[b]*size, seamY);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#2a3a4a';
+    ctx.fillRect(Math.round(x-4*size), Math.round(y-unit*1.3), Math.round(8*size), Math.ceil(unit*1.3));
   }
   function drawJournal(ctx, x, y){
     ctx.fillStyle = '#e0397e'; ctx.fillRect(x, y, 13, 17);
     ctx.strokeStyle = '#a82a5e'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x+6.5, y); ctx.lineTo(x+6.5, y+17); ctx.stroke();
   }
   function drawSafe(ctx, x, y){
-    ctx.fillStyle = '#3a2a4a'; roundRectPath(ctx, x, y, 22, 22, 3); ctx.fill();
+    iceFill(ctx, x, y, 22, 22, 3);
     ctx.strokeStyle = '#ffce1f'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x+11, y+11, 5, 0, Math.PI*2); ctx.stroke();
   }
   function drawMatRolled(ctx, x, y){
@@ -1292,6 +1356,7 @@
     drawDeskFurniture(ctx, r.x+r.w-56, r.y+r.h-40);
     drawCorkboard(ctx, r.x+14, r.y+16);
     drawCabinet(ctx, r.x+14, r.y+r.h-42);
+    drawIceStand(ctx, r.x+r.w*0.42, r.y+18);
 
     r = ROOM_RECTS.cv;
     drawDeskFurniture(ctx, r.x+r.w-56, r.y+r.h-40);
@@ -1301,10 +1366,11 @@
     r = ROOM_RECTS.portfolio;
     drawDraftingTable(ctx, r.x+r.w-56, r.y+r.h-40);
     drawPortfolioStructure(ctx, r.x+14, r.y+r.h-10);
+    drawIceStand(ctx, r.x+r.w*0.4, r.y+18);
 
     r = ROOM_RECTS.backpack;
     drawDeskFurniture(ctx, r.x+r.w-56, r.y+r.h-40);
-    drawShelf(ctx, r.x+14, r.y+16);
+    drawIceBookshelf(ctx, r.x+14, r.y+14);
     drawJournal(ctx, r.x+16, r.y+r.h-42);
 
     r = ROOM_RECTS.budget;
@@ -1313,20 +1379,31 @@
     drawBudgetJar(ctx, r.x+16, r.y+r.h-72);
 
     r = ROOM_RECTS.health;
-    drawSideTable(ctx, r.x+r.w-46, r.y+r.h-30);
-    drawMatRolled(ctx, r.x+26, r.y+24);
-    drawPlant(ctx, r.x+r.w-24, r.y+18);
+    drawGymEquipment(ctx, r.x+r.w-40, r.y+30);
+    drawMatRolled(ctx, r.x+26, r.y+r.h-26);
+    drawPlant(ctx, r.x+r.w-24, r.y+r.h-20);
+
+    // a small ice desk for every character who isn't the room's lead (idx 0) —
+    // the lead keeps the main desk with the monitor drawn above.
+    CHARACTERS.forEach(function(ch){
+      if(ch.idx === 0) return;
+      ctx.fillStyle = 'rgba(180,225,250,0.5)';
+      roundRectPath(ctx, ch.seat.x-15, ch.seat.y+16, 28, 9, 2); ctx.fill();
+    });
 
     ctx.fillStyle = 'rgba(255,180,0,0.20)';
     roundRectPath(ctx, RECEPTION.x, RECEPTION.y, RECEPTION.w, RECEPTION.h, 8); ctx.fill();
     drawSideTable(ctx, RECEPTION.x+30, RECEPTION.y+4);
     ctx.font = 'bold 9px sans-serif'; ctx.fillStyle = '#8a5a00';
     ctx.fillText("🏠 GaYeon's Desk", RECEPTION.x-2, RECEPTION.y-4);
+    drawIgloo(ctx, RECEPTION.x+RECEPTION.w+26, HALLWAY.y+50, 0.75);
 
-    drawPlant(ctx, 470, HALLWAY.y+42);
-    drawCocoaMachine(ctx, 636, HALLWAY.y+12);
+    drawIceCouch(ctx, 420, HALLWAY.y+30);
+    drawKitchenCounter(ctx, 560, HALLWAY.y+16);
+    drawCocoaMachine(ctx, 630, HALLWAY.y+10);
+    drawIgloo(ctx, 730, HALLWAY.y+50, 1.0);
     drawFrostedWindow(ctx, ROOM_RECTS.job.x+ROOM_RECTS.job.w*0.6, ROOM_RECTS.job.y+10, 34, 22);
-    drawFrostedWindow(ctx, ROOM_RECTS.health.x+18, ROOM_RECTS.health.y+ROOM_RECTS.health.h-40, 30, 20);
+    drawFrostedWindow(ctx, ROOM_RECTS.health.x+18, ROOM_RECTS.health.y+12, 30, 20);
 
     ctx.fillStyle = '#a99bc4';
     ctx.fillRect(6, HALLWAY.y+8, 8, HALLWAY.h-16);
@@ -1383,16 +1460,15 @@
     "...KKKKKK...",
     "..KKKKKKKK..",
     ".KKKKKKKKKK.",
-    ".KWWWWWWWWK.",
-    ".KWWKWWKWWK.",
-    ".KWWWOOWWWK.",
-    ".KWWWWWWWWK.",
     "KKKKKKKKKKKK",
+    "KWWWWWWWWWWK",
+    "KWWWWWWWWWWK",
+    "KWWWOOWWWWWK",
+    "KWWWWWWWWWWK",
     "KKKKKKKKKKKK",
-    "KKWWWWWWWWKK",
-    "KKWWWWWWWWKK",
-    "KKWWWWWWWWKK",
-    "KKWWWWWWWWKK",
+    "KWWWWWWWWWWK",
+    "KWWWWWWWWWWK",
+    "KWWWWWWWWWWK",
     ".KKKKKKKKKK.",
     "..KKKKKKKK.."
   ];
@@ -1411,11 +1487,10 @@
       for(var c=0;c<PENGUIN_COLS;c++){
         var sym = row[c];
         if(sym === '.') continue;
-        if(opts.slim && r>=10 && r<=13 && (c===2||c===9)) continue; // narrower belly, backfilled below
-        if(sym === 'W' && state_closedEyeRow(r, opts)) continue; // handled separately for happy state
+        if(opts.slim && r>=10 && r<=12 && (c===1||c===10)) continue; // narrower belly, backfilled below
         ctx.fillStyle = colorMap[sym];
         var x = leftX + c*unit, w = unit;
-        if(opts.chubby && r>=8 && r<=15 && (c===0 || c===11)){
+        if(opts.chubby && r>=9 && r<=14 && (c===0 || c===11)){
           if(c===0){ x -= unit; w += unit; } else { w += unit; }
         }
         ctx.fillRect(Math.round(x), Math.round(topY+r*unit), Math.ceil(w), Math.ceil(unit));
@@ -1423,17 +1498,28 @@
     }
     if(opts.slim){
       ctx.fillStyle = colorMap.K;
-      for(var r2=10;r2<=13;r2++){
-        ctx.fillRect(Math.round(leftX+2*unit), Math.round(topY+r2*unit), Math.ceil(unit), Math.ceil(unit));
-        ctx.fillRect(Math.round(leftX+9*unit), Math.round(topY+r2*unit), Math.ceil(unit), Math.ceil(unit));
+      for(var r2=10;r2<=12;r2++){
+        ctx.fillRect(Math.round(leftX+1*unit), Math.round(topY+r2*unit), Math.ceil(unit), Math.ceil(unit));
+        ctx.fillRect(Math.round(leftX+10*unit), Math.round(topY+r2*unit), Math.ceil(unit), Math.ceil(unit));
       }
     }
-    // eyes (drawn last so happy-state override below can redraw them shut)
+    // big cute eyes with a sparkle highlight, or a closed happy line
     if(opts.happy){
       ctx.fillStyle = colorMap.K;
-      ctx.fillRect(Math.round(leftX+4*unit), Math.round(topY+5*unit+unit*0.35), Math.ceil(unit), Math.ceil(unit*0.35));
-      ctx.fillRect(Math.round(leftX+7*unit), Math.round(topY+5*unit+unit*0.35), Math.ceil(unit), Math.ceil(unit*0.35));
+      ctx.fillRect(Math.round(leftX+2*unit), Math.round(topY+5.9*unit), Math.ceil(2*unit), Math.ceil(0.5*unit));
+      ctx.fillRect(Math.round(leftX+8*unit), Math.round(topY+5.9*unit), Math.ceil(2*unit), Math.ceil(0.5*unit));
+    } else {
+      ctx.fillStyle = colorMap.K;
+      ctx.fillRect(Math.round(leftX+2*unit), Math.round(topY+5*unit), Math.ceil(2*unit), Math.ceil(2*unit));
+      ctx.fillRect(Math.round(leftX+8*unit), Math.round(topY+5*unit), Math.ceil(2*unit), Math.ceil(2*unit));
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.fillRect(Math.round(leftX+2.3*unit), Math.round(topY+5.2*unit), Math.ceil(0.6*unit), Math.ceil(0.6*unit));
+      ctx.fillRect(Math.round(leftX+8.3*unit), Math.round(topY+5.2*unit), Math.ceil(0.6*unit), Math.ceil(0.6*unit));
     }
+    // blush
+    ctx.fillStyle = 'rgba(255,140,170,0.55)';
+    ctx.fillRect(Math.round(leftX+0.2*unit), Math.round(topY+7.4*unit), Math.ceil(1.3*unit), Math.ceil(0.9*unit));
+    ctx.fillRect(Math.round(leftX+10.5*unit), Math.round(topY+7.4*unit), Math.ceil(1.3*unit), Math.ceil(0.9*unit));
     // feet
     ctx.fillStyle = colorMap.O;
     var feetY = topY + PENGUIN_ROWS*unit;
@@ -1441,12 +1527,11 @@
     ctx.fillRect(Math.round(leftX+7*unit), Math.round(feetY), Math.ceil(unit*2), Math.ceil(unit));
     // flippers
     ctx.fillStyle = colorMap.K;
-    ctx.fillRect(Math.round(leftX-unit), Math.round(topY+8*unit), Math.ceil(unit), Math.ceil(unit*4));
-    ctx.fillRect(Math.round(leftX+PENGUIN_COLS*unit), Math.round(topY+8*unit), Math.ceil(unit), Math.ceil(unit*4));
+    ctx.fillRect(Math.round(leftX-unit*0.8), Math.round(topY+9*unit), Math.ceil(unit*0.8), Math.ceil(unit*3.5));
+    ctx.fillRect(Math.round(leftX+PENGUIN_COLS*unit), Math.round(topY+9*unit), Math.ceil(unit*0.8), Math.ceil(unit*3.5));
 
     return { leftX: leftX, unit: unit };
   }
-  function state_closedEyeRow(r, opts){ return opts.happy && r === 5; }
 
   function drawPenguinAccessory(ctx, leftX, topY, unit, ch){
     if(!ch.accessory) return;
@@ -1465,11 +1550,13 @@
         break;
       case 'glasses':
         ctx.fillStyle = color;
-        ctx.fillRect(Math.round(leftX+2.2*unit), Math.round(topY+4.6*unit), Math.ceil(2.4*unit), Math.ceil(0.5*unit));
-        ctx.fillRect(Math.round(leftX+5.4*unit), Math.round(topY+4.6*unit), Math.ceil(2.4*unit), Math.ceil(0.5*unit));
-        ctx.fillRect(Math.round(leftX+2*unit), Math.round(topY+4.6*unit), Math.ceil(0.5*unit), Math.ceil(1.3*unit));
-        ctx.fillRect(Math.round(leftX+5.2*unit), Math.round(topY+4.6*unit), Math.ceil(0.5*unit), Math.ceil(1.3*unit));
-        ctx.fillRect(Math.round(leftX+7.8*unit), Math.round(topY+4.6*unit), Math.ceil(0.5*unit), Math.ceil(1.3*unit));
+        ctx.fillRect(Math.round(leftX+1.6*unit), Math.round(topY+4.8*unit), Math.ceil(2.8*unit), Math.ceil(0.5*unit));
+        ctx.fillRect(Math.round(leftX+7.6*unit), Math.round(topY+4.8*unit), Math.ceil(2.8*unit), Math.ceil(0.5*unit));
+        ctx.fillRect(Math.round(leftX+4.4*unit), Math.round(topY+5.3*unit), Math.ceil(3.2*unit), Math.ceil(0.5*unit));
+        ctx.fillRect(Math.round(leftX+1.6*unit), Math.round(topY+4.8*unit), Math.ceil(0.5*unit), Math.ceil(2.4*unit));
+        ctx.fillRect(Math.round(leftX+4.4*unit), Math.round(topY+4.8*unit), Math.ceil(0.5*unit), Math.ceil(2.4*unit));
+        ctx.fillRect(Math.round(leftX+7.6*unit), Math.round(topY+4.8*unit), Math.ceil(0.5*unit), Math.ceil(2.4*unit));
+        ctx.fillRect(Math.round(leftX+10.4*unit), Math.round(topY+4.8*unit), Math.ceil(0.5*unit), Math.ceil(2.4*unit));
         break;
       case 'bowtie':
         ctx.fillStyle = color;
@@ -1560,7 +1647,7 @@
 
   function drawCharacter(ctx, ch, cx, cy, s, state){
     state = state || {};
-    var unit = 2.75 * s;
+    var unit = 1.85 * s;
     var topY = cy - (PENGUIN_ROWS/2)*unit;
     var opts = { happy: !!state.happy, chubby: ch.size==='chubby' || ch.size==='rounder', slim: ch.size==='slim' };
     if(ch.size === 'baby') unit = unit * 0.68;
@@ -1616,7 +1703,7 @@
   function seatFor(catId, idx){
     var r = ROOM_RECTS[catId];
     var deskX = r.x+r.w-56+14, deskY = r.y+r.h-40-6;
-    var offsets = [ {dx:2,dy:-4}, {dx:-22,dy:6}, {dx:-46,dy:13} ];
+    var offsets = [ {dx:4,dy:-3}, {dx:-15,dy:5}, {dx:-32,dy:10} ];
     var o = offsets[idx] || offsets[0];
     return { x: deskX+o.dx, y: deskY+o.dy };
   }
