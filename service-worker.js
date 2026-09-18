@@ -5,7 +5,15 @@ const CORE_ASSETS = [
   './icons/icon-32.png',
   './icons/icon-180.png',
   './icons/icon-192.png',
-  './icons/icon-512.png'
+  './icons/icon-512.png',
+  './sprites/office-bg.webp',
+  './sprites/hub.png',
+  './sprites/job.png',
+  './sprites/cv.png',
+  './sprites/portfolio.png',
+  './sprites/backpack.png',
+  './sprites/budget.png',
+  './sprites/health.png'
 ];
 
 self.addEventListener('install', (event) => {
