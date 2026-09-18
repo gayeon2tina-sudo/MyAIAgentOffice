@@ -1,8 +1,8 @@
 {
-  "name": "gayeon-daily-hq",
+  "name": "big-gy-inc-daily-hq",
   "version": "1.0.0",
   "private": true,
-  "description": "Local server for Daily HQ — serves the static app and the Claude-powered Ask endpoint.",
+  "description": "Local server for Daily HQ — serves the static app and the Claude-powered Radio-to-Base endpoint.",
   "scripts": {
     "server": "node server.js"
   },

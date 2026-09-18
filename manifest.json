@@ -1,12 +1,12 @@
 {
-  "name": "GaYeon Enterprise",
-  "short_name": "GaYeon HQ",
-  "description": "Daily HQ — the morning-to-night task, goal, and scoring dashboard for GaYeon's Personal Ops HQ.",
+  "name": "BIG GY INC",
+  "short_name": "BIG GY HQ",
+  "description": "Daily HQ — the morning-to-night task, goal, and scoring dashboard for BIG GY INC's arctic Ops HQ.",
   "start_url": "./daily_hq.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#fff1e0",
-  "theme_color": "#ff4f93",
+  "background_color": "#f2f8fd",
+  "theme_color": "#ee7b11",
   "orientation": "any",
   "icons": [
     { "src": "icons/icon-32.png", "sizes": "32x32", "type": "image/png" },
