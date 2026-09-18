@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Daily HQ — GaYeon Enterprise</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ff4f93">
+<link rel="icon" href="icons/icon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GaYeon HQ">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
@@ -18,7 +25,7 @@
     --grey:#a99bc4;
     --gold:#ffb400;
     --cream:#fff3d6;
-    --wall:#6b4a8a;
+    --wall:#4a7a9c;
     --bg:#fff1e0;
     --bg2:#ffe1ee;
     --panel:#fffdf9;
@@ -100,6 +107,10 @@
   .panel-box h3{ margin:0 0 8px; font-size:16px; color:var(--pink-deep); text-transform:uppercase; letter-spacing:1px; }
 
   .morning{ margin-bottom:18px; }
+  .reminder-banner{ margin-bottom:18px; border-color:var(--mint-deep); background:rgba(34,211,189,0.08); font-size:15px; }
+  .settings-row{ display:flex; align-items:center; gap:10px; margin:10px 0; flex-wrap:wrap; }
+  .settings-row label{ font-size:14px; color:var(--text-dim); min-width:140px; }
+  .settings-note{ font-size:13px; color:var(--text-faint); margin-top:10px; line-height:1.5; }
   .preview-row{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:6px 4px; border-bottom:1px dashed var(--border); }
   .preview-row span.txt{ flex:1 1 160px; min-width:120px; }
   .leftover-row{ display:flex; align-items:center; gap:8px; padding:4px 0; }
@@ -264,6 +275,7 @@
 <main>
   <div class="toolbar">
     <button id="goalsBtn">🎯 Goals</button>
+    <button id="remindersBtn">🔔 Reminders</button>
     <button id="dailyReviewBtn">📋 Daily Review</button>
     <button id="weeklyReviewBtn">📈 Weekly Review</button>
     <button id="trophyBtn">🏆 Trophy Shelf</button>
@@ -287,6 +299,14 @@
     </div>
   </section>
 
+  <section class="reminder-banner panel-box hidden" id="reminderBanner">
+    <p style="margin:0 0 8px;">Want a nudge if tasks are still open later today? Reminders only fire while this app is open (a foreground or backgrounded tab/window) — not if it's fully closed.</p>
+    <div style="display:flex; gap:8px;">
+      <button class="primary" id="reminderBannerEnable">Enable reminders</button>
+      <button class="ghost" id="reminderBannerDismiss">Not now</button>
+    </div>
+  </section>
+
   <section class="office-wrap panel-box">
     <h3>The Office</h3>
     <canvas id="officeCanvas" class="pixel" width="780" height="520"></canvas>
@@ -307,32 +327,32 @@
   /* ===================== Config ===================== */
 
   var CATEGORIES = [
-    { id:'job', name:'Job Search', icon:'🎯', floor:'#6ff5df', accent:'#0aab8c',
+    { id:'job', name:'Job Search', icon:'🎯', floor:'#dff7f5', accent:'#0aab8c',
       lead:'Scout', member:'Radar',
       flavors:["Scout found one.", "Radar's tracking a lead."],
       cursor:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20"><circle cx="8" cy="8" r="6" fill="none" stroke="%23222" stroke-width="2"/><line x1="13" y1="13" x2="18" y2="18" stroke="%23222" stroke-width="2"/></svg>',
       keywords:['job','jobs','posting','postings','role','roles','shortlist','linkedin','indeed','recruiter','apply for','pm role','pmm role','opening','openings','lead','leads'] },
-    { id:'cv', name:'CV & Applications', icon:'📝', floor:'#ff9dc4', accent:'#e0397e',
+    { id:'cv', name:'CV & Applications', icon:'📝', floor:'#fbe4ec', accent:'#e0397e',
       lead:'Editor', member:'Wordsmith',
       flavors:["Editor stamped it.", "Wordsmith's letting that rest before the final pass."],
       cursor:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20"><rect x="4" y="10" width="12" height="7" rx="1" fill="%23c93c81" stroke="%23222" stroke-width="1"/><rect x="7" y="4" width="6" height="6" fill="%23c93c81" stroke="%23222" stroke-width="1"/></svg>',
       keywords:['cv','resume','résumé','cover letter','tailor','application draft','submit application','cover ltr'] },
-    { id:'portfolio', name:'Portfolio Site', icon:'🖼️', floor:'#c9aeff', accent:'#7c4fe0',
+    { id:'portfolio', name:'Portfolio Site', icon:'🖼️', floor:'#ece5fb', accent:'#7c4fe0',
       lead:'Builder', member:'Pixel',
       flavors:["Builder added a beam.", "Pixel touched up a section."],
       cursor:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20"><rect x="9" y="2" width="2" height="12" fill="%238a5a2b"/><rect x="3" y="1" width="10" height="5" rx="1" fill="%236b4fc9" stroke="%23222" stroke-width="1"/></svg>',
       keywords:['portfolio','webflow','lovable','site','website','page copy','landing page'] },
-    { id:'backpack', name:'Backpack Content', icon:'🎒', floor:'#ffd27a', accent:'#e0821f',
+    { id:'backpack', name:'Backpack Content', icon:'🎒', floor:'#fdecd2', accent:'#e0821f',
       lead:'Storyteller', member:'Spark',
       flavors:["Spark lit up with an idea.", "Echo double checked, all clear."],
       cursor:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20"><path d="M3 17 L14 3 Q17 2 16 5 L6 16 Q4 18 3 17 Z" fill="%23c97a2b" stroke="%23222" stroke-width="1"/></svg>',
       keywords:['backpack','blog','post idea','content','draft post','newsletter','write about','write a post'] },
-    { id:'budget', name:'Budget & Life', icon:'💰', floor:'#a3e8ae', accent:'#2f9e56',
+    { id:'budget', name:'Budget & Life', icon:'💰', floor:'#e2f5e6', accent:'#2f9e56',
       lead:'Ledger', member:'Coin',
       flavors:["Ledger tucked that away.", "Coin counted it twice."],
       cursor:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" fill="%23ffe066" stroke="%238a6a1a" stroke-width="1.5"/><text x="10" y="14" font-size="8" text-anchor="middle" fill="%238a6a1a">%24</text></svg>',
       keywords:['budget','runway','rent','lease','seattle','move','moving','expenses','savings','spreadsheet','bank'] },
-    { id:'health', name:'Health', icon:'🏃', floor:'#8fd6ff', accent:'#1f8fe0',
+    { id:'health', name:'Health', icon:'🏃', floor:'#e0f2fb', accent:'#1f8fe0',
       lead:'Stride', member:'Breeze',
       flavors:["Stride logged today's run.", "Breeze says nice pace today."],
       cursor:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20"><path d="M3 17 Q3 3 17 3 Q17 17 3 17 Z" fill="%234fae7a" stroke="%232b7fc9" stroke-width="1"/><line x1="4" y1="16" x2="15" y2="5" stroke="%232b7fc9" stroke-width="1"/></svg>',
@@ -368,6 +388,7 @@
   var META_KEY = STORAGE_PREFIX + 'meta';
   var MECH_KEY = STORAGE_PREFIX + 'mechanics';
   var GOALS_KEY = STORAGE_PREFIX + 'goals';
+  var REMINDERS_KEY = STORAGE_PREFIX + 'reminders';
 
   /* ===================== Date helpers ===================== */
 
@@ -415,6 +436,14 @@
 
   function loadGoals(){ return safeParse(localStorage.getItem(GOALS_KEY), null); }
   function saveGoals(g){ localStorage.setItem(GOALS_KEY, JSON.stringify(g)); }
+
+  var REMINDER_DEFAULTS = { enabled:false, intervalHours:2, activeStart:'08:00', activeEnd:'22:00', lastReminderAt:0, bannerDismissed:false };
+  function loadReminderSettings(){
+    var s = safeParse(localStorage.getItem(REMINDERS_KEY), null);
+    if(!s) return Object.assign({}, REMINDER_DEFAULTS);
+    return Object.assign({}, REMINDER_DEFAULTS, s);
+  }
+  function saveReminderSettings(s){ localStorage.setItem(REMINDERS_KEY, JSON.stringify(s)); }
 
   function allDayDates(){
     var out = [];
@@ -592,6 +621,131 @@
   function closeModal(){ document.getElementById('modalRoot').innerHTML = ''; }
 
   document.getElementById('goalsBtn').addEventListener('click', openGoalsModal);
+
+  /* ===================== Reminders (foreground-only, while app is open) ===================== */
+
+  function todaysUndoneCount(){ return currentDay.tasks.filter(function(t){ return !t.done; }).length; }
+
+  function timeInRange(now, startStr, endStr){
+    var mins = now.getHours()*60 + now.getMinutes();
+    var sp = startStr.split(':').map(Number), ep = endStr.split(':').map(Number);
+    var start = sp[0]*60+sp[1], end = ep[0]*60+ep[1];
+    if(start === end) return true;
+    if(start < end) return mins >= start && mins < end;
+    return mins >= start || mins < end; // wraps past midnight
+  }
+
+  function pickReminderLine(){
+    var pendingCats = CATEGORIES.filter(function(c){ return roomPending(c.id); });
+    if(pendingCats.length > 0){
+      var cat = pendingCats[Math.floor(Math.random()*pendingCats.length)];
+      return cat.flavors[Math.floor(Math.random()*cat.flavors.length)] + ' Still a bit open in ' + cat.name + '.';
+    }
+    return '';
+  }
+
+  function maybeSendReminder(){
+    var s = loadReminderSettings();
+    if(!s.enabled) return;
+    if(typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+    if(!timeInRange(new Date(), s.activeStart, s.activeEnd)) return;
+    var elapsedMs = Date.now() - (s.lastReminderAt || 0);
+    if(elapsedMs < s.intervalHours*3600*1000) return;
+    var undone = todaysUndoneCount();
+    if(undone === 0) return;
+    var line = pickReminderLine();
+    var body = undone + ' task' + (undone===1?'':'s') + ' still open today.' + (line ? ' ' + line : '');
+    try{
+      new Notification('GaYeon Enterprise', { body: body, icon: 'icons/icon-192.png', tag: 'dailyhq-reminder' });
+    } catch(e){ /* Notification constructor unsupported in this context (e.g. some mobile browsers) — skip quietly */ }
+    s.lastReminderAt = Date.now();
+    saveReminderSettings(s);
+  }
+
+  var reminderIntervalHandle = null;
+  function startReminderLoop(){
+    if(reminderIntervalHandle) clearInterval(reminderIntervalHandle);
+    reminderIntervalHandle = setInterval(maybeSendReminder, 5*60*1000);
+    maybeSendReminder();
+  }
+
+  function requestReminderPermission(){
+    if(typeof Notification === 'undefined'){
+      alert("This browser doesn't support notifications.");
+      return;
+    }
+    Notification.requestPermission().then(function(perm){
+      var s = loadReminderSettings();
+      if(perm === 'granted'){
+        s.enabled = true;
+        s.bannerDismissed = true;
+        saveReminderSettings(s);
+        startReminderLoop();
+      } else {
+        s.bannerDismissed = true;
+        saveReminderSettings(s);
+      }
+      renderReminderBanner();
+    });
+  }
+
+  function renderReminderBanner(){
+    var s = loadReminderSettings();
+    var banner = document.getElementById('reminderBanner');
+    var show = !s.bannerDismissed && !s.enabled &&
+      (typeof Notification === 'undefined' || Notification.permission === 'default');
+    banner.classList.toggle('hidden', !show);
+  }
+  document.getElementById('reminderBannerEnable').addEventListener('click', requestReminderPermission);
+  document.getElementById('reminderBannerDismiss').addEventListener('click', function(){
+    var s = loadReminderSettings(); s.bannerDismissed = true; saveReminderSettings(s);
+    renderReminderBanner();
+  });
+
+  function openRemindersModal(){
+    var s = loadReminderSettings();
+    var permState = (typeof Notification !== 'undefined') ? Notification.permission : 'unsupported';
+    var html = '' +
+      '<div class="modal-backdrop" id="remindersBackdrop">' +
+        '<div class="modal">' +
+          '<button class="close-x icon-btn" id="closeRemindersModal">✕</button>' +
+          '<h2>🔔 Reminders</h2>' +
+          '<div class="settings-row"><label>On/off</label><input type="checkbox" id="remEnabled" '+(s.enabled?'checked':'')+'></div>' +
+          '<div class="settings-row"><label>Check every</label><select id="remInterval">' +
+            [1,2,3,4,6].map(function(h){ return '<option value="'+h+'"'+(s.intervalHours===h?' selected':'')+'>'+h+' hour'+(h===1?'':'s')+'</option>'; }).join('') +
+          '</select></div>' +
+          '<div class="settings-row"><label>Allowed between</label>' +
+            '<input type="time" id="remStart" value="'+s.activeStart+'" style="width:110px;"> and ' +
+            '<input type="time" id="remEnd" value="'+s.activeEnd+'" style="width:110px;">' +
+          '</div>' +
+          '<div class="settings-row"><label>Browser permission</label><span>'+permState+
+            (permState !== 'granted' ? ' <button class="icon-btn" id="remRequestPerm">Enable in browser</button>' : '') +
+          '</span></div>' +
+          '<p class="settings-note">Reminders only fire while this app is open — a foreground tab or window, or one recently backgrounded (checks may run less often once backgrounded, depending on your browser). If you fully close the tab or app, nothing will remind you until you reopen it. This is not a background/always-on service.</p>' +
+          '<div style="text-align:right; margin-top:10px;"><button class="primary" id="saveRemindersBtn">Save</button></div>' +
+        '</div>' +
+      '</div>';
+    document.getElementById('modalRoot').innerHTML = html;
+    document.getElementById('closeRemindersModal').addEventListener('click', closeModal);
+    document.getElementById('remindersBackdrop').addEventListener('click', function(e){ if(e.target.id==='remindersBackdrop') closeModal(); });
+    var reqBtn = document.getElementById('remRequestPerm');
+    if(reqBtn) reqBtn.addEventListener('click', function(){ requestReminderPermission(); closeModal(); openRemindersModal(); });
+    document.getElementById('saveRemindersBtn').addEventListener('click', function(){
+      var next = loadReminderSettings();
+      next.enabled = document.getElementById('remEnabled').checked;
+      next.intervalHours = Number(document.getElementById('remInterval').value);
+      next.activeStart = document.getElementById('remStart').value || '08:00';
+      next.activeEnd = document.getElementById('remEnd').value || '22:00';
+      if(next.enabled && (typeof Notification === 'undefined' || Notification.permission !== 'granted')){
+        alert("Reminders are on, but browser notification permission isn't granted yet — click \"Enable in browser\" first.");
+      }
+      saveReminderSettings(next);
+      startReminderLoop();
+      renderReminderBanner();
+      closeModal();
+    });
+  }
+  document.getElementById('remindersBtn').addEventListener('click', openRemindersModal);
 
   /* ===================== Header / HUD ===================== */
 
@@ -947,13 +1101,55 @@
   }
 
   function drawDeskFurniture(ctx, x, y){
-    ctx.fillStyle = '#6b4a2e'; roundRectPath(ctx, x, y, 46, 22, 3); ctx.fill();
-    ctx.fillStyle = '#4a3320'; ctx.fillRect(x, y, 46, 4);
+    ctx.fillStyle = 'rgba(180,225,250,0.6)'; roundRectPath(ctx, x, y, 46, 22, 3); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x+7,y+3); ctx.lineTo(x+16,y+19); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x+30,y+3); ctx.lineTo(x+39,y+19); ctx.stroke();
+    ctx.fillStyle = 'rgba(140,200,235,0.5)'; ctx.fillRect(x, y, 46, 3);
     ctx.fillStyle = '#3a2a4a'; ctx.fillRect(x+6, y-14, 16, 11);
     ctx.fillStyle = '#8fd6ff'; ctx.fillRect(x+8, y-12, 12, 7);
     ctx.fillStyle = '#3a2a4a'; ctx.fillRect(x+11, y-3, 6, 3);
     ctx.fillStyle = '#e8e2f0'; ctx.fillRect(x+6, y+6, 18, 5);
     ctx.fillStyle = '#ff4f93'; ctx.beginPath(); ctx.arc(x+34, y+9, 4, 0, Math.PI*2); ctx.fill();
+  }
+  function drawIcicles(ctx, x1, x2, y, spacing){
+    ctx.fillStyle = 'rgba(220,245,255,0.9)';
+    for(var x = x1+4; x < x2-4; x += (spacing||14)){
+      ctx.beginPath();
+      ctx.moveTo(x-3, y); ctx.lineTo(x+3, y); ctx.lineTo(x, y+7+((x/7)%3)*2);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  function drawFrostedWindow(ctx, x, y, w, h){
+    ctx.fillStyle = 'rgba(220,245,255,0.55)';
+    roundRectPath(ctx, x, y, w, h, 4); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(x+4, y+h*0.25); ctx.lineTo(x+w*0.4, y+h*0.7);
+    ctx.moveTo(x+w*0.55, y+h*0.15); ctx.lineTo(x+w-4, y+h*0.6);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(107,74,138,0.5)'; ctx.lineWidth = 2;
+    roundRectPath(ctx, x, y, w, h, 4); ctx.stroke();
+  }
+  function drawCocoaMachine(ctx, x, y){
+    ctx.fillStyle = '#8a5a3a'; roundRectPath(ctx, x, y, 18, 24, 3); ctx.fill();
+    ctx.fillStyle = '#c9924a'; ctx.fillRect(x+3, y+3, 12, 8);
+    ctx.fillStyle = '#ff4f93'; ctx.fillRect(x+6, y+16, 6, 6);
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(x+9, y-2); ctx.quadraticCurveTo(x+13, y-6, x+9, y-10);
+    ctx.moveTo(x+13, y-1); ctx.quadraticCurveTo(x+17, y-5, x+13, y-9);
+    ctx.stroke();
+  }
+  function drawFloorSparkle(ctx, x, y){
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.fillRect(x-1, y-3, 2, 6); ctx.fillRect(x-3, y-1, 6, 2);
+  }
+  function drawFloorCrack(ctx, x, y, len){
+    ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x, y); ctx.lineTo(x+len*0.4, y+len*0.3); ctx.lineTo(x+len*0.7, y+len*0.15); ctx.lineTo(x+len, y+len*0.45);
+    ctx.stroke();
   }
   function drawDraftingTable(ctx, x, y){
     ctx.fillStyle = '#6b4a2e';
@@ -1035,9 +1231,14 @@
       var r = ROOM_RECTS[c.id];
       ctx.fillStyle = c.floor;
       ctx.fillRect(r.x, r.y, r.w, r.h);
+      drawFloorCrack(ctx, r.x+r.w*0.45, r.y+r.h*0.55, 30);
+      drawFloorSparkle(ctx, r.x+r.w*0.25, r.y+r.h*0.35);
+      drawFloorSparkle(ctx, r.x+r.w*0.6, r.y+r.h*0.75);
     });
-    ctx.fillStyle = '#f3e6cc';
+    ctx.fillStyle = '#eef8fb';
     ctx.fillRect(HALLWAY.x, HALLWAY.y, HALLWAY.w, HALLWAY.h);
+    drawFloorSparkle(ctx, HALLWAY.x+300, HALLWAY.y+18);
+    drawFloorSparkle(ctx, HALLWAY.x+560, HALLWAY.y+40);
 
     var r;
     r = ROOM_RECTS.job;
@@ -1076,13 +1277,14 @@
     ctx.fillText("🏠 GaYeon's Desk", RECEPTION.x-2, RECEPTION.y-4);
 
     drawPlant(ctx, 470, HALLWAY.y+42);
-    ctx.fillStyle = '#8fd6ff'; roundRectPath(ctx, 640, HALLWAY.y+12, 14, 28, 3); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.fillRect(643, HALLWAY.y+17, 8, 9);
+    drawCocoaMachine(ctx, 636, HALLWAY.y+12);
+    drawFrostedWindow(ctx, ROOM_RECTS.job.x+ROOM_RECTS.job.w*0.6, ROOM_RECTS.job.y+10, 34, 22);
+    drawFrostedWindow(ctx, ROOM_RECTS.health.x+18, ROOM_RECTS.health.y+ROOM_RECTS.health.h-40, 30, 20);
 
     ctx.fillStyle = '#a99bc4';
     ctx.fillRect(6, HALLWAY.y+8, 8, HALLWAY.h-16);
 
-    ctx.strokeStyle = '#6b4a8a';
+    ctx.strokeStyle = '#5a86a8';
     ctx.lineWidth = 6;
     function wallSeg(x1,y1,x2,y2){ ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); }
 
@@ -1103,10 +1305,15 @@
     ctx.lineWidth = 7;
     roundRectPath(ctx, 8, 8, OFFICE_W-16, OFFICE_H-16, 12); ctx.stroke();
 
+    drawIcicles(ctx, ROOM_RECTS.job.x, ROOM_RECTS.job.x+ROOM_RECTS.job.w, topY, 16);
+    drawIcicles(ctx, ROOM_RECTS.cv.x, ROOM_RECTS.cv.x+ROOM_RECTS.cv.w, topY, 16);
+    drawIcicles(ctx, ROOM_RECTS.portfolio.x, ROOM_RECTS.portfolio.x+ROOM_RECTS.portfolio.w, topY, 16);
+    drawIcicles(ctx, 8, OFFICE_W-8, 8, 20);
+
     function plaque(cx, wallY, icon, name){
       ctx.fillStyle = '#fffdf9';
       roundRectPath(ctx, cx-34, wallY-9, 68, 18, 4); ctx.fill();
-      ctx.strokeStyle = '#6b4a8a'; ctx.lineWidth = 1.5;
+      ctx.strokeStyle = '#5a86a8'; ctx.lineWidth = 1.5;
       roundRectPath(ctx, cx-34, wallY-9, 68, 18, 4); ctx.stroke();
       ctx.font = '9px sans-serif'; ctx.fillStyle = '#3a2a4a'; ctx.textAlign = 'center';
       ctx.fillText(icon+' '+name, cx, wallY+3);
@@ -1124,70 +1331,115 @@
   /* Hand-drawn on canvas from a character sheet (species/palette/prop per room) —
      no external sprite pack or asset file used, so there is no licensing question. */
 
-  function drawEars(ctx, cx, cy, headR, style, scale, color){
-    var s = scale || 1;
-    ctx.fillStyle = color;
-    if(style === 'round'){
-      ctx.beginPath(); ctx.arc(cx-headR*0.75, cy-headR*0.75, headR*0.38*s, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(cx+headR*0.75, cy-headR*0.75, headR*0.38*s, 0, Math.PI*2); ctx.fill();
-    } else if(style === 'pointed'){
-      [-1,1].forEach(function(dir){
-        ctx.beginPath();
-        ctx.moveTo(cx+dir*headR*0.55, cy-headR*0.4);
-        ctx.lineTo(cx+dir*headR*0.95, cy-headR*1.35*s);
-        ctx.lineTo(cx+dir*headR*1.15, cy-headR*0.25);
-        ctx.closePath(); ctx.fill();
-      });
-    } else if(style === 'tufted'){
-      [-1,1].forEach(function(dir){
-        ctx.beginPath();
-        ctx.moveTo(cx+dir*headR*0.45, cy-headR*0.55);
-        ctx.lineTo(cx+dir*headR*0.65, cy-headR*1.3*s);
-        ctx.lineTo(cx+dir*headR*0.85, cy-headR*0.5);
-        ctx.closePath(); ctx.fill();
-      });
-    } else if(style === 'long'){
-      [-1,1].forEach(function(dir){
-        ctx.beginPath();
-        ctx.ellipse(cx+dir*headR*0.42, cy-headR*1.35*s, headR*0.24, headR*0.95*s, 0, 0, Math.PI*2);
-        ctx.fill();
-      });
-    } else if(style === 'antler'){
-      ctx.strokeStyle = color; ctx.lineWidth = Math.max(1, headR*0.14);
-      [-1,1].forEach(function(dir){
-        ctx.beginPath();
-        ctx.moveTo(cx+dir*headR*0.35, cy-headR*0.6);
-        ctx.lineTo(cx+dir*headR*0.55, cy-headR*1.15*s);
-        ctx.moveTo(cx+dir*headR*0.45, cy-headR*0.9);
-        ctx.lineTo(cx+dir*headR*0.7, cy-headR*1.05*s);
-        ctx.stroke();
-      });
-    } else if(style === 'flatround'){
-      ctx.beginPath(); ctx.arc(cx-headR*0.8, cy-headR*0.6, headR*0.3*s, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(cx+headR*0.8, cy-headR*0.6, headR*0.3*s, 0, Math.PI*2); ctx.fill();
-    }
-  }
+  var PENGUIN_GRID = [
+    "....KKKK....",
+    "...KKKKKK...",
+    "..KKKKKKKK..",
+    ".KKKKKKKKKK.",
+    ".KWWWWWWWWK.",
+    ".KWWKWWKWWK.",
+    ".KWWWOOWWWK.",
+    ".KWWWWWWWWK.",
+    "KKKKKKKKKKKK",
+    "KKKKKKKKKKKK",
+    "KKWWWWWWWWKK",
+    "KKWWWWWWWWKK",
+    "KKWWWWWWWWKK",
+    "KKWWWWWWWWKK",
+    ".KKKKKKKKKK.",
+    "..KKKKKKKK.."
+  ];
+  var PENGUIN_COLS = PENGUIN_GRID[0].length, PENGUIN_ROWS = PENGUIN_GRID.length;
 
-  function drawTail(ctx, cx, cy, headR, bodyW, bodyH, style, color, tipColor){
-    if(style === 'none') return;
-    var bx = cx, by = cy + headR*0.55 + bodyH*0.4;
-    if(style === 'bushy'){
-      ctx.fillStyle = color;
-      ctx.beginPath(); ctx.ellipse(bx-bodyW*0.55, by-bodyH*0.1, bodyW*0.55, bodyH*0.85, -0.5, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = tipColor || color;
-      ctx.beginPath(); ctx.ellipse(bx-bodyW*0.75, by-bodyH*0.55, bodyW*0.28, bodyH*0.4, -0.5, 0, Math.PI*2); ctx.fill();
-    } else if(style === 'flat'){
-      ctx.fillStyle = color;
-      roundRectPath(ctx, bx-bodyW*0.15, by, bodyW*0.3, bodyH*0.55, 3); ctx.fill();
-    } else if(style === 'pointed'){
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.moveTo(bx-bodyW*0.1, by-2);
-      ctx.lineTo(bx-bodyW*0.65, by+bodyH*0.3);
-      ctx.lineTo(bx-bodyW*0.1, by+bodyH*0.35);
-      ctx.closePath(); ctx.fill();
-      ctx.fillStyle = tipColor || '#fff';
-      ctx.beginPath(); ctx.arc(bx-bodyW*0.6, by+bodyH*0.25, bodyW*0.12, 0, Math.PI*2); ctx.fill();
+  function drawPenguinGrid(ctx, cx, topY, unit, opts){
+    opts = opts || {};
+    var colorMap = { K:'#1a1420', W:'#fffdf9', O:'#ff9a2e' };
+    var leftX = cx - (PENGUIN_COLS/2)*unit;
+
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fillRect(Math.round(leftX+unit), Math.round(topY+PENGUIN_ROWS*unit+unit*0.3), Math.round((PENGUIN_COLS-2)*unit), Math.ceil(unit*0.7));
+
+    for(var r=0;r<PENGUIN_ROWS;r++){
+      var row = PENGUIN_GRID[r];
+      for(var c=0;c<PENGUIN_COLS;c++){
+        var sym = row[c];
+        if(sym === '.') continue;
+        if(opts.slim && r>=10 && r<=13 && (c===2||c===9)) continue; // narrower belly, backfilled below
+        if(sym === 'W' && state_closedEyeRow(r, opts)) continue; // handled separately for happy state
+        ctx.fillStyle = colorMap[sym];
+        var x = leftX + c*unit, w = unit;
+        if(opts.chubby && r>=8 && r<=15 && (c===0 || c===11)){
+          if(c===0){ x -= unit; w += unit; } else { w += unit; }
+        }
+        ctx.fillRect(Math.round(x), Math.round(topY+r*unit), Math.ceil(w), Math.ceil(unit));
+      }
+    }
+    if(opts.slim){
+      ctx.fillStyle = colorMap.K;
+      for(var r2=10;r2<=13;r2++){
+        ctx.fillRect(Math.round(leftX+2*unit), Math.round(topY+r2*unit), Math.ceil(unit), Math.ceil(unit));
+        ctx.fillRect(Math.round(leftX+9*unit), Math.round(topY+r2*unit), Math.ceil(unit), Math.ceil(unit));
+      }
+    }
+    // eyes (drawn last so happy-state override below can redraw them shut)
+    if(opts.happy){
+      ctx.fillStyle = colorMap.K;
+      ctx.fillRect(Math.round(leftX+4*unit), Math.round(topY+5*unit+unit*0.35), Math.ceil(unit), Math.ceil(unit*0.35));
+      ctx.fillRect(Math.round(leftX+7*unit), Math.round(topY+5*unit+unit*0.35), Math.ceil(unit), Math.ceil(unit*0.35));
+    }
+    // feet
+    ctx.fillStyle = colorMap.O;
+    var feetY = topY + PENGUIN_ROWS*unit;
+    ctx.fillRect(Math.round(leftX+3*unit), Math.round(feetY), Math.ceil(unit*2), Math.ceil(unit));
+    ctx.fillRect(Math.round(leftX+7*unit), Math.round(feetY), Math.ceil(unit*2), Math.ceil(unit));
+    // flippers
+    ctx.fillStyle = colorMap.K;
+    ctx.fillRect(Math.round(leftX-unit), Math.round(topY+8*unit), Math.ceil(unit), Math.ceil(unit*4));
+    ctx.fillRect(Math.round(leftX+PENGUIN_COLS*unit), Math.round(topY+8*unit), Math.ceil(unit), Math.ceil(unit*4));
+
+    return { leftX: leftX, unit: unit };
+  }
+  function state_closedEyeRow(r, opts){ return opts.happy && r === 5; }
+
+  function drawPenguinAccessory(ctx, leftX, topY, unit, ch){
+    if(!ch.accessory) return;
+    var color = ch.accentColor || '#ff4f93';
+    switch(ch.accessory){
+      case 'scarf':
+        ctx.fillStyle = color;
+        ctx.fillRect(Math.round(leftX+unit), Math.round(topY+8*unit), Math.ceil(10*unit), Math.ceil(1.4*unit));
+        ctx.fillRect(Math.round(leftX+4*unit), Math.round(topY+9*unit), Math.ceil(1.4*unit), Math.ceil(3*unit));
+        break;
+      case 'beanie':
+        ctx.fillStyle = color;
+        ctx.fillRect(Math.round(leftX+unit), Math.round(topY-0.5*unit), Math.ceil(10*unit), Math.ceil(2.2*unit));
+        ctx.fillStyle = '#fffdf9';
+        ctx.fillRect(Math.round(leftX+5*unit), Math.round(topY-1.8*unit), Math.ceil(2*unit), Math.ceil(1.5*unit));
+        break;
+      case 'glasses':
+        ctx.fillStyle = color;
+        ctx.fillRect(Math.round(leftX+2.2*unit), Math.round(topY+4.6*unit), Math.ceil(2.4*unit), Math.ceil(0.5*unit));
+        ctx.fillRect(Math.round(leftX+5.4*unit), Math.round(topY+4.6*unit), Math.ceil(2.4*unit), Math.ceil(0.5*unit));
+        ctx.fillRect(Math.round(leftX+2*unit), Math.round(topY+4.6*unit), Math.ceil(0.5*unit), Math.ceil(1.3*unit));
+        ctx.fillRect(Math.round(leftX+5.2*unit), Math.round(topY+4.6*unit), Math.ceil(0.5*unit), Math.ceil(1.3*unit));
+        ctx.fillRect(Math.round(leftX+7.8*unit), Math.round(topY+4.6*unit), Math.ceil(0.5*unit), Math.ceil(1.3*unit));
+        break;
+      case 'bowtie':
+        ctx.fillStyle = color;
+        ctx.fillRect(Math.round(leftX+5.4*unit), Math.round(topY+8.3*unit), Math.ceil(1.2*unit), Math.ceil(1.2*unit));
+        ctx.fillRect(Math.round(leftX+3.6*unit), Math.round(topY+8*unit), Math.ceil(1.6*unit), Math.ceil(1.8*unit));
+        ctx.fillRect(Math.round(leftX+6.8*unit), Math.round(topY+8*unit), Math.ceil(1.6*unit), Math.ceil(1.8*unit));
+        break;
+      case 'hardhat':
+        ctx.fillStyle = color;
+        ctx.fillRect(Math.round(leftX+2*unit), Math.round(topY-1*unit), Math.ceil(8*unit), Math.ceil(2*unit));
+        ctx.fillRect(Math.round(leftX+0.5*unit), Math.round(topY+0.5*unit), Math.ceil(11*unit), Math.ceil(0.8*unit));
+        break;
+      case 'skates':
+        ctx.fillStyle = color;
+        ctx.fillRect(Math.round(leftX+3*unit), Math.round(topY+PENGUIN_ROWS*unit+unit), Math.ceil(2*unit), Math.ceil(0.6*unit));
+        ctx.fillRect(Math.round(leftX+7*unit), Math.round(topY+PENGUIN_ROWS*unit+unit), Math.ceil(2*unit), Math.ceil(0.6*unit));
+        break;
     }
   }
 
@@ -1251,157 +1503,73 @@
         ctx.fillStyle='#3f9e56';
         ctx.beginPath(); ctx.ellipse(0,0,5,3,0.6,0,Math.PI*2); ctx.fill();
         break;
+      case 'journal':
+        ctx.fillStyle='#e0397e'; ctx.fillRect(-5,-5,10,10);
+        ctx.fillStyle='#a82a5e'; ctx.fillRect(-5,-5,2,10);
+        break;
     }
     ctx.restore();
   }
 
   function drawCharacter(ctx, ch, cx, cy, s, state){
     state = state || {};
-    var headR = 7.5*s, bodyW = 12*s, bodyH = 7.5*s;
-    ctx.fillStyle = 'rgba(0,0,0,0.16)';
-    ctx.beginPath(); ctx.ellipse(cx, cy+headR*1.7, bodyW*0.55, 2.2*s, 0, 0, Math.PI*2); ctx.fill();
+    var unit = 2.75 * s;
+    var topY = cy - (PENGUIN_ROWS/2)*unit;
+    var opts = { happy: !!state.happy, chubby: ch.size==='chubby' || ch.size==='rounder', slim: ch.size==='slim' };
+    if(ch.size === 'baby') unit = unit * 0.68;
+    topY = cy - (PENGUIN_ROWS/2)*unit;
 
-    drawTail(ctx, cx, cy, headR, bodyW, bodyH, ch.tailStyle || 'none', ch.secondaryColor, '#fff');
+    var geo = drawPenguinGrid(ctx, cx, topY, unit, opts);
+    drawPenguinAccessory(ctx, geo.leftX, topY, unit, ch);
 
-    ctx.fillStyle = ch.bodyColor;
-    if(ch.bodyShape === 'dome'){
-      ctx.beginPath(); ctx.arc(cx, cy+headR*0.9, bodyW*0.62, Math.PI, 0); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = ch.secondaryColor; ctx.lineWidth = Math.max(1, s*0.8);
-      ctx.beginPath();
-      ctx.moveTo(cx-bodyW*0.3, cy+headR*0.9); ctx.lineTo(cx-bodyW*0.3, cy+headR*0.35);
-      ctx.moveTo(cx+bodyW*0.3, cy+headR*0.9); ctx.lineTo(cx+bodyW*0.3, cy+headR*0.35);
-      ctx.moveTo(cx-bodyW*0.5, cy+headR*0.62); ctx.lineTo(cx+bodyW*0.5, cy+headR*0.62);
-      ctx.stroke();
-    } else if(ch.bodyShape === 'circle'){
-      ctx.beginPath(); ctx.arc(cx, cy+headR*0.7, bodyW*0.42, 0, Math.PI*2); ctx.fill();
-      if(ch.stripes){
-        ctx.fillStyle = ch.secondaryColor;
-        for(var si=-1; si<=1; si++){ ctx.fillRect(cx-bodyW*0.42, cy+headR*0.7+si*bodyW*0.16-1.2*s, bodyW*0.84, 2.2*s); }
-      }
-      if(ch.wings){
-        ctx.fillStyle = 'rgba(255,255,255,0.65)';
-        ctx.beginPath(); ctx.ellipse(cx-bodyW*0.4, cy+headR*0.55, bodyW*0.22, bodyH*0.3, -0.4, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.ellipse(cx+bodyW*0.4, cy+headR*0.55, bodyW*0.22, bodyH*0.3, 0.4, 0, Math.PI*2); ctx.fill();
-      }
-    } else {
-      roundRectPath(ctx, cx-bodyW/2, cy+headR*0.55, bodyW, bodyH, 3*s); ctx.fill();
-      if(ch.bellyColor){
-        ctx.fillStyle = ch.bellyColor;
-        ctx.beginPath(); ctx.ellipse(cx, cy+headR*0.55+bodyH*0.65, bodyW*0.28, bodyH*0.32, 0, 0, Math.PI*2); ctx.fill();
-      }
-      if(ch.spikes){
-        ctx.fillStyle = ch.secondaryColor;
-        for(var sp=-2; sp<=2; sp++){
-          ctx.beginPath();
-          ctx.moveTo(cx+sp*headR*0.32, cy-headR*0.15);
-          ctx.lineTo(cx+sp*headR*0.32-headR*0.14, cy-headR*0.55);
-          ctx.lineTo(cx+sp*headR*0.32+headR*0.14, cy-headR*0.55);
-          ctx.closePath(); ctx.fill();
-        }
-      }
-    }
-    if(ch.longLegs){
-      ctx.fillStyle = ch.bodyColor;
-      ctx.fillRect(cx-bodyW*0.3, cy+headR*0.55+bodyH*0.7, 2.2*s, 4*s);
-      ctx.fillRect(cx+bodyW*0.3-2.2*s, cy+headR*0.55+bodyH*0.7, 2.2*s, 4*s);
-    }
-
-    drawEars(ctx, cx, cy, headR, ch.earStyle || 'none', ch.earScale || 1, ch.secondaryColor);
-
-    ctx.fillStyle = '#fff8ee';
-    ctx.beginPath(); ctx.arc(cx, cy, headR, 0, Math.PI*2); ctx.fill();
-
-    if(ch.beak){
-      ctx.fillStyle = '#e8a020';
-      ctx.beginPath();
-      ctx.moveTo(cx-headR*0.15, cy+headR*0.05); ctx.lineTo(cx+headR*0.15, cy+headR*0.05); ctx.lineTo(cx, cy+headR*0.3);
-      ctx.closePath(); ctx.fill();
-    }
-
-    ctx.fillStyle = 'rgba(255,110,145,0.5)';
-    ctx.beginPath(); ctx.ellipse(cx-headR*0.55, cy+headR*0.22, headR*0.2, headR*0.12, 0, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(cx+headR*0.55, cy+headR*0.22, headR*0.2, headR*0.12, 0, 0, Math.PI*2); ctx.fill();
-
-    ctx.fillStyle = '#2a2038'; ctx.strokeStyle = '#2a2038'; ctx.lineWidth = Math.max(1, s*0.75);
-    if(state.happy){
-      ctx.beginPath(); ctx.arc(cx-headR*0.3, cy-headR*0.02, headR*0.16, Math.PI, 0); ctx.stroke();
-      ctx.beginPath(); ctx.arc(cx+headR*0.3, cy-headR*0.02, headR*0.16, Math.PI, 0); ctx.stroke();
-    } else {
-      ctx.beginPath(); ctx.arc(cx-headR*0.3, cy-headR*0.02, headR*0.14, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(cx+headR*0.3, cy-headR*0.02, headR*0.14, 0, Math.PI*2); ctx.fill();
-    }
-
-    if(ch.accessory === 'glasses' || ch.accessory === 'redGlasses'){
-      ctx.strokeStyle = ch.accessory === 'redGlasses' ? '#d81b69' : '#3a2a4a';
-      ctx.lineWidth = Math.max(1, s*0.7);
-      ctx.beginPath(); ctx.arc(cx-headR*0.3, cy-headR*0.02, headR*0.22, 0, Math.PI*2); ctx.stroke();
-      ctx.beginPath(); ctx.arc(cx+headR*0.3, cy-headR*0.02, headR*0.22, 0, Math.PI*2); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(cx-headR*0.08, cy-headR*0.02); ctx.lineTo(cx+headR*0.08, cy-headR*0.02); ctx.stroke();
-    }
-    if(ch.accessory === 'hardhat'){
-      ctx.fillStyle = '#ffce1f';
-      ctx.beginPath(); ctx.arc(cx, cy-headR*0.55, headR*0.72, Math.PI, 0); ctx.fill();
-      ctx.fillRect(cx-headR*0.75, cy-headR*0.6, headR*1.5, headR*0.18);
-    }
-    if(ch.accessory === 'scarf'){
-      ctx.fillStyle = '#ff4f93';
-      ctx.fillRect(cx-headR*0.8, cy+headR*0.42, headR*1.6, headR*0.35);
-      ctx.fillRect(cx+headR*0.35, cy+headR*0.55, headR*0.3, headR*0.7);
-    }
-    if(ch.chubbyCheeks){
-      ctx.fillStyle = ch.bodyColor;
-      ctx.beginPath(); ctx.arc(cx-headR*0.85, cy+headR*0.25, headR*0.28, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(cx+headR*0.85, cy+headR*0.25, headR*0.28, 0, Math.PI*2); ctx.fill();
-    }
-
-    if(ch.prop && ch.prop !== 'scarf'){
-      drawProp(ctx, cx+bodyW*0.7, cy+headR*0.9, ch.prop, s*0.85);
+    if(ch.prop){
+      drawProp(ctx, cx + (PENGUIN_COLS/2)*unit + unit*1.6, topY + 10*unit, ch.prop, unit*0.4);
     }
 
     if(state.working){
       if(ch.id === 'editor'){
         var stampY = Math.abs(Math.sin(state.tick/3))*3;
-        ctx.fillStyle = '#e0397e'; ctx.fillRect(cx+bodyW*0.55, cy+headR*0.7-stampY, 5*s, 5*s);
+        ctx.fillStyle = '#e0397e'; ctx.fillRect(Math.round(cx+7*unit), Math.round(topY+9*unit-stampY), Math.ceil(unit*1.6), Math.ceil(unit*1.6));
       }
       if(ch.id === 'ledger'){
         var flip = Math.sin(state.tick/4);
-        ctx.strokeStyle = '#fff'; ctx.lineWidth = Math.max(1, s*0.6);
-        ctx.beginPath(); ctx.moveTo(cx+bodyW*0.55, cy+headR*0.8); ctx.lineTo(cx+bodyW*0.55+4*s*flip, cy+headR*0.6); ctx.stroke();
+        ctx.strokeStyle = '#fffdf9'; ctx.lineWidth = Math.max(1, unit*0.5);
+        ctx.beginPath(); ctx.moveTo(cx+6*unit, topY+11*unit); ctx.lineTo(cx+6*unit+4*flip, topY+9*unit); ctx.stroke();
       }
       if(ch.id === 'builder'){
         var tapY = Math.abs(Math.sin(state.tick/2.5))*4;
-        ctx.fillStyle = '#3a2a4a'; ctx.fillRect(cx+bodyW*0.55, cy+headR*0.5-tapY, 5*s, 2.4*s);
+        ctx.fillStyle = '#3a2a4a'; ctx.fillRect(Math.round(cx+7*unit), Math.round(topY+7*unit-tapY), Math.ceil(unit*1.6), Math.ceil(unit*0.9));
       }
       if(ch.id === 'spark'){
-        var flick = (Math.floor(state.tick/6)%3===0) ? 0.4 : 1;
+        var flick = (Math.floor(state.tick/6)%3===0) ? 0.35 : 1;
         ctx.globalAlpha = flick;
-        ctx.fillStyle = '#ffe066'; ctx.beginPath(); ctx.arc(cx, cy-headR*1.5, 3*s, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#ffe066'; ctx.fillRect(Math.round(cx-unit), Math.round(topY-3*unit), Math.ceil(unit*2), Math.ceil(unit*2));
         ctx.globalAlpha = 1;
       }
     }
   }
 
   var CHARACTERS_RAW = [
-    { id:'scout', catId:'job', name:'Scout', species:'owl', bodyColor:'#d8b98a', secondaryColor:'#8a6a42', bellyColor:'#f3e6cc', earStyle:'tufted', tailStyle:'none', bodyShape:'roundedRect', accessory:'glasses', prop:'binoculars' },
-    { id:'radar', catId:'job', name:'Radar', species:'squirrel', bodyColor:'#b5591f', secondaryColor:'#8a3f12', bellyColor:'#f0d9b0', earStyle:'pointed', earScale:0.8, tailStyle:'bushy', bodyShape:'roundedRect', prop:'notepad' },
-    { id:'editor', catId:'cv', name:'Editor', species:'fox', bodyColor:'#e8742e', secondaryColor:'#ffffff', bellyColor:'#fff6ea', earStyle:'pointed', tailStyle:'pointed', bodyShape:'roundedRect', accessory:'redGlasses', prop:'stamp' },
-    { id:'wordsmith', catId:'cv', name:'Wordsmith', species:'rabbit', bodyColor:'#c9c3d4', secondaryColor:'#a89fc0', bellyColor:'#f3f0fa', earStyle:'long', tailStyle:'none', bodyShape:'roundedRect', prop:'quill' },
-    { id:'archivist', catId:'cv', name:'Archivist', species:'beaver', bodyColor:'#8a6339', secondaryColor:'#6b4a26', bellyColor:'#d9bd8f', earStyle:'flatround', earScale:0.55, tailStyle:'flat', bodyShape:'roundedRect', prop:'folder' },
-    { id:'builder', catId:'portfolio', name:'Builder', species:'bear', bodyColor:'#8a5a2b', secondaryColor:'#6b4420', bellyColor:'#d9b57a', earStyle:'round', tailStyle:'none', bodyShape:'roundedRect', accessory:'hardhat', prop:'hammer' },
-    { id:'pixel', catId:'portfolio', name:'Pixel', species:'koala', bodyColor:'#a8a6b0', secondaryColor:'#8a8894', bellyColor:'#e8e6ee', earStyle:'round', earScale:1.5, tailStyle:'none', bodyShape:'roundedRect', prop:'paintroller' },
-    { id:'storyteller', catId:'backpack', name:'Storyteller', species:'hedgehog', bodyColor:'#8a5a3a', secondaryColor:'#6b4225', bellyColor:'#f0e0c0', earStyle:'round', earScale:0.5, tailStyle:'none', bodyShape:'roundedRect', spikes:true, accessory:'scarf', prop:'scarf' },
-    { id:'spark', catId:'backpack', name:'Spark', species:'chick', bodyColor:'#ffd83d', secondaryColor:'#e8b800', earStyle:'none', tailStyle:'none', bodyShape:'circle', beak:true, wings:true, prop:'lightbulb' },
-    { id:'echo', catId:'backpack', name:'Echo', species:'bee', bodyColor:'#ffce1f', secondaryColor:'#2a2038', earStyle:'none', tailStyle:'none', bodyShape:'circle', stripes:true, wings:true, prop:'clipboard' },
-    { id:'ledger', catId:'budget', name:'Ledger', species:'turtle', bodyColor:'#3f9e56', secondaryColor:'#2f7a40', bellyColor:'#d9f0c9', earStyle:'flatround', earScale:0.4, tailStyle:'none', bodyShape:'dome', prop:'ledgerbook' },
-    { id:'coin', catId:'budget', name:'Coin', species:'hamster', bodyColor:'#e0b064', secondaryColor:'#c9924a', bellyColor:'#fff0d0', earStyle:'round', earScale:0.5, tailStyle:'none', bodyShape:'roundedRect', chubbyCheeks:true, prop:'coinpouch' },
-    { id:'stride', catId:'health', name:'Stride', species:'hare', bodyColor:'#a8703f', secondaryColor:'#7a4f28', bellyColor:'#f0dcc0', earStyle:'long', earScale:1.15, tailStyle:'none', bodyShape:'roundedRect', longLegs:true, prop:'shoes' },
-    { id:'breeze', catId:'health', name:'Breeze', species:'deer', bodyColor:'#c9a06a', secondaryColor:'#a87f4a', bellyColor:'#fff6ea', earStyle:'antler', tailStyle:'none', bodyShape:'roundedRect', prop:'leaf' }
+    { id:'scout', catId:'job', name:'Scout', accessory:'scarf', accentColor:'#1f8fe0', prop:'binoculars' },
+    { id:'radar', catId:'job', name:'Radar', accessory:'beanie', accentColor:'#ef4568', prop:'notepad' },
+    { id:'editor', catId:'cv', name:'Editor', accessory:'glasses', accentColor:'#ef4568', prop:'stamp' },
+    { id:'wordsmith', catId:'cv', name:'Wordsmith', prop:'quill' },
+    { id:'archivist', catId:'cv', name:'Archivist', prop:'folder', size:'rounder' },
+    { id:'builder', catId:'portfolio', name:'Builder', accessory:'hardhat', accentColor:'#ffce1f', prop:'hammer' },
+    { id:'pixel', catId:'portfolio', name:'Pixel', prop:'paintroller' },
+    { id:'storyteller', catId:'backpack', name:'Storyteller', accessory:'scarf', accentColor:'#7c4fe0', prop:'journal' },
+    { id:'spark', catId:'backpack', name:'Spark', prop:'lightbulb', size:'baby' },
+    { id:'echo', catId:'backpack', name:'Echo', prop:'clipboard' },
+    { id:'ledger', catId:'budget', name:'Ledger', accessory:'bowtie', accentColor:'#2f9e56', prop:'ledgerbook' },
+    { id:'coin', catId:'budget', name:'Coin', prop:'coinpouch', size:'chubby' },
+    { id:'stride', catId:'health', name:'Stride', prop:'shoes', size:'slim' },
+    { id:'breeze', catId:'health', name:'Breeze', accessory:'skates', accentColor:'#1f8fe0', prop:null }
   ];
 
   function seatFor(catId, idx){
     var r = ROOM_RECTS[catId];
     var deskX = r.x+r.w-56+14, deskY = r.y+r.h-40-6;
-    var offsets = [ {dx:11,dy:-4}, {dx:-15,dy:6}, {dx:-32,dy:13} ];
+    var offsets = [ {dx:2,dy:-4}, {dx:-22,dy:6}, {dx:-46,dy:13} ];
     var o = offsets[idx] || offsets[0];
     return { x: deskX+o.dx, y: deskY+o.dy };
   }
@@ -1660,6 +1828,16 @@
     renderDayProgress();
   }
 
+  /* ===================== PWA: service worker ===================== */
+
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('service-worker.js').catch(function(err){
+        console.warn('Service worker registration failed:', err);
+      });
+    });
+  }
+
   /* ===================== Boot ===================== */
 
   buildFloorplan();
@@ -1672,6 +1850,11 @@
   renderAll();
   fetchOutreach();
   requestAnimationFrame(animLoop);
+  renderReminderBanner();
+  var bootReminderSettings = loadReminderSettings();
+  if(bootReminderSettings.enabled && typeof Notification !== 'undefined' && Notification.permission === 'granted'){
+    startReminderLoop();
+  }
   if(goalState.firstRun) openGoalsModal();
 
 })();

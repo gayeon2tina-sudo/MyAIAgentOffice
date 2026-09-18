@@ -1,0 +1,19 @@
+{
+  "name": "GaYeon Enterprise",
+  "short_name": "GaYeon HQ",
+  "description": "Daily HQ — the morning-to-night task, goal, and scoring dashboard for GaYeon's Personal Ops HQ.",
+  "start_url": "./daily_hq.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fff1e0",
+  "theme_color": "#ff4f93",
+  "orientation": "any",
+  "icons": [
+    { "src": "icons/icon-32.png", "sizes": "32x32", "type": "image/png" },
+    { "src": "icons/icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
