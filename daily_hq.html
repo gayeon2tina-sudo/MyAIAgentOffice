@@ -127,6 +127,8 @@
   .morning{ margin-bottom:18px; }
   .add-tasks-bar{ margin-bottom:14px; }
   .reminder-banner{ margin-bottom:18px; border-color:var(--done-deep); background:rgba(31,168,152,0.08); font-size:15px; }
+  .weekly-banner{ margin-bottom:10px; padding:8px 12px; font-size:13px; color:var(--text-dim); display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .weekly-banner .icon-btn{ font-size:12px; padding:2px 8px; }
   .ask-result{ background:var(--panel-2); border:2px solid var(--border); border-radius:8px; padding:10px 12px; font-size:15px; line-height:1.5; white-space:pre-wrap; }
   .ask-result.err{ border-color:var(--danger); color:var(--danger); }
   .ask-result.loading{ color:var(--text-dim); font-style:italic; }
@@ -254,11 +256,23 @@
   .rank-line{ font-family:'Press Start 2P', monospace; font-size:10px; color:#8a5a00; line-height:1.5; }
   .streak-line{ font-size:15px; padding-top:4px; border-top:1px dashed rgba(138,90,0,0.25); }
 
-  .sparkle{ position:absolute; left:22px; top:0; font-size:16px; pointer-events:none; animation:sparkleUp .55s ease-out forwards; color:var(--accent-deep); font-weight:bold; }
+  /* Anchored to the top-right corner of the .room card (not a .task-row —
+     see spawnSparkle()), clear of .flavor-toast which spans the width
+     starting at top:54px. */
+  .sparkle{ position:absolute; right:8px; top:6px; font-size:16px; pointer-events:none; animation:sparkleUp .55s ease-out forwards; color:var(--accent-deep); font-weight:bold; white-space:nowrap; z-index:6; }
   @keyframes sparkleUp{
     0%{ opacity:1; transform:translateY(0) scale(0.7); }
     40%{ opacity:1; transform:translateY(-10px) scale(1.15); }
     100%{ opacity:0; transform:translateY(-26px) scale(0.9); }
+  }
+  /* Visual-only escalation — never a scoring change, just a bigger flourish. */
+  .sparkle.momentum{ font-size:22px; animation:sparkleUpBig .85s ease-out forwards; color:#ee7b11; }
+  .sparkle.first-fish{ font-size:20px; animation:sparkleUpBig .9s ease-out forwards; color:#0aab8c; }
+  @keyframes sparkleUpBig{
+    0%{ opacity:1; transform:translateY(0) scale(0.6) rotate(-4deg); }
+    35%{ opacity:1; transform:translateY(-16px) scale(1.35) rotate(3deg); }
+    70%{ opacity:1; transform:translateY(-24px) scale(1.15) rotate(-2deg); }
+    100%{ opacity:0; transform:translateY(-40px) scale(0.95) rotate(0deg); }
   }
   .rankup-toast{
     position:fixed; top:76px; left:50%; transform:translateX(-50%);
@@ -367,6 +381,11 @@
   <div class="add-tasks-bar">
     <button class="primary" id="addTasksBtn">+ Add tasks</button>
   </div>
+
+  <section class="weekly-banner panel-box hidden" id="weeklyBanner">
+    <span id="weeklyBannerText"></span>
+    <button class="icon-btn" id="weeklyBannerDismiss">✕</button>
+  </section>
 
   <section class="office-wrap panel-box">
     <h3>The Office</h3>
@@ -544,6 +563,8 @@
   var GOALS_KEY = STORAGE_PREFIX + 'goals';
   var REMINDERS_KEY = STORAGE_PREFIX + 'reminders';
   var OUTREACH_SEEN_KEY = STORAGE_PREFIX + 'outreachSeen';
+  var SOUND_KEY = STORAGE_PREFIX + 'soundEnabled';
+  var WEEKLY_BANNER_KEY = STORAGE_PREFIX + 'weeklyBannerDismissedWeek';
 
   /* ===================== Date helpers ===================== */
 
@@ -853,6 +874,35 @@
     return { goals:g, firstRun:false };
   }
 
+  // Monday of the current week, as a date string — used only as a dismiss
+  // key so the banner reappears once a new week starts, never to compute
+  // anything scoring-related.
+  function currentWeekKey(){
+    var d = new Date(today.split('-')[0], today.split('-')[1]-1, today.split('-')[2]);
+    var dow = d.getDay(); // 0=Sun..6=Sat
+    var toMonday = dow === 0 ? -6 : 1 - dow;
+    d.setDate(d.getDate() + toMonday);
+    return dateStr(d);
+  }
+  function renderWeeklyBanner(){
+    var banner = document.getElementById('weeklyBanner');
+    var wk = currentWeekKey();
+    if(localStorage.getItem(WEEKLY_BANNER_KEY) === wk){ banner.classList.add('hidden'); return; }
+    var goalsState = ensureGoals();
+    // Whichever goal has a "this month" note set is this week's featured
+    // focus; purely informational, never framed as behind/overdue.
+    var featured = goalsState.goals.find(function(g){ return g.onTrack && g.onTrack.trim(); }) || goalsState.goals[0];
+    if(!featured){ banner.classList.add('hidden'); return; }
+    var text = '🧭 This week\'s expedition: ' + escapeHtml(featured.name) +
+      (featured.onTrack && featured.onTrack.trim() ? ' — ' + escapeHtml(featured.onTrack.trim()) : '');
+    document.getElementById('weeklyBannerText').innerHTML = text;
+    banner.classList.remove('hidden');
+  }
+  document.getElementById('weeklyBannerDismiss').addEventListener('click', function(){
+    localStorage.setItem(WEEKLY_BANNER_KEY, currentWeekKey());
+    document.getElementById('weeklyBanner').classList.add('hidden');
+  });
+
   function checkGoalNudges(goals){
     var cutoff = addDays(today, -14);
     var dates = allDayDates();
@@ -1029,6 +1079,8 @@
             (permState !== 'granted' ? ' <button class="icon-btn" id="remRequestPerm">Enable in browser</button>' : '') +
           '</span></div>' +
           '<p class="settings-note">Reminders only fire while this app is open — a foreground tab or window, or one recently backgrounded (checks may run less often once backgrounded, depending on your browser). If you fully close the tab or app, nothing will remind you until you reopen it. This is not a background/always-on service.</p>' +
+          '<div class="settings-row"><label>Sound effects</label><input type="checkbox" id="soundEnabledInput" '+(soundEnabled()?'checked':'')+'></div>' +
+          '<p class="settings-note">Off by default. When on: a soft pop on check-off, a light chime for your first catch of the day or a run of quick check-offs. Synthesized in the browser — nothing to download.</p>' +
           '<div style="text-align:right; margin-top:10px;"><button class="primary" id="saveRemindersBtn">Save</button></div>' +
         '</div>' +
       '</div>';
@@ -1047,6 +1099,7 @@
         alert("Reminders are on, but browser notification permission isn't granted yet — click \"Enable in browser\" first.");
       }
       saveReminderSettings(next);
+      setSoundEnabled(document.getElementById('soundEnabledInput').checked);
       startReminderLoop();
       renderReminderBanner();
       closeModal();
@@ -1146,6 +1199,43 @@
     var el = document.getElementById('pointsPill');
     el.classList.add('bump');
     setTimeout(function(){ el.classList.remove('bump'); }, 220);
+  }
+
+  /* ===================== Sound effects (default OFF, synthesized — no
+     external audio asset needed) ===================== */
+  function soundEnabled(){ return localStorage.getItem(SOUND_KEY) === '1'; }
+  function setSoundEnabled(v){ localStorage.setItem(SOUND_KEY, v ? '1' : '0'); }
+  var sharedAudioCtx = null;
+  function audioCtx(){
+    if(!sharedAudioCtx){
+      var Ctor = window.AudioContext || window.webkitAudioContext;
+      if(!Ctor) return null;
+      sharedAudioCtx = new Ctor();
+    }
+    return sharedAudioCtx;
+  }
+  function playTone(freqStart, freqEnd, durationMs, gainPeak){
+    if(!soundEnabled()) return;
+    var ctx = audioCtx();
+    if(!ctx) return;
+    try{
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.type = 'sine';
+      var now = ctx.currentTime;
+      osc.frequency.setValueAtTime(freqStart, now);
+      osc.frequency.linearRampToValueAtTime(freqEnd, now + durationMs/1000);
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(gainPeak, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + durationMs/1000);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(now); osc.stop(now + durationMs/1000 + 0.02);
+    } catch(e){ /* audio unsupported/blocked — skip silently */ }
+  }
+  function playPopSound(){ playTone(520, 700, 90, 0.12); }
+  function playAmbientTone(){
+    playTone(660, 880, 260, 0.09);
+    setTimeout(function(){ playTone(880, 990, 320, 0.07); }, 140);
   }
 
   function renderDayProgress(){
@@ -1282,6 +1372,7 @@
   document.getElementById('floorplan').addEventListener('change', function(e){
     if(e.target.dataset.role !== 'check') return;
     var row = e.target.closest('.task-row');
+    var room = row.closest('.room');
     var id = row.dataset.id;
     var task = currentDay.tasks.find(function(t){ return t.id === id; });
     if(!task) return;
@@ -1294,7 +1385,11 @@
     if(task.category === 'budget'){ mechanics.budgetFill = Math.max(0, mechanics.budgetFill + (task.done?1:-1)); saveMechanics(mechanics); mechanicsChanged = true; }
     if(mechanicsChanged) renderStaticOffice();
     if(task.done && !wasDone){
-      spawnSparkle(row);
+      var isFirstFishToday = currentDay.tasks.filter(function(t){ return t.done; }).length === 1;
+      var momentum = registerCheckOffMomentum();
+      if(isFirstFishToday){ spawnSparkle(room, 'first-fish'); playAmbientTone(); }
+      else if(momentum >= 3){ spawnSparkle(room, 'momentum'); playAmbientTone(); }
+      else { spawnSparkle(room); playPopSound(); }
       bumpPoints();
       showFlavor(task.category);
       var newRank = currentRank(totalPointsAllTime());
@@ -1315,11 +1410,30 @@
   }
 
   var sparkleSeq = 0;
-  function spawnSparkle(row){
+  // Attaches to the .room card, not the .task-row: the row is about to be
+  // destroyed by renderRoomTasks()'s innerHTML replacement later in the
+  // same change handler, which was silently eating this animation every
+  // time (it never painted a single frame) before this fix — the .room
+  // card itself is never replaced wholesale, only its inner list is.
+  function spawnSparkle(room, variant){
     var s = document.createElement('span');
-    s.className = 'sparkle'; s.textContent = '✨ +1';
-    row.appendChild(s);
-    setTimeout(function(){ if(s.parentNode) s.parentNode.removeChild(s); }, 600);
+    s.className = 'sparkle' + (variant ? ' ' + variant : '');
+    s.textContent = variant === 'first-fish' ? '🐟✨ first catch!' : (variant === 'momentum' ? '✨✨ +1' : '✨ +1');
+    room.appendChild(s);
+    setTimeout(function(){ if(s.parentNode) s.parentNode.removeChild(s); }, variant ? 900 : 600);
+  }
+
+  // Momentum: purely visual escalation for 3+ check-offs in quick
+  // succession — never changes the flat +1-per-task scoring rule, just
+  // makes the sparkle bigger. Resets if the gap between check-offs is too
+  // long to read as "on a roll."
+  var MOMENTUM_WINDOW_MS = 20000;
+  var momentumCount = 0, lastCheckOffAt = 0;
+  function registerCheckOffMomentum(){
+    var now = Date.now();
+    momentumCount = (now - lastCheckOffAt < MOMENTUM_WINDOW_MS) ? momentumCount + 1 : 1;
+    lastCheckOffAt = now;
+    return momentumCount;
   }
   function showFlavor(catId){
     var cat = CAT_BY_ID[catId];
@@ -2088,6 +2202,17 @@
     ctx.fillText('🚧 not yet staffed', 1180, 350);
     ctx.restore();
 
+    if(catchHotspotHovered){
+      ctx.save();
+      ctx.fillStyle = 'rgba(255,212,74,0.28)';
+      roundRectPath(ctx, CATCH_HOTSPOT.x1, CATCH_HOTSPOT.y1, CATCH_HOTSPOT.x2-CATCH_HOTSPOT.x1, CATCH_HOTSPOT.y2-CATCH_HOTSPOT.y1, 10);
+      ctx.fill();
+      ctx.strokeStyle = '#ffd54a';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.restore();
+    }
+
     if(hoveredRoomId){
       var hr = ROOM_RECTS[hoveredRoomId];
       ctx.save();
@@ -2118,6 +2243,11 @@
   // to any task card.
   var ROOM_LABELS = { job:'Job Hunt', learning:'L&D', portfolio:'Content Building', budget:'Life Admin', health:'Health', hub:"Chairman's Office" };
   var hoveredRoomId = null;
+  var catchHotspotHovered = false;
+  // The "BIG GY INC" signboard already painted into the office art (bottom
+  // center) doubles as a second, discoverable way into Catch of the Day —
+  // in addition to the HUD fish chip, not a replacement for it.
+  var CATCH_HOTSPOT = { x1:650, y1:845, x2:860, y2:915 };
 
   function canvasPointFromEvent(canvas, evt){
     var rect = canvas.getBoundingClientRect();
@@ -2125,6 +2255,9 @@
       x: (evt.clientX - rect.left) * (canvas.width / rect.width),
       y: (evt.clientY - rect.top) * (canvas.height / rect.height)
     };
+  }
+  function inCatchHotspot(pt){
+    return pt.x >= CATCH_HOTSPOT.x1 && pt.x <= CATCH_HOTSPOT.x2 && pt.y >= CATCH_HOTSPOT.y1 && pt.y <= CATCH_HOTSPOT.y2;
   }
   function roomAtPoint(pt){
     var found = null;
@@ -2148,7 +2281,16 @@
   (function(){
     var canvas = document.getElementById('officeCanvas');
     canvas.addEventListener('mousemove', function(e){
-      var id = roomAtPoint(canvasPointFromEvent(canvas, e));
+      var pt = canvasPointFromEvent(canvas, e);
+      if(inCatchHotspot(pt)){
+        hoveredRoomId = null;
+        catchHotspotHovered = true;
+        canvas.style.cursor = 'pointer';
+        canvas.title = 'Catch of the Day';
+        return;
+      }
+      catchHotspotHovered = false;
+      var id = roomAtPoint(pt);
       if(id === hoveredRoomId) return;
       hoveredRoomId = id;
       canvas.style.cursor = id ? 'pointer' : 'default';
@@ -2156,11 +2298,13 @@
     });
     canvas.addEventListener('mouseleave', function(){
       hoveredRoomId = null;
+      catchHotspotHovered = false;
       canvas.style.cursor = 'default';
       canvas.title = '';
     });
     canvas.addEventListener('click', function(e){
       var pt = canvasPointFromEvent(canvas, e);
+      if(inCatchHotspot(pt)){ openTrophyShelf(); return; }
       var ch = characterAtPoint(pt);
       if(ch && ch.catId !== 'hub'){
         var pos = lastCharPos[ch.id];
@@ -2601,6 +2745,7 @@
   fetchOutreach();
   requestAnimationFrame(animLoop);
   renderReminderBanner();
+  renderWeeklyBanner();
   var bootReminderSettings = loadReminderSettings();
   if(bootReminderSettings.enabled && typeof Notification !== 'undefined' && Notification.permission === 'granted'){
     startReminderLoop();
