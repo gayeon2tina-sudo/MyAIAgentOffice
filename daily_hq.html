@@ -108,6 +108,7 @@
   .panel-box h3{ margin:0 0 8px; font-size:16px; color:var(--accent-deep); text-transform:uppercase; letter-spacing:1px; }
 
   .morning{ margin-bottom:18px; }
+  .add-tasks-bar{ margin-bottom:14px; }
   .reminder-banner{ margin-bottom:18px; border-color:var(--done-deep); background:rgba(31,168,152,0.08); font-size:15px; }
   .ask-result{ background:var(--panel-2); border:2px solid var(--border); border-radius:8px; padding:10px 12px; font-size:15px; line-height:1.5; white-space:pre-wrap; }
   .ask-result.err{ border-color:var(--danger); color:var(--danger); }
@@ -124,16 +125,37 @@
   .del-btn{ background:none; border:none; color:var(--text-faint); font-size:14px; cursor:pointer; padding:0 2px; }
   .del-btn:hover{ color:var(--danger); }
 
-  .office-wrap{ margin-bottom:18px; }
+  .office-wrap{ margin-bottom:18px; position:relative; }
   .office-wrap canvas{ width:100%; max-width:640px; height:auto; display:block; margin:0 auto; border-radius:10px; cursor:default; }
   .office-caption{ font-size:12px; color:var(--text-faint); margin-top:6px; }
+  /* Matches the canvas's own centered box exactly (same width/max-width,
+     aspect-ratio instead of measuring height in JS) so a bubble positioned
+     by percentage (x/1536, y/1024) lands on the right spot at any size. */
+  .office-bubble-layer{
+    position:absolute; top:0; left:50%; transform:translateX(-50%);
+    width:100%; max-width:640px; aspect-ratio:1536/1024;
+    pointer-events:none;
+  }
+  .tip-bubble{
+    position:absolute; transform:translate(-50%,-100%);
+    background:#fff; color:#1a1a2e; border:2px solid var(--wall);
+    border-radius:12px; padding:7px 10px; font-size:12px; line-height:1.35;
+    max-width:170px; box-shadow:0 3px 0 rgba(0,0,0,0.15);
+    pointer-events:auto; cursor:default;
+  }
+  .tip-bubble::after{
+    content:''; position:absolute; left:50%; top:100%; transform:translateX(-50%);
+    border:7px solid transparent; border-top-color:#fff;
+  }
+  .tip-bubble.loading{ color:var(--text-faint); font-style:italic; }
+  .tip-bubble.err{ color:var(--danger); }
 
   /* Room task panels */
   .floorplan{
     display:grid;
     grid-template-columns: repeat(4, 1fr);
     grid-template-areas:
-      "job cv portfolio hub"
+      "job learning portfolio hub"
       "backpack budget health hub";
     gap:0;
     border:5px solid var(--wall);
@@ -145,13 +167,13 @@
     .floorplan{ grid-template-columns: repeat(2, 1fr);
       grid-template-areas:
         "hub hub"
-        "job cv"
+        "job learning"
         "portfolio backpack"
         "budget health"; }
   }
   @media (max-width:600px){
     .floorplan{ grid-template-columns: 1fr;
-      grid-template-areas: "hub" "job" "cv" "portfolio" "backpack" "budget" "health"; }
+      grid-template-areas: "hub" "job" "learning" "portfolio" "backpack" "budget" "health"; }
   }
 
   .room{
@@ -161,7 +183,7 @@
     position:relative;
   }
   .room[data-cat="job"]{ grid-area:job; }
-  .room[data-cat="cv"]{ grid-area:cv; }
+  .room[data-cat="learning"]{ grid-area:learning; }
   .room[data-cat="portfolio"]{ grid-area:portfolio; }
   .room[data-cat="backpack"]{ grid-area:backpack; }
   .room[data-cat="budget"]{ grid-area:budget; }
@@ -188,6 +210,9 @@
   .task-row input[type=checkbox]{ width:18px; height:18px; margin-top:2px; accent-color:var(--done); cursor:pointer; }
   .task-row .task-text{ flex:1; word-break:break-word; }
   .task-row .task-text.done{ text-decoration:line-through; color:var(--text-faint); }
+  .source-tag{ font-size:13px; cursor:help; opacity:.8; }
+  .task-subsection + .task-subsection{ margin-top:10px; padding-top:8px; border-top:1px dashed var(--border); }
+  .task-subsection h4{ margin:0 0 4px; font-size:12px; text-transform:uppercase; letter-spacing:.03em; color:var(--text-faint); }
   .empty-msg{ color:var(--text-faint); font-size:14px; padding:6px 2px; }
   .outreach-inline{ font-size:13px; color:var(--text-faint); border-top:1px dashed var(--border); margin-top:6px; padding-top:6px; }
   .outreach-inline .nums{ color:var(--text); font-family:'Press Start 2P', monospace; font-size:11px; }
@@ -308,6 +333,27 @@
   </div>
 
   <div id="officeView">
+  <div class="add-tasks-bar">
+    <button class="primary" id="addTasksBtn">+ Add tasks</button>
+  </div>
+
+  <section class="office-wrap panel-box">
+    <h3>The Office</h3>
+    <canvas id="officeCanvas" class="pixel" width="1536" height="1024"></canvas>
+    <div id="officeBubbleLayer" class="office-bubble-layer"></div>
+    <p class="office-caption">Hand-drawn on canvas — original characters, not traced from any existing game or asset pack. Everyone's at their desk when there's work waiting, wanders to their own furniture sometimes, and kicks back once their room's list is clear. Click a character for a tip.</p>
+  </section>
+
+  <section class="floorplan" id="floorplan"></section>
+
+  <section class="reminder-banner panel-box hidden" id="reminderBanner">
+    <p style="margin:0 0 8px;">Want a nudge if tasks are still open later today? Reminders only fire while this app is open (a foreground or backgrounded tab/window) — not if it's fully closed.</p>
+    <div style="display:flex; gap:8px;">
+      <button class="primary" id="reminderBannerEnable">Enable reminders</button>
+      <button class="ghost" id="reminderBannerDismiss">Not now</button>
+    </div>
+  </section>
+
   <div class="toolbar">
     <button id="goalsBtn">🧭 Goals</button>
     <button id="remindersBtn">🔔 Reminders</button>
@@ -318,47 +364,14 @@
   </div>
 
   <section class="morning panel-box">
-    <h3>This morning</h3>
-    <textarea id="taskInput" placeholder="Type today's tasks, one per line...&#10;e.g. Review today's leads&#10;30 min run&#10;Draft backpack post idea"></textarea>
-    <div style="margin-top:8px; display:flex; gap:8px;">
-      <button class="primary" id="previewBtn">Preview tasks →</button>
-      <button class="ghost" id="clearInputBtn">Clear</button>
+    <h3>📻 Radio to Base</h3>
+    <p style="font-size:13px; color:var(--text-faint); margin:0 0 8px;">Needs the local server running (<code>npm run server</code>) — try "what should I focus on this week?"</p>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <input type="text" id="askInput" placeholder="Message Base..." style="flex:1; min-width:220px;">
+      <button class="pink" id="askBtn">Radio Base</button>
     </div>
-    <div id="previewList" style="margin-top:10px;"></div>
-    <div id="confirmRow" class="hidden" style="margin-top:8px;">
-      <button class="pink" id="confirmAddBtn">Add to today's list</button>
-    </div>
-    <div id="leftoverBox" class="hidden" style="margin-top:16px;">
-      <h3>From yesterday (unchecked)</h3>
-      <div id="leftoverList"></div>
-    </div>
-
-    <div style="margin-top:18px; border-top:2px dashed var(--border); padding-top:14px;">
-      <h3>📻 Radio to Base</h3>
-      <p style="font-size:13px; color:var(--text-faint); margin:0 0 8px;">Needs the local server running (<code>npm run server</code>) — try "what should I focus on this week?"</p>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <input type="text" id="askInput" placeholder="Message Base..." style="flex:1; min-width:220px;">
-        <button class="pink" id="askBtn">Radio Base</button>
-      </div>
-      <div id="askResult" style="margin-top:10px;"></div>
-    </div>
+    <div id="askResult" style="margin-top:10px;"></div>
   </section>
-
-  <section class="reminder-banner panel-box hidden" id="reminderBanner">
-    <p style="margin:0 0 8px;">Want a nudge if tasks are still open later today? Reminders only fire while this app is open (a foreground or backgrounded tab/window) — not if it's fully closed.</p>
-    <div style="display:flex; gap:8px;">
-      <button class="primary" id="reminderBannerEnable">Enable reminders</button>
-      <button class="ghost" id="reminderBannerDismiss">Not now</button>
-    </div>
-  </section>
-
-  <section class="office-wrap panel-box">
-    <h3>The Office</h3>
-    <canvas id="officeCanvas" class="pixel" width="1536" height="1024"></canvas>
-    <p class="office-caption">Hand-drawn on canvas — original characters, not traced from any existing game or asset pack. Everyone's at their desk when there's work waiting, wanders to their own furniture sometimes, and kicks back once their room's list is clear.</p>
-  </section>
-
-  <section class="floorplan" id="floorplan"></section>
   </div>
 
   <div id="calendarView" class="hidden">
@@ -390,36 +403,87 @@
   /* ===================== Config ===================== */
 
   var CATEGORIES = [
-    { id:'job', name:'Job Search', icon:'🎯', floor:'#dff7f5', accent:'#0aab8c',
-      lead:'Scout', member:'Radar',
-      flavors:["Scout found one.", "Radar's tracking a lead."],
+    { id:'job', name:'Job Search & Applications', icon:'🎯', floor:'#dff7f5', accent:'#0aab8c',
+      lead:'Scout', member:'Editor',
+      subsections:[
+        { id:'outreach', label:'Outreach & Leads' },
+        { id:'applications', label:'Applications' }
+      ],
+      flavors:["Scout found one.", "Editor stamped it.", "Scout's tracking a lead.", "Editor's letting that rest before the final pass."],
       cursor:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20"><circle cx="8" cy="8" r="6" fill="none" stroke="%23222" stroke-width="2"/><line x1="13" y1="13" x2="18" y2="18" stroke="%23222" stroke-width="2"/></svg>',
-      keywords:['job','jobs','posting','postings','role','roles','shortlist','linkedin','indeed','recruiter','apply for','pm role','pmm role','opening','openings','lead','leads'] },
-    { id:'cv', name:'CV & Applications', icon:'📝', floor:'#fbe4ec', accent:'#e0397e',
-      lead:'Editor', member:'Wordsmith',
-      flavors:["Editor stamped it.", "Wordsmith's letting that rest before the final pass."],
-      cursor:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20"><rect x="4" y="10" width="12" height="7" rx="1" fill="%23c93c81" stroke="%23222" stroke-width="1"/><rect x="7" y="4" width="6" height="6" fill="%23c93c81" stroke="%23222" stroke-width="1"/></svg>',
-      keywords:['cv','resume','résumé','cover letter','tailor','application draft','submit application','cover ltr'] },
+      keywords:['job','jobs','posting','postings','role','roles','shortlist','linkedin','indeed','recruiter','apply for','pm role','pmm role','opening','openings','lead','leads','cv','resume','résumé','cover letter','tailor','application draft','submit application','cover ltr','applied','application'],
+      tips:[
+        "Five short outreach messages beat one long one — you'll actually send them.",
+        "Following up after a week isn't pushy. Silence usually just means busy.",
+        "Tailor the first two lines of a cover letter to the company — that's the part that gets read.",
+        "A 'no' from a recruiter is still a data point. Worth asking what would've made it a yes.",
+        "Applying to fewer roles you're a strong fit for tends to beat applying to everything.",
+        "A LinkedIn comment on the right post can work as well as a cold DM."
+      ] },
+    { id:'learning', name:'Learning & Development', icon:'🎓', floor:'#fbe4ec', accent:'#e0397e',
+      lead:'Compiler',
+      flavors:["Compiler shipped a small win.", "Compiler's still deep in it — no rush."],
+      cursor:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20"><polygon points="10,3 18,7 10,11 2,7" fill="%23e0397e" stroke="%23222" stroke-width="1"/><line x1="10" y1="11" x2="10" y2="16" stroke="%23222" stroke-width="1.5"/></svg>',
+      keywords:['certification','certified','course','learn','learning','build','side project','app','anthropic','skill','study'],
+      tips:[
+        "Finishing one small module today beats starting three big courses.",
+        "A half-built side project you can explain beats a finished tutorial you followed blindly.",
+        "Teaching a concept back to yourself out loud is a fast way to find the gaps.",
+        "Certifications matter less than what you can actually build with what they taught you.",
+        "Ten focused minutes on a real problem usually beats an hour of a passive video.",
+        "It's fine to abandon a course that isn't working for you — that's information, not failure."
+      ] },
     { id:'portfolio', name:'Portfolio Site', icon:'🖼️', floor:'#ece5fb', accent:'#7c4fe0',
       lead:'Builder', member:'Pixel',
       flavors:["Builder added a beam.", "Pixel touched up a section."],
       cursor:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20"><rect x="9" y="2" width="2" height="12" fill="%238a5a2b"/><rect x="3" y="1" width="10" height="5" rx="1" fill="%236b4fc9" stroke="%23222" stroke-width="1"/></svg>',
-      keywords:['portfolio','webflow','lovable','site','website','page copy','landing page'] },
+      keywords:['portfolio','webflow','lovable','site','website','page copy','landing page'],
+      tips:[
+        "One clear project explained well beats five projects listed without context.",
+        "A visitor decides whether to keep reading in about five seconds — lead with your best work.",
+        "Broken links are worse than no site at all. Worth a periodic click-through.",
+        "Write captions like you're explaining it to someone who wasn't there.",
+        "It doesn't need to be finished to be useful — a 'currently building' note is fine."
+      ] },
     { id:'backpack', name:'Backpack Content', icon:'🎒', floor:'#fdecd2', accent:'#e0821f',
       lead:'Storyteller', member:'Spark',
       flavors:["Spark lit up with an idea.", "Echo double checked, all clear."],
       cursor:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20"><path d="M3 17 L14 3 Q17 2 16 5 L6 16 Q4 18 3 17 Z" fill="%23c97a2b" stroke="%23222" stroke-width="1"/></svg>',
-      keywords:['backpack','blog','post idea','content','draft post','newsletter','write about','write a post'] },
+      keywords:['backpack','blog','post idea','content','draft post','newsletter','write about','write a post'],
+      tips:[
+        "A rough draft posted beats a perfect draft that never leaves the folder.",
+        "Write the headline last — it's easier once you know what the piece actually says.",
+        "One honest post about something you're figuring out tends to land better than ten polished ones.",
+        "Reusing an old idea from a different angle still counts as new content.",
+        "If you're stuck, try writing the ending first."
+      ] },
     { id:'budget', name:'Budget & Life', icon:'💰', floor:'#e2f5e6', accent:'#2f9e56',
       lead:'Ledger', member:'Coin',
       flavors:["Ledger tucked that away.", "Coin counted it twice."],
       cursor:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" fill="%23ffe066" stroke="%238a6a1a" stroke-width="1.5"/><text x="10" y="14" font-size="8" text-anchor="middle" fill="%238a6a1a">%24</text></svg>',
-      keywords:['budget','runway','rent','lease','seattle','move','moving','expenses','savings','spreadsheet','bank'] },
+      keywords:['budget','runway','rent','lease','seattle','move','moving','expenses','savings','spreadsheet','bank'],
+      tips:[
+        "Checking the numbers even when they're bad is still progress — avoidance costs more than the number itself.",
+        "A rough budget you actually look at beats a perfect spreadsheet you don't.",
+        "Small recurring costs add up faster than one big purchase — worth a periodic scan.",
+        "Moving costs are usually underestimated — pad the estimate more than feels necessary.",
+        "It's fine to revise the plan when the runway math changes. That's the plan working, not failing."
+      ] },
     { id:'health', name:'Health', icon:'⛸️', floor:'#e0f2fb', accent:'#1f8fe0',
       lead:'Stride', member:'Breeze',
       flavors:["Stride logged today's run.", "Breeze says nice pace today."],
       cursor:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20"><path d="M3 17 Q3 3 17 3 Q17 17 3 17 Z" fill="%234fae7a" stroke="%232b7fc9" stroke-width="1"/><line x1="4" y1="16" x2="15" y2="5" stroke="%232b7fc9" stroke-width="1"/></svg>',
-      keywords:['run','running','yoga','workout','gym','walk','stretch','exercise','swim','bike','pilates','lift'] }
+      keywords:['run','running','yoga','workout','gym','walk','stretch','exercise','swim','bike','pilates','lift'],
+      // Health tips especially must never read as generic or pressuring —
+      // no "you got this!", no guilt for skipping, nothing prescriptive.
+      tips:[
+        "A short walk counts. It doesn't have to be a full workout to be worth logging.",
+        "Skipping one day isn't a streak breaking — it's just a day.",
+        "Stretching for five minutes before bed is a low-effort way to sleep better.",
+        "Hydration affects energy more than most people expect — worth checking before assuming you're just tired.",
+        "Rest days are part of training, not a break from it.",
+        "If motivation's low, lowering the bar for today usually beats skipping entirely."
+      ] }
   ];
   var CAT_BY_ID = {};
   CATEGORIES.forEach(function(c){ CAT_BY_ID[c.id] = c; });
@@ -435,7 +499,7 @@
   ];
 
   var GOAL_DEFAULTS = [
-    { id:'goal1', name:'Land the role', tag:'Job Search', onTrack:'', categories:['job','cv'] },
+    { id:'goal1', name:'Land the role', tag:'Job Search', onTrack:'', categories:['job'] },
     { id:'goal2', name:'Personal brand is live', tag:'Portfolio & Content', onTrack:'', categories:['portfolio','backpack'] },
     { id:'goal3', name:'Financially steady through the transition', tag:'Budget & Life', onTrack:'', categories:['budget'] }
   ];
@@ -451,6 +515,7 @@
   var MECH_KEY = STORAGE_PREFIX + 'mechanics';
   var GOALS_KEY = STORAGE_PREFIX + 'goals';
   var REMINDERS_KEY = STORAGE_PREFIX + 'reminders';
+  var OUTREACH_SEEN_KEY = STORAGE_PREFIX + 'outreachSeen';
 
   /* ===================== Date helpers ===================== */
 
@@ -483,9 +548,95 @@
     if(!Array.isArray(day.tasks)) day.tasks = [];
     if(typeof day.note !== 'string') day.note = '';
     if(typeof day.reviewed !== 'boolean') day.reviewed = false;
+    migrateJobCvMerge(day);
     return day;
   }
-  function saveDay(day){ localStorage.setItem(DAY_KEY(day.date), JSON.stringify(day)); }
+  // One-time-per-load migration for the Job Search + CV & Applications merge:
+  // 'cv' was its own category before, now it's the "Applications" sub-section
+  // of the merged 'job' category — remap so old history still makes sense
+  // (still counts toward the same fish/star total it always did) instead of
+  // silently vanishing from a category that no longer exists. Old 'job'
+  // tasks get an explicit sub too, so every job-category task has one.
+  function migrateJobCvMerge(day){
+    day.tasks.forEach(function(t){
+      if(t.category === 'cv'){
+        t.category = 'job';
+        t.sub = 'applications';
+      } else if(t.category === 'job' && !t.sub){
+        t.sub = detectJobSub(t.text);
+      }
+    });
+  }
+  function saveDay(day){
+    localStorage.setItem(DAY_KEY(day.date), JSON.stringify(day));
+    // Keeps the on-disk file (local server only) in sync with browser edits
+    // too, not just one-directional from a Claude Code session writing to
+    // it. A blind PUT of the browser's own state would be a real data-loss
+    // bug here: if a task was appended server-side (log-task) between this
+    // browser's last read and now, overwriting with what the browser
+    // thinks the day looks like would silently erase it. So this reads the
+    // current file first and unions in any tasks present there but not
+    // in the browser's own list (by id) before writing back — a merge,
+    // not a blind overwrite. No-ops silently on static GitHub Pages
+    // hosting, where this fetch has nothing to reach.
+    fetch('/api/day?date=' + encodeURIComponent(day.date), { cache: 'no-store' })
+      .then(function(res){ return res.ok ? res.json() : null; })
+      .then(function(data){
+        var merged = day;
+        if(data && data.ok && data.day && Array.isArray(data.day.tasks)){
+          var knownIds = {};
+          day.tasks.forEach(function(t){ knownIds[t.id] = true; });
+          var missingFromClient = data.day.tasks.filter(function(t){ return !knownIds[t.id]; });
+          if(missingFromClient.length){
+            merged = Object.assign({}, day, { tasks: day.tasks.concat(missingFromClient) });
+            localStorage.setItem(DAY_KEY(day.date), JSON.stringify(merged));
+          }
+        }
+        return fetch('/api/day', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(merged)
+        });
+      })
+      .catch(function(){});
+  }
+  // The local server's on-disk file is the source of truth when it's running
+  // (that's what lets a Claude Code session log a task directly) — pulls it
+  // into localStorage before anything reads today's data. Resolves false,
+  // never rejects, so callers don't need their own try/catch: static GitHub
+  // Pages hosting (no server to answer this) is an expected, silent case,
+  // not a failure.
+  function syncDayFromServer(dateStr){
+    var fetchPromise = fetch('/api/day?date=' + encodeURIComponent(dateStr), { cache: 'no-store' })
+      .then(function(res){ if(!res.ok) throw new Error('no server'); return res.json(); })
+      .then(function(data){
+        if(data && data.ok && data.day){
+          // A blind overwrite here would be a real data-loss bug: if the
+          // server has never seen this date yet (a fresh server start, a
+          // deleted data/ dir, anything), loadDayFile() hands back an empty
+          // default day, and treating that as authoritative would erase
+          // whatever's already in this browser's localStorage. Merge
+          // instead — union in anything the server has that the browser
+          // doesn't (by id), same reasoning as saveDay()'s own merge, just
+          // in the other direction.
+          var existing = loadDay(dateStr);
+          var knownIds = {};
+          existing.tasks.forEach(function(t){ knownIds[t.id] = true; });
+          var missingFromClient = data.day.tasks.filter(function(t){ return !knownIds[t.id]; });
+          var merged = missingFromClient.length
+            ? Object.assign({}, existing, { tasks: existing.tasks.concat(missingFromClient) })
+            : existing;
+          localStorage.setItem(DAY_KEY(dateStr), JSON.stringify(merged));
+          return missingFromClient.length > 0;
+        }
+        return false;
+      })
+      .catch(function(){ return false; });
+    // Bounded so static hosting (no server to ever answer this) can't add
+    // real delay to boot — a slow/absent network shouldn't hold up the page.
+    var timeout = new Promise(function(resolve){ setTimeout(function(){ resolve(false); }, 1500); });
+    return Promise.race([fetchPromise, timeout]);
+  }
 
   function loadRecurring(){ return safeParse(localStorage.getItem(RECURRING_KEY), []); }
   function saveRecurring(list){ localStorage.setItem(RECURRING_KEY, JSON.stringify(list)); }
@@ -530,6 +681,27 @@
     });
     return best;
   }
+
+  // Job Search & Applications is one category with two displayed
+  // sub-sections (Scout's outreach/leads, Editor's applications) sharing a
+  // single fish count and star row — this only decides which sub-section a
+  // job-category task is grouped under, it never changes the task's actual
+  // category or point value. An explicit completed-application word wins
+  // regardless of what else is in the sentence, same reasoning as the old
+  // job-vs-cv category tie-break this replaces.
+  var JOB_SUB_KEYWORDS = {
+    applications: ['cv','resume','résumé','cover letter','tailor','application draft','submit application','cover ltr','applied','application'],
+    outreach: ['job','jobs','posting','postings','role','roles','shortlist','linkedin','indeed','recruiter','apply for','pm role','pmm role','opening','openings','lead','leads']
+  };
+  function detectJobSub(text){
+    var lower = (text || '').toLowerCase();
+    var APPLICATION_ACTION_WORDS = ['applied','application','submitted my application','sent my application'];
+    if(APPLICATION_ACTION_WORDS.some(function(w){ return lower.indexOf(w) !== -1; })) return 'applications';
+    var appScore = 0, outScore = 0;
+    JOB_SUB_KEYWORDS.applications.forEach(function(kw){ if(lower.indexOf(kw) !== -1) appScore++; });
+    JOB_SUB_KEYWORDS.outreach.forEach(function(kw){ if(lower.indexOf(kw) !== -1) outScore++; });
+    return appScore > outScore ? 'applications' : 'outreach';
+  }
   function escapeHtml(s){
     return s.replace(/[&<>"']/g, function(c){ return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]; });
   }
@@ -539,7 +711,6 @@
   var today = todayStr();
   var currentDay = loadDay(today);
   var mechanics = loadMechanics();
-  var pendingPreview = [];
   var outreachData = { ok:false, loading:true };
 
   function totalPointsToday(){ return currentDay.tasks.filter(function(t){ return t.done; }).length; }
@@ -582,7 +753,9 @@
     recurring.forEach(function(tpl){
       var exists = currentDay.tasks.some(function(t){ return t.recurringId === tpl.id; });
       if(!exists){
-        currentDay.tasks.push({ id: makeId('t'), text: tpl.text, category: tpl.category, done:false, milestone:false, recurringId: tpl.id, createdAt: Date.now() });
+        var task = { id: makeId('t'), text: tpl.text, category: tpl.category, done:false, milestone:false, recurringId: tpl.id, createdAt: Date.now() };
+        if(tpl.category === 'job') task.sub = detectJobSub(tpl.text);
+        currentDay.tasks.push(task);
         changed = true;
       }
     });
@@ -876,104 +1049,19 @@
     document.getElementById('dayProgressFill').style.width = pct + '%';
   }
 
-  /* ===================== Morning input ===================== */
-
-  function renderPreview(){
-    var box = document.getElementById('previewList');
-    var confirmRow = document.getElementById('confirmRow');
-    if(pendingPreview.length === 0){ box.innerHTML=''; confirmRow.classList.add('hidden'); return; }
-    confirmRow.classList.remove('hidden');
-    box.innerHTML = pendingPreview.map(function(p, idx){
-      var opts = '<option value="">— pick category —</option>' + CATEGORIES.map(function(c){
-        return '<option value="'+c.id+'"'+(p.category===c.id?' selected':'')+'>'+c.icon+' '+c.name+'</option>';
-      }).join('');
-      return '' +
-        '<div class="preview-row" data-idx="'+idx+'">' +
-          '<span class="txt">'+escapeHtml(p.text)+'</span>' +
-          '<select data-role="cat">'+opts+'</select>' +
-          '<button class="star-btn '+(p.milestone?'':'off')+'" data-role="star" title="milestone">⭐</button>' +
-          '<label style="font-size:13px;color:var(--text-dim);"><input type="checkbox" data-role="repeats" '+(p.repeats?'checked':'')+'> repeats</label>' +
-          '<button class="del-btn" data-role="remove" title="remove">✕</button>' +
-        '</div>';
-    }).join('');
-  }
-
-  document.getElementById('previewBtn').addEventListener('click', function(){
-    var raw = document.getElementById('taskInput').value;
-    var lines = raw.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
-    pendingPreview = lines.map(function(line){ return { text: line, category: detectCategory(line), milestone:false, repeats:false }; });
-    renderPreview();
-  });
-  document.getElementById('clearInputBtn').addEventListener('click', function(){
-    document.getElementById('taskInput').value = ''; pendingPreview = []; renderPreview();
-  });
-  document.getElementById('previewList').addEventListener('click', function(e){
-    var row = e.target.closest('.preview-row'); if(!row) return;
-    var idx = Number(row.dataset.idx);
-    if(e.target.dataset.role === 'star'){ pendingPreview[idx].milestone = !pendingPreview[idx].milestone; renderPreview(); }
-    else if(e.target.dataset.role === 'remove'){ pendingPreview.splice(idx,1); renderPreview(); }
-  });
-  document.getElementById('previewList').addEventListener('change', function(e){
-    var row = e.target.closest('.preview-row'); if(!row) return;
-    var idx = Number(row.dataset.idx);
-    if(e.target.dataset.role === 'cat') pendingPreview[idx].category = e.target.value;
-    if(e.target.dataset.role === 'repeats') pendingPreview[idx].repeats = e.target.checked;
-  });
-  document.getElementById('confirmAddBtn').addEventListener('click', function(){
-    var recurring = loadRecurring();
-    var recurringChanged = false;
-    pendingPreview.forEach(function(p){
-      if(!p.category) return;
-      var recurringId = null;
-      if(p.repeats){
-        var tpl = recurring.find(function(r){ return r.text === p.text && r.category === p.category; });
-        if(tpl){ recurringId = tpl.id; tpl.active = true; }
-        else{ tpl = { id: makeId('rec'), text: p.text, category: p.category, active:true }; recurring.push(tpl); recurringId = tpl.id; }
-        recurringChanged = true;
-      }
-      currentDay.tasks.push({ id: makeId('t'), text: p.text, category: p.category, done:false, milestone: p.milestone, recurringId: recurringId, createdAt: Date.now() });
-    });
-    var skipped = pendingPreview.filter(function(p){ return !p.category; }).length;
-    saveDay(currentDay);
-    if(recurringChanged) saveRecurring(recurring);
-    pendingPreview = [];
-    document.getElementById('taskInput').value = '';
-    renderPreview();
-    renderAll();
-    if(skipped > 0) alert(skipped + ' line(s) had no category picked and were not added. Preview again and choose one.');
-  });
-
-  function renderLeftovers(){
-    var prevDate = addDays(today, -1);
-    var prevDay = loadDay(prevDate);
-    var undone = prevDay.tasks.filter(function(t){ return !t.done; });
-    var box = document.getElementById('leftoverBox');
-    var list = document.getElementById('leftoverList');
-    if(undone.length === 0){ box.classList.add('hidden'); return; }
-    box.classList.remove('hidden');
-    list.innerHTML = undone.map(function(t){
-      var cat = CAT_BY_ID[t.category];
-      return '' +
-        '<div class="leftover-row" data-id="'+t.id+'">' +
-          '<span>'+(t.milestone?'⭐ ':'')+escapeHtml(t.text)+' <span class="cat-tag">'+(cat?cat.icon+' '+cat.name:'')+'</span></span>' +
-          '<button class="icon-btn" data-role="addleftover">+ add to today</button>' +
-        '</div>';
-    }).join('');
-  }
-  document.getElementById('leftoverList').addEventListener('click', function(e){
-    if(e.target.dataset.role !== 'addleftover') return;
-    var row = e.target.closest('.leftover-row');
-    var prevDay = loadDay(addDays(today, -1));
-    var t = prevDay.tasks.find(function(x){ return x.id === row.dataset.id; });
-    if(!t) return;
-    currentDay.tasks.push({ id: makeId('t'), text: t.text, category: t.category, done:false, milestone: t.milestone, recurringId:null, createdAt: Date.now() });
-    saveDay(currentDay);
-    renderAll();
-  });
-
   /* ===================== Rooms & tasks ===================== */
 
   function tasksForCategory(catId){ return currentDay.tasks.filter(function(t){ return t.category === catId; }); }
+
+  var SOURCE_TAGS = {
+    'claude-code': { icon:'📻', title:'Logged via Claude Code' },
+    'outreach-auto': { icon:'🎣', title:'Auto-logged from the outreach tracker' }
+  };
+  function sourceTagHtml(t){
+    var tag = SOURCE_TAGS[t.source];
+    if(!tag) return '';
+    return '<span class="source-tag" title="'+tag.title+'">'+tag.icon+'</span>';
+  }
 
   function cursorStyle(cat){ return "url('data:image/svg+xml;utf8," + cat.cursor + "') 10 10, auto"; }
 
@@ -1022,30 +1110,48 @@
     starRow.innerHTML = html;
   }
 
+  // Stable sort (Array.prototype.sort preserves relative order of equal
+  // keys in all current engines): unchecked first, checked after, each
+  // group keeping the order tasks were added in. No priority beyond that.
+  function sortUncheckedFirst(tasks){
+    return tasks.slice().sort(function(a, b){ return (a.done?1:0) - (b.done?1:0); });
+  }
+  function taskRowHtml(t){
+    return '' +
+      '<div class="task-row" data-id="'+t.id+'">' +
+        '<input type="checkbox" data-role="check" '+(t.done?'checked':'')+'>' +
+        '<button class="star-btn '+(t.milestone?'':'off')+'" data-role="star">⭐</button>' +
+        '<span class="task-text '+(t.done?'done':'')+'">'+escapeHtml(t.text)+'</span>' +
+        sourceTagHtml(t) +
+        '<button class="del-btn" data-role="remove">✕</button>' +
+      '</div>';
+  }
+
   function renderRoomTasks(catId){
     var room = document.querySelector('.room[data-cat="'+catId+'"]');
     var list = room.querySelector('[data-role="list"]');
     var status = room.querySelector('[data-role="status"]');
+    var cat = CAT_BY_ID[catId];
     var tasks = tasksForCategory(catId);
-    var bodyHtml = '';
-    if(tasks.length === 0){
-      bodyHtml = '<div class="empty-msg">No tasks yet — add some this morning.</div>';
-      status.textContent = '';
-    } else {
-      var doneCount = tasks.filter(function(t){ return t.done; }).length;
-      status.textContent = doneCount + '/' + tasks.length;
-      bodyHtml = tasks.map(function(t){
-        return '' +
-          '<div class="task-row" data-id="'+t.id+'">' +
-            '<input type="checkbox" data-role="check" '+(t.done?'checked':'')+'>' +
-            '<button class="star-btn '+(t.milestone?'':'off')+'" data-role="star">⭐</button>' +
-            '<span class="task-text '+(t.done?'done':'')+'">'+escapeHtml(t.text)+'</span>' +
-            '<button class="del-btn" data-role="remove">✕</button>' +
-          '</div>';
+    status.textContent = tasks.length ? (tasks.filter(function(t){ return t.done; }).length + '/' + tasks.length) : '';
+    var bodyHtml;
+    if(cat.subsections){
+      // Two labeled sub-sections sharing this one fish count and star row —
+      // the split is display-only grouping, never a second category. Shown
+      // whether or not either side has tasks yet, since it's a fixed part
+      // of this card's layout, not something that appears once populated.
+      bodyHtml = cat.subsections.map(function(sub){
+        var subTasks = sortUncheckedFirst(tasks.filter(function(t){ return (t.sub || 'outreach') === sub.id; }));
+        var rows = subTasks.length
+          ? subTasks.map(taskRowHtml).join('')
+          : '<div class="empty-msg">Nothing here yet.</div>';
+        var inlineHtml = sub.id === 'outreach' ? '<div class="outreach-inline" id="outreachInline"></div>' : '';
+        return '<div class="task-subsection"><h4>'+escapeHtml(sub.label)+'</h4>'+rows+inlineHtml+'</div>';
       }).join('');
-    }
-    if(catId === 'job'){
-      bodyHtml += '<div class="outreach-inline" id="outreachInline"></div>';
+    } else if(tasks.length === 0){
+      bodyHtml = '<div class="empty-msg">No tasks yet — use the + Add tasks button above.</div>';
+    } else {
+      bodyHtml = sortUncheckedFirst(tasks).map(taskRowHtml).join('');
     }
     list.innerHTML = bodyHtml;
     if(catId === 'job') renderOutreachInline();
@@ -1123,6 +1229,20 @@
     return 'https://docs.google.com/spreadsheets/d/' + OUTREACH_SHEET_ID + '/gviz/tq?tqx=out:json&sheet=' + encodeURIComponent(OUTREACH_TAB);
   }
 
+  function loadOutreachSeen(){ return safeParse(localStorage.getItem(OUTREACH_SEEN_KEY), []); }
+  function saveOutreachSeen(list){
+    // Capped so this can't grow forever — only the most recent rows matter
+    // for dedup, since older ones are vanishingly unlikely to reappear.
+    localStorage.setItem(OUTREACH_SEEN_KEY, JSON.stringify(list.slice(-500)));
+  }
+  // No stable row id in this sheet (see fetchOutreach) — the full row's
+  // content is the closest thing to one. Only changes if the row itself is
+  // edited later, which is an acceptable rare edge case, not a schema this
+  // app controls.
+  function outreachRowKey(row){
+    return (row.c || []).map(function(c){ return c ? c.v : ''; }).join('|');
+  }
+
   function fetchOutreach(){
     outreachData = { ok:false, loading:true };
     renderOutreachInline();
@@ -1140,6 +1260,7 @@
       var reachedOutIdx = cols.findIndex(function(c){ return c.indexOf('reached out') !== -1; });
       if(reachedOutIdx === -1) throw new Error('Could not find a "Date Reached Out" column in that sheet.');
       var sent = 0, replied = 0;
+      var reachedRows = [];
       // The tracker is agent-maintained: a row only exists once the scheduled job
       // finds a real conversation, so "Sent" is just "has a Date Reached Out" —
       // there's no planned-but-not-sent state to filter out by status text.
@@ -1148,16 +1269,57 @@
         var reachedOut = reachedCell && reachedCell.v !== null && reachedCell.v !== '';
         if(!reachedOut) return;
         sent++;
+        reachedRows.push(row);
         var statusCell = row.c && row.c[statusIdx];
         var status = (statusCell && statusCell.v ? String(statusCell.v) : '').trim().toLowerCase();
         if(OUTREACH_REPLIED_STATUSES.indexOf(status) !== -1) replied++;
       });
       outreachData = { ok:true, loading:false, sent:sent, replied:replied };
       renderOutreachInline();
+      autoLogNewOutreach(reachedRows);
     }).catch(function(err){
       outreachData = { ok:false, loading:false, error: err.message };
       renderOutreachInline();
+      // Sheet unreachable — skip silently, no retry loop, no auto-logged tasks.
     });
+  }
+
+  // Adds an already-done task to Job Search & Applications (Outreach & Leads
+  // sub-section) for each sheet row with a "Date Reached Out" this browser
+  // hasn't already turned into a task, so the two views agree without
+  // double-counting on every subsequent fetch.
+  function autoLogNewOutreach(reachedRows){
+    // First time this browser has ever fetched the sheet: every existing row
+    // is "new" relative to an empty seen-list, but backfilling the entire
+    // sheet's history as tasks on first load isn't what "new activity" means
+    // here. Capture everything already there as the baseline, silently, and
+    // only auto-log rows that show up after this point.
+    var isFirstEverFetch = localStorage.getItem(OUTREACH_SEEN_KEY) === null;
+    var seen = loadOutreachSeen();
+    if(isFirstEverFetch){
+      saveOutreachSeen(reachedRows.map(outreachRowKey));
+      return;
+    }
+    var seenSet = {};
+    seen.forEach(function(k){ seenSet[k] = true; });
+    var added = false;
+    reachedRows.forEach(function(row){
+      var key = outreachRowKey(row);
+      if(seenSet[key]) return;
+      seenSet[key] = true;
+      seen.push(key);
+      currentDay.tasks.push({
+        id: makeId('t'), text: 'Reached out (auto-logged from tracker)',
+        category: 'job', sub: 'outreach', done: true, milestone: false,
+        recurringId: null, createdAt: Date.now(), source: 'outreach-auto'
+      });
+      added = true;
+    });
+    if(added){
+      saveOutreachSeen(seen);
+      saveDay(currentDay);
+      renderAll();
+    }
   }
 
   function renderOutreachInline(){
@@ -1409,6 +1571,11 @@
     hub: 'sprites/hub.png',
     job: 'sprites/job.png',
     cv: 'sprites/cv.png',
+    // Compiler has no real art yet — this is a plain placeholder (dashed
+    // border + "PLACEHOLDER" banner baked into the image itself so it can
+    // never be mistaken for finished art) — swap sprites/learning.png for a
+    // real character sprite whenever one exists.
+    learning: 'sprites/learning.png',
     portfolio: 'sprites/portfolio.png',
     backpack: 'sprites/backpack.png',
     budget: 'sprites/budget.png',
@@ -1421,14 +1588,25 @@
     CHAR_SPRITE_IMAGES[id] = img;
   });
 
+  // entrance: where this character waits in the shared hallway when not
+  // needed in their room (arrival/departure state machine below) — one
+  // shared corridor row (y:460, matching the hub's own y), spread across x
+  // so everyone "off the clock" at once doesn't stack on top of each other.
   var CHARACTERS_RAW = [
     { id:'hub', catId:'hub', name:'GaYeon', seat:{x:190,y:460}, walkTarget:{x:235,y:460} },
-    { id:'job', catId:'job', name:'Scout', seat:{x:210,y:295}, walkTarget:{x:210,y:335} },
-    { id:'cv', catId:'cv', name:'Editor', seat:{x:1180,y:295}, walkTarget:{x:1180,y:335} },
-    { id:'portfolio', catId:'portfolio', name:'Builder', seat:{x:270,y:705}, walkTarget:{x:270,y:745} },
-    { id:'backpack', catId:'backpack', name:'Storyteller', seat:{x:855,y:275}, walkTarget:{x:855,y:315} },
-    { id:'budget', catId:'budget', name:'Ledger', seat:{x:755,y:705}, walkTarget:{x:755,y:745} },
-    { id:'health', catId:'health', name:'Stride', seat:{x:1215,y:735}, walkTarget:{x:1215,y:695} }
+    { id:'job', catId:'job', name:'Scout', seat:{x:210,y:295}, walkTarget:{x:210,y:360}, entrance:{x:350,y:460} },
+    // Editor moved into the second desk of the (already two-desk) Job Search
+    // room art when Job Search + CV & Applications merged into one room;
+    // sprite id stays 'cv' since it's just an asset filename (sprites/cv.png)
+    // and both characters now share catId 'job'.
+    { id:'cv', catId:'job', name:'Editor', seat:{x:350,y:295}, walkTarget:{x:350,y:360}, entrance:{x:520,y:460} },
+    // Compiler occupies the desk Editor vacated — same room art (reused
+    // as-is), now labeled Learning & Development.
+    { id:'learning', catId:'learning', name:'Compiler', seat:{x:1180,y:295}, walkTarget:{x:1180,y:360}, entrance:{x:690,y:460} },
+    { id:'portfolio', catId:'portfolio', name:'Builder', seat:{x:270,y:705}, walkTarget:{x:270,y:770}, entrance:{x:860,y:460} },
+    { id:'backpack', catId:'backpack', name:'Storyteller', seat:{x:855,y:275}, walkTarget:{x:855,y:340}, entrance:{x:1030,y:460} },
+    { id:'budget', catId:'budget', name:'Ledger', seat:{x:755,y:705}, walkTarget:{x:755,y:770}, entrance:{x:1200,y:460} },
+    { id:'health', catId:'health', name:'Stride', seat:{x:1215,y:735}, walkTarget:{x:1215,y:670}, entrance:{x:1370,y:460} }
   ];
 
   var CHARACTERS = [];
@@ -1443,10 +1621,68 @@
   function roomAllDone(catId){ if(catId === 'hub') return false; var t = tasksForCategory(catId); return t.length > 0 && t.every(function(x){ return x.done; }); }
   function roomPending(catId){ return roomHasTasks(catId) && !roomAllDone(catId); }
 
+  /* ===================== Arrival/departure state machine =====================
+     Each non-hub character lives in one of five phases, driven purely by
+     whether their room currently has pending (unchecked) work:
+       not-arrived -> arriving -> working-wandering -> leaving -> home
+                         ^_____________________________________|
+     home and not-arrived render identically (idle at the shared hallway
+     entrance point) — kept as separate names because they mean different
+     things (never worked yet vs. sent home once already), which is worth
+     keeping visible in code even though today nothing else reads it.
+     GaYeon (catId 'hub') is excluded entirely: Captain's Quarters isn't
+     driven by a task category, so she's always present, unaffected by this. */
+  var ARRIVAL_MS = 2200;
+  var charLifecycle = {};
+  function lifecycleFor(ch){
+    var l = charLifecycle[ch.id];
+    if(!l){
+      // Never animate an arrival on first page load just because a task
+      // already existed before this session started — only phase changes
+      // that happen live should walk the hallway.
+      l = { phase: roomPending(ch.catId) ? 'working-wandering' : 'not-arrived', since: Date.now(), from:null, to:null };
+      charLifecycle[ch.id] = l;
+    }
+    return l;
+  }
+  function easeInOut(frac){ return Math.sin(Math.min(1,Math.max(0,frac)) * Math.PI/2); }
+  function lerpPoint(a, b, frac){ return { x: a.x + (b.x-a.x)*frac, y: a.y + (b.y-a.y)*frac }; }
+  function updateLifecycle(ch, now){
+    var l = lifecycleFor(ch);
+    var pending = roomPending(ch.catId);
+    if((l.phase === 'not-arrived' || l.phase === 'home') && pending){
+      l.phase = 'arriving';
+      l.from = ch.entrance;
+      l.to = ch.seat;
+      l.since = now;
+    } else if(l.phase === 'working-wandering' && !pending){
+      l.phase = 'leaving';
+      l.from = ch.seat;
+      l.to = ch.entrance;
+      l.since = now;
+    } else if(l.phase === 'arriving' && !pending){
+      // Task got checked back off (or removed) mid-walk-in — turn around
+      // from wherever they currently are instead of finishing the arrival
+      // first, so the reversal reads as one continuous turn, not a snap.
+      var cur = lerpPoint(l.from, l.to, easeInOut((now-l.since)/ARRIVAL_MS));
+      l.phase = 'leaving'; l.from = cur; l.to = ch.entrance; l.since = now;
+    } else if(l.phase === 'leaving' && pending){
+      var cur2 = lerpPoint(l.from, l.to, easeInOut((now-l.since)/ARRIVAL_MS));
+      l.phase = 'arriving'; l.from = cur2; l.to = ch.seat; l.since = now;
+    } else if(l.phase === 'arriving' && now-l.since >= ARRIVAL_MS){
+      l.phase = 'working-wandering'; l.since = now;
+    } else if(l.phase === 'leaving' && now-l.since >= ARRIVAL_MS){
+      l.phase = 'home'; l.since = now;
+    }
+    return l;
+  }
+
   function charPosition(ch, tick){
     var cycle = 420;
     var t = (tick + ch.phaseOffset) % cycle;
-    var deskFrac = 0.62;
+    // Less time paused at the desk, more time actually wandering (widened
+    // walkTarget deltas in CHARACTERS_RAW do the rest) — a more active office.
+    var deskFrac = 0.4;
     if(t < cycle*deskFrac){
       return { x: ch.seat.x, y: ch.seat.y, atDesk:true };
     }
@@ -1484,6 +1720,77 @@
     }
   }
 
+  /* ===================== Character tips (canned + real AI) ===================== */
+
+  var CANNED_TIP_CHANCE = 0.12; // "rarely" — checked once per wander-out excursion, not per frame
+  var CANNED_TIP_MS = 4200;
+  var lastCharPos = {};
+  var lastAtDesk = {};
+  var activeBubbleCharId = null; // only one bubble on screen at a time
+
+  function bubbleLayer(){ return document.getElementById('officeBubbleLayer'); }
+  function positionBubble(el, x, y){
+    el.style.left = (x / OFFICE_W * 100) + '%';
+    el.style.top = (y / OFFICE_H * 100) + '%';
+  }
+  function clearBubble(){
+    var layer = bubbleLayer();
+    if(layer) layer.innerHTML = '';
+    activeBubbleCharId = null;
+  }
+  function showCannedTip(ch, x, y){
+    if(activeBubbleCharId) return; // don't stack bubbles
+    var cat = CAT_BY_ID[ch.catId];
+    if(!cat || !cat.tips || !cat.tips.length) return;
+    var layer = bubbleLayer();
+    if(!layer) return;
+    var el = document.createElement('div');
+    el.className = 'tip-bubble';
+    el.textContent = cat.tips[Math.floor(Math.random()*cat.tips.length)];
+    positionBubble(el, x, y);
+    layer.innerHTML = '';
+    layer.appendChild(el);
+    activeBubbleCharId = ch.id;
+    setTimeout(function(){ if(activeBubbleCharId === ch.id) clearBubble(); }, CANNED_TIP_MS);
+  }
+  function requestAiTip(ch, x, y){
+    var cat = CAT_BY_ID[ch.catId];
+    if(!cat) return;
+    var layer = bubbleLayer();
+    if(!layer) return;
+    var el = document.createElement('div');
+    el.className = 'tip-bubble loading';
+    el.textContent = 'Asking Base…';
+    positionBubble(el, x, y);
+    layer.innerHTML = '';
+    layer.appendChild(el);
+    activeBubbleCharId = ch.id;
+    var goalsState = ensureGoals();
+    var roomTasks = tasksForCategory(ch.catId);
+    var question = 'Give me one short, genuinely useful tip for ' + cat.name +
+      ' today — something concretely useful given my current tasks in this category, not a generic or motivational one.';
+    fetch('/api/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: question, goals: goalsState.goals, todayTasks: roomTasks })
+    }).then(function(res){
+      return res.json().then(function(data){ return { status: res.status, data: data }; });
+    }).then(function(r){
+      if(activeBubbleCharId !== ch.id) return; // dismissed or replaced while in flight
+      if(r.data && r.data.ok){
+        el.className = 'tip-bubble';
+        el.textContent = r.data.answer;
+      } else {
+        el.className = 'tip-bubble err';
+        el.textContent = (r.data && r.data.error) || ('Request failed (HTTP ' + r.status + ').');
+      }
+    }).catch(function(){
+      if(activeBubbleCharId !== ch.id) return;
+      el.className = 'tip-bubble err';
+      el.textContent = "Can't reach Base. Make sure the local server is running: npm run server (then open this page via http://localhost:8787/daily_hq.html, not as a file).";
+    });
+  }
+
   function drawOfficeDynamic(tick){
     var canvas = document.getElementById('officeCanvas');
     if(!canvas) return;
@@ -1492,19 +1799,41 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(staticCanvas, 0, 0);
 
+    var now = Date.now();
     CHARACTERS.forEach(function(ch){
-      var hasTasks = roomHasTasks(ch.catId);
-      var allDone = roomAllDone(ch.catId);
       var pos, state = { tick: tick };
-      if(!hasTasks){
-        pos = { x: ch.seat.x, y: ch.seat.y };
-      } else if(allDone){
-        pos = { x: ch.seat.x, y: ch.seat.y };
-        state.happy = true;
+      if(ch.catId === 'hub'){
+        // GaYeon is always present in Captain's Quarters — no task category
+        // drives her, so she's outside the arrival/departure system entirely.
+        if(roomAllDone(ch.catId)){ pos = { x: ch.seat.x, y: ch.seat.y }; state.happy = true; }
+        else if(roomHasTasks(ch.catId)){ pos = charPosition(ch, tick); state.working = pos.atDesk; }
+        else pos = { x: ch.seat.x, y: ch.seat.y };
       } else {
-        pos = charPosition(ch, tick);
-        state.working = pos.atDesk;
+        var l = updateLifecycle(ch, now);
+        if(l.phase === 'not-arrived' || l.phase === 'home'){
+          pos = { x: ch.entrance.x, y: ch.entrance.y };
+        } else if(l.phase === 'leaving'){
+          // Room just went all-done (that's the only thing that triggers
+          // leaving) — sparkle on the walk out instead of pausing at the
+          // desk first, so finishing the last task reads as a celebration,
+          // not a delay before heading home.
+          pos = lerpPoint(l.from, l.to, easeInOut((now-l.since)/ARRIVAL_MS));
+          state.happy = true;
+        } else if(l.phase === 'arriving'){
+          pos = lerpPoint(l.from, l.to, easeInOut((now-l.since)/ARRIVAL_MS));
+        } else {
+          pos = charPosition(ch, tick);
+          state.working = pos.atDesk;
+          // A canned tip, rarely, right as a wander-out excursion begins
+          // (the atDesk:true -> false edge) — never while just sitting,
+          // never every single cycle.
+          if(lastAtDesk[ch.id] === true && !pos.atDesk && Math.random() < CANNED_TIP_CHANCE){
+            showCannedTip(ch, pos.x, pos.y);
+          }
+        }
       }
+      lastAtDesk[ch.id] = !!pos.atDesk;
+      lastCharPos[ch.id] = pos;
       drawCharacterSprite(ctx, ch, pos.x, pos.y, state);
     });
 
@@ -1526,13 +1855,13 @@
   var ROOM_RECTS = {
     job:       { x1:60,  y1:60,  x2:505,  y2:370 },
     backpack:  { x1:520, y1:60,  x2:965,  y2:370 },
-    cv:        { x1:985, y1:60,  x2:1465, y2:370 },
+    learning:  { x1:985, y1:60,  x2:1465, y2:370 },
     portfolio: { x1:60,  y1:510, x2:505,  y2:830 },
     budget:    { x1:520, y1:510, x2:965,  y2:830 },
     health:    { x1:985, y1:510, x2:1465, y2:830 },
     hub:       { x1:100, y1:400, x2:280,  y2:500 }
   };
-  var ROOM_LABELS = { job:'Job Search', cv:'CV & Applications', portfolio:'Portfolio Site', backpack:'Backpack Content', budget:'Budget & Life', health:'Health', hub:"Captain's Quarters" };
+  var ROOM_LABELS = { job:'Job Search & Applications', learning:'Learning & Development', portfolio:'Portfolio Site', backpack:'Backpack Content', budget:'Budget & Life', health:'Health', hub:"Captain's Quarters" };
   var hoveredRoomId = null;
 
   function canvasPointFromEvent(canvas, evt){
@@ -1547,6 +1876,17 @@
     Object.keys(ROOM_RECTS).forEach(function(id){
       var r = ROOM_RECTS[id];
       if(pt.x >= r.x1 && pt.x <= r.x2 && pt.y >= r.y1 && pt.y <= r.y2) found = id;
+    });
+    return found;
+  }
+  function characterAtPoint(pt){
+    var hitRadius = 65;
+    var found = null, bestDist = hitRadius;
+    CHARACTERS.forEach(function(ch){
+      var pos = lastCharPos[ch.id];
+      if(!pos) return;
+      var d = Math.hypot(pt.x - pos.x, pt.y - pos.y);
+      if(d <= bestDist){ bestDist = d; found = ch; }
     });
     return found;
   }
@@ -1565,8 +1905,15 @@
       canvas.title = '';
     });
     canvas.addEventListener('click', function(e){
-      var id = roomAtPoint(canvasPointFromEvent(canvas, e));
-      if(!id) return;
+      var pt = canvasPointFromEvent(canvas, e);
+      var ch = characterAtPoint(pt);
+      if(ch && ch.catId !== 'hub'){
+        var pos = lastCharPos[ch.id];
+        requestAiTip(ch, pos.x, pos.y);
+        return;
+      }
+      var id = roomAtPoint(pt);
+      if(!id){ clearBubble(); return; }
       var card = document.querySelector('.room[data-cat="'+id+'"]');
       if(!card) return;
       card.scrollIntoView({ behavior:'smooth', block:'center' });
@@ -1595,6 +1942,7 @@
   }
 
   document.getElementById('trophyBtn').addEventListener('click', openTrophyShelf);
+  document.getElementById('addTasksBtn').addEventListener('click', openDailyEntryModal);
   function openTrophyShelf(){
     var trophies = [];
     allDayDates().forEach(function(d){
@@ -1688,7 +2036,7 @@
         '<div class="modal">' +
           '<button class="close-x icon-btn" id="closeDailyEntryModal">✕</button>' +
           '<h2>What are you fishing for today?</h2>' +
-          '<p style="color:var(--text-dim); font-size:14px;">One task per line. Skip this if you\'d rather add them later — the same box is further down the page.</p>' +
+          '<p style="color:var(--text-dim); font-size:14px;">One task per line. Skip this if you\'d rather add them later — the "+ Add tasks" button near the top reopens this any time.</p>' +
           '<textarea id="dailyEntryInput" placeholder="e.g. Review today\'s leads&#10;30 min run&#10;Draft backpack post idea"></textarea>' +
           '<div style="margin-top:8px; display:flex; gap:8px;">' +
             '<button class="primary" id="dailyEntryPreviewBtn">Preview tasks →</button>' +
@@ -1698,9 +2046,44 @@
           '<div id="dailyEntryConfirmRow" class="hidden" style="margin-top:8px;">' +
             '<button class="pink" id="dailyEntryConfirmBtn">Add to today\'s list</button>' +
           '</div>' +
+          '<div id="dailyEntryLeftoverBox" class="hidden" style="margin-top:18px; border-top:2px dashed var(--border); padding-top:12px;">' +
+            '<h3 style="margin:0 0 6px;">From yesterday (unchecked)</h3>' +
+            '<div id="dailyEntryLeftoverList"></div>' +
+          '</div>' +
         '</div>' +
       '</div>';
     document.getElementById('modalRoot').innerHTML = html;
+
+    function renderDailyEntryLeftovers(){
+      var prevDay = loadDay(addDays(today, -1));
+      var undone = prevDay.tasks.filter(function(t){ return !t.done; });
+      var box = document.getElementById('dailyEntryLeftoverBox');
+      var list = document.getElementById('dailyEntryLeftoverList');
+      if(undone.length === 0){ box.classList.add('hidden'); return; }
+      box.classList.remove('hidden');
+      list.innerHTML = undone.map(function(t){
+        var cat = CAT_BY_ID[t.category];
+        return '' +
+          '<div class="leftover-row" data-id="'+t.id+'">' +
+            '<span>'+(t.milestone?'⭐ ':'')+escapeHtml(t.text)+' <span class="cat-tag">'+(cat?cat.icon+' '+cat.name:'')+'</span></span>' +
+            '<button class="icon-btn" data-role="addleftover">+ add to today</button>' +
+          '</div>';
+      }).join('');
+    }
+    renderDailyEntryLeftovers();
+    document.getElementById('dailyEntryLeftoverList').addEventListener('click', function(e){
+      if(e.target.dataset.role !== 'addleftover') return;
+      var row = e.target.closest('.leftover-row');
+      var prevDay = loadDay(addDays(today, -1));
+      var t = prevDay.tasks.find(function(x){ return x.id === row.dataset.id; });
+      if(!t) return;
+      var task = { id: makeId('t'), text: t.text, category: t.category, done:false, milestone: t.milestone, recurringId:null, createdAt: Date.now() };
+      if(task.category === 'job') task.sub = t.sub || detectJobSub(t.text);
+      currentDay.tasks.push(task);
+      saveDay(currentDay);
+      renderAll();
+      renderDailyEntryLeftovers();
+    });
 
     function renderDailyEntryPreview(){
       var box = document.getElementById('dailyEntryPreviewList');
@@ -1752,7 +2135,9 @@
           else{ tpl = { id: makeId('rec'), text: p.text, category: p.category, active:true }; recurring.push(tpl); recurringId = tpl.id; }
           recurringChanged = true;
         }
-        currentDay.tasks.push({ id: makeId('t'), text: p.text, category: p.category, done:false, milestone: p.milestone, recurringId: recurringId, createdAt: Date.now() });
+        var task = { id: makeId('t'), text: p.text, category: p.category, done:false, milestone: p.milestone, recurringId: recurringId, createdAt: Date.now() };
+        if(p.category === 'job') task.sub = detectJobSub(p.text);
+        currentDay.tasks.push(task);
       });
       var skipped = dailyEntryPreview.filter(function(p){ return !p.category; }).length;
       saveDay(currentDay);
@@ -1917,8 +2302,6 @@
 
   function renderAll(){
     renderHUD();
-    renderPreview();
-    renderLeftovers();
     renderAllRoomTasks();
     renderHubBody();
     renderDayProgress();
@@ -1942,6 +2325,11 @@
 
   buildFloorplan();
   var pendingReviewDate = initDayRollover();
+  // The on-disk file (local server only) is the source of truth when it
+  // exists — pull it into localStorage before anything else reads today's
+  // data, so a task logged directly to the file (by a Claude Code session,
+  // or by this same browser earlier) is never stale relative to it.
+  syncDayFromServer(today).then(function(){
   currentDay = loadDay(today);
   applyRecurring();
   currentDay = loadDay(today);
@@ -1972,6 +2360,16 @@
   } else {
     afterOpeningReview();
   }
+
+  // Re-syncs on refocus so a task logged straight to the file — by a
+  // Claude Code session, typically — while this tab was already open
+  // shows up without needing a manual reload.
+  window.addEventListener('focus', function(){
+    syncDayFromServer(today).then(function(changed){
+      if(changed){ currentDay = loadDay(today); renderAll(); }
+    });
+  });
+  });
 
 })();
 </script>
