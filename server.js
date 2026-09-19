@@ -22,7 +22,11 @@ app.disable('etag');
    exists when this server is running; the static GitHub Pages build has
    no backend and falls back to localStorage alone. */
 
-const DATA_DIR = path.join(__dirname, 'data');
+// Overridable so the Electron desktop app can point this at its userData
+// directory (survives app updates, sits outside the installed bundle)
+// instead of a folder next to the source — `npm run server` is unaffected
+// and keeps using ./data exactly as before.
+const DATA_DIR = process.env.DAILYHQ_DATA_DIR || path.join(__dirname, 'data');
 
 function todayStr(){
   var d = new Date();
@@ -39,6 +43,7 @@ function loadDayFile(dateStr){
     var day = JSON.parse(raw);
     if(!Array.isArray(day.tasks)) day.tasks = [];
     migrateJobCvMerge(day);
+    migratePortfolioBackpackMerge(day);
     return day;
   } catch(e){
     return defaultDay(dateStr);
@@ -46,7 +51,7 @@ function loadDayFile(dateStr){
 }
 
 // Mirrors the same migration in daily_hq.html's loadDay(): 'cv' was its own
-// category before Job Search + CV & Applications merged, now it's the
+// category before Job Hunt + CV & Applications merged, now it's the
 // "Applications" sub-section of 'job' — remap on read so old files on disk
 // still make sense instead of referencing a category that no longer exists.
 function migrateJobCvMerge(day){
@@ -56,6 +61,18 @@ function migrateJobCvMerge(day){
       t.sub = 'applications';
     } else if(t.category === 'job' && !t.sub){
       t.sub = detectJobSub(t.text);
+    }
+  });
+}
+// Same pattern for the Content Building merge: 'backpack' was its own
+// category before, now it's the "Content" sub-section of 'portfolio'.
+function migratePortfolioBackpackMerge(day){
+  day.tasks.forEach(function(t){
+    if(t.category === 'backpack'){
+      t.category = 'portfolio';
+      t.sub = 'content';
+    } else if(t.category === 'portfolio' && !t.sub){
+      t.sub = 'portfolio';
     }
   });
 }
@@ -75,16 +92,19 @@ function saveDayFile(dateStr, day){
 // ("log that I applied to the Google PM role") should read the sentence
 // and pass the right category itself — it has context this heuristic
 // doesn't.
-// Job Search and CV & Applications are one category now ('job'); the old
+// Job Hunt and CV & Applications are one category now ('job'); the old
 // 'cv' keywords still count toward it, just via JOB_SUB_KEYWORDS below,
 // which additionally decides its "Outreach & Leads" vs "Applications"
-// sub-section for display.
+// sub-section for display. Same for 'portfolio' (Content Building), whose
+// old 'backpack' keywords now decide the "Portfolio" vs "Content" sub via
+// CONTENT_SUB_KEYWORDS.
 var CATEGORY_KEYWORDS = {
   job: ['job','jobs','posting','postings','role','roles','shortlist','linkedin','indeed','recruiter','apply for','pm role','pmm role','opening','openings','lead','leads','cv','resume','résumé','cover letter','tailor','application draft','submit application','cover ltr','applied','application'],
   learning: ['certification','certified','course','learn','learning','build','side project','app','anthropic','skill','study'],
-  portfolio: ['portfolio','webflow','lovable','site','website','page copy','landing page'],
-  backpack: ['backpack','blog','post idea','content','draft post','newsletter','write about','write a post'],
-  budget: ['budget','runway','rent','lease','seattle','move','moving','expenses','savings','spreadsheet','bank'],
+  portfolio: ['portfolio','webflow','lovable','site','website','page copy','landing page','backpack','blog','post idea','content','draft post','newsletter','write about','write a post'],
+  // Broadened beyond pure finance to general life upkeep, per the Life
+  // Admin rename — appointments/paperwork/errands, not just money.
+  budget: ['budget','runway','rent','lease','seattle','move','moving','expenses','savings','spreadsheet','bank','appointment','paperwork','errand','errands','insurance','doctor','dentist','dmv','renew','renewal','license','passport','taxes','bills','mail','forms','registration'],
   health: ['run','running','yoga','workout','gym','walk','stretch','exercise','swim','bike','pilates','lift']
 };
 var VALID_CATEGORIES = Object.keys(CATEGORY_KEYWORDS);
@@ -116,6 +136,18 @@ function detectJobSub(text){
   JOB_SUB_KEYWORDS.applications.forEach(function(kw){ if(lower.indexOf(kw) !== -1) appScore++; });
   JOB_SUB_KEYWORDS.outreach.forEach(function(kw){ if(lower.indexOf(kw) !== -1) outScore++; });
   return appScore > outScore ? 'applications' : 'outreach';
+}
+
+var CONTENT_SUB_KEYWORDS = {
+  portfolio: ['portfolio','webflow','lovable','site','website','page copy','landing page'],
+  content: ['backpack','blog','post idea','content','draft post','newsletter','write about','write a post']
+};
+function detectContentSub(text){
+  var lower = (text || '').toLowerCase();
+  var portScore = 0, contScore = 0;
+  CONTENT_SUB_KEYWORDS.portfolio.forEach(function(kw){ if(lower.indexOf(kw) !== -1) portScore++; });
+  CONTENT_SUB_KEYWORDS.content.forEach(function(kw){ if(lower.indexOf(kw) !== -1) contScore++; });
+  return contScore > portScore ? 'content' : 'portfolio';
 }
 
 app.get('/api/day', function(req, res){
@@ -174,6 +206,7 @@ app.post('/api/log-task', function(req, res){
     source: 'claude-code'
   };
   if(category === 'job') task.sub = req.body && (req.body.sub === 'applications' || req.body.sub === 'outreach') ? req.body.sub : detectJobSub(text);
+  else if(category === 'portfolio') task.sub = req.body && (req.body.sub === 'portfolio' || req.body.sub === 'content') ? req.body.sub : detectContentSub(text);
   day.tasks.push(task);
   saveDayFile(date, day);
   return res.json({ ok:true, task: task, day: day });
@@ -208,6 +241,28 @@ function buildPrompt(question, goals, todayTasks){
   return parts.join('\n');
 }
 
+// A GUI-launched app (double-clicked from Finder, or Electron's main
+// process) doesn't inherit a Terminal's PATH — nvm/homebrew/etc. shims that
+// put `claude` on PATH in a shell session are typically missing, so a plain
+// execFile('claude', ...) fails with ENOENT there even though the exact
+// same command works fine from Terminal. Resolve the real path once via a
+// login shell (which sources the user's actual shell profile) and cache it;
+// every actual invocation still goes through execFile with an argument
+// array, never a shell string, so user-provided prompt text is never at
+// risk of shell injection.
+var resolvedClaudeBinPromise = null;
+function resolveClaudeBin(){
+  if(resolvedClaudeBinPromise) return resolvedClaudeBinPromise;
+  resolvedClaudeBinPromise = new Promise(function(resolve){
+    var shell = process.env.SHELL || '/bin/zsh';
+    execFile(shell, ['-lic', 'command -v claude'], { timeout: 10000 }, function(err, stdout){
+      var found = (stdout || '').trim().split('\n').pop();
+      resolve(found && !err ? found : 'claude'); // fall back to plain PATH lookup
+    });
+  });
+  return resolvedClaudeBinPromise;
+}
+
 app.post('/api/ask', function(req, res){
   var question = (req.body && req.body.question || '').trim();
   if(!question){
@@ -229,30 +284,44 @@ app.post('/api/ask', function(req, res){
     prompt
   ];
 
-  execFile('claude', args, { timeout: 55000, maxBuffer: 10 * 1024 * 1024 }, function(err, stdout, stderr){
-    if(err){
-      if(err.code === 'ENOENT'){
-        return res.status(500).json({ ok:false, error:'The "claude" CLI isn\'t installed or not on PATH on this machine. Install Claude Code CLI to use this feature.' });
+  resolveClaudeBin().then(function(claudeBin){
+    execFile(claudeBin, args, { timeout: 55000, maxBuffer: 10 * 1024 * 1024 }, function(err, stdout, stderr){
+      if(err){
+        if(err.code === 'ENOENT'){
+          return res.status(500).json({ ok:false, error:'The "claude" CLI isn\'t installed or not on PATH on this machine. Install Claude Code CLI to use this feature.' });
+        }
+        if(err.killed || err.signal){
+          return res.status(504).json({ ok:false, error:'The request to Claude timed out.' });
+        }
+        var trimmedStderr = (stderr || '').trim();
+        return res.status(500).json({ ok:false, error: trimmedStderr ? ('Claude CLI error: ' + trimmedStderr.slice(0, 500)) : ('Claude CLI exited with an error (code ' + err.code + ').') });
       }
-      if(err.killed || err.signal){
-        return res.status(504).json({ ok:false, error:'The request to Claude timed out.' });
+      var parsed;
+      try{
+        parsed = JSON.parse(stdout);
+      } catch(parseErr){
+        return res.status(500).json({ ok:false, error:'Got an unreadable response from the Claude CLI.' });
       }
-      var trimmedStderr = (stderr || '').trim();
-      return res.status(500).json({ ok:false, error: trimmedStderr ? ('Claude CLI error: ' + trimmedStderr.slice(0, 500)) : ('Claude CLI exited with an error (code ' + err.code + ').') });
-    }
-    var parsed;
-    try{
-      parsed = JSON.parse(stdout);
-    } catch(parseErr){
-      return res.status(500).json({ ok:false, error:'Got an unreadable response from the Claude CLI.' });
-    }
-    if(parsed.is_error){
-      return res.status(500).json({ ok:false, error: parsed.result || 'Claude CLI reported an error.' });
-    }
-    return res.json({ ok:true, answer: parsed.result || '(empty response)' });
+      if(parsed.is_error){
+        return res.status(500).json({ ok:false, error: parsed.result || 'Claude CLI reported an error.' });
+      }
+      return res.json({ ok:true, answer: parsed.result || '(empty response)' });
+    });
   });
 });
 
-app.listen(PORT, function(){
-  console.log('BIG GY INC Daily HQ server running at http://localhost:' + PORT + '/daily_hq.html');
-});
+// Exported so the Electron main process can start this same server
+// in-process (folding the "local server" requirement into the desktop app
+// itself) instead of every caller needing its own `node server.js` in a
+// terminal. Only auto-starts on `node server.js` / `npm run server` — a
+// require() from Electron gets the app instance without a second listener.
+function startServer(port){
+  return app.listen(port || PORT, function(){
+    console.log('BIG GY INC Daily HQ server running at http://localhost:' + (port || PORT) + '/daily_hq.html');
+  });
+}
+module.exports = { app: app, startServer: startServer };
+
+if(require.main === module){
+  startServer(PORT);
+}

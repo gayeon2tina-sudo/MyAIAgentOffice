@@ -150,13 +150,14 @@
   .tip-bubble.loading{ color:var(--text-faint); font-style:italic; }
   .tip-bubble.err{ color:var(--danger); }
 
-  /* Room task panels */
+  /* Room task panels — 5 non-hub rooms since the Content Building merge;
+     "." is a deliberately empty grid cell, not a room that got missed. */
   .floorplan{
     display:grid;
     grid-template-columns: repeat(4, 1fr);
     grid-template-areas:
       "job learning portfolio hub"
-      "backpack budget health hub";
+      "budget health . hub";
     gap:0;
     border:5px solid var(--wall);
     border-radius:16px;
@@ -168,12 +169,12 @@
       grid-template-areas:
         "hub hub"
         "job learning"
-        "portfolio backpack"
-        "budget health"; }
+        "portfolio budget"
+        "health ."; }
   }
   @media (max-width:600px){
     .floorplan{ grid-template-columns: 1fr;
-      grid-template-areas: "hub" "job" "learning" "portfolio" "backpack" "budget" "health"; }
+      grid-template-areas: "hub" "job" "learning" "portfolio" "budget" "health"; }
   }
 
   .room{
@@ -185,7 +186,6 @@
   .room[data-cat="job"]{ grid-area:job; }
   .room[data-cat="learning"]{ grid-area:learning; }
   .room[data-cat="portfolio"]{ grid-area:portfolio; }
-  .room[data-cat="backpack"]{ grid-area:backpack; }
   .room[data-cat="budget"]{ grid-area:budget; }
   .room[data-cat="health"]{ grid-area:health; }
   .room.hub{ grid-area:hub; border-color:var(--gold); border-width:4px; background:var(--hub-bg); }
@@ -218,10 +218,11 @@
   .outreach-inline .nums{ color:var(--text); font-family:'Press Start 2P', monospace; font-size:11px; }
   .outreach-inline .err{ color:var(--danger); }
 
-  .hub-body{ padding:8px 12px 12px; flex:1; display:flex; flex-direction:column; gap:8px; color:#2a2010; }
+  .hub-body{ padding:8px 12px 12px; flex:1; display:flex; flex-direction:column; gap:6px; color:#2a2010; border-top:1px dashed rgba(138,90,0,0.35); margin-top:2px; padding-top:10px; }
   .hub-body h3{ color:#2a2010; }
-  .rank-line{ font-family:'Press Start 2P', monospace; font-size:11px; color:#8a5a00; }
-  .streak-line{ font-size:15px; }
+  .rank-current{ font-size:15px; font-weight:bold; }
+  .rank-line{ font-family:'Press Start 2P', monospace; font-size:10px; color:#8a5a00; line-height:1.5; }
+  .streak-line{ font-size:15px; padding-top:4px; border-top:1px dashed rgba(138,90,0,0.25); }
 
   .sparkle{ position:absolute; left:22px; top:0; font-size:16px; pointer-events:none; animation:sparkleUp .55s ease-out forwards; color:var(--accent-deep); font-weight:bold; }
   @keyframes sparkleUp{
@@ -403,7 +404,7 @@
   /* ===================== Config ===================== */
 
   var CATEGORIES = [
-    { id:'job', name:'Job Search & Applications', icon:'🎯', floor:'#dff7f5', accent:'#0aab8c',
+    { id:'job', name:'Job Hunt', icon:'🎯', floor:'#dff7f5', accent:'#0aab8c',
       lead:'Scout', member:'Editor',
       subsections:[
         { id:'outreach', label:'Outreach & Leads' },
@@ -420,7 +421,7 @@
         "Applying to fewer roles you're a strong fit for tends to beat applying to everything.",
         "A LinkedIn comment on the right post can work as well as a cold DM."
       ] },
-    { id:'learning', name:'Learning & Development', icon:'🎓', floor:'#fbe4ec', accent:'#e0397e',
+    { id:'learning', name:'L&D', icon:'🎓', floor:'#fbe4ec', accent:'#e0397e',
       lead:'Compiler',
       flavors:["Compiler shipped a small win.", "Compiler's still deep in it — no rush."],
       cursor:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20"><polygon points="10,3 18,7 10,11 2,7" fill="%23e0397e" stroke="%23222" stroke-width="1"/><line x1="10" y1="11" x2="10" y2="16" stroke="%23222" stroke-width="1.5"/></svg>',
@@ -433,35 +434,32 @@
         "Ten focused minutes on a real problem usually beats an hour of a passive video.",
         "It's fine to abandon a course that isn't working for you — that's information, not failure."
       ] },
-    { id:'portfolio', name:'Portfolio Site', icon:'🖼️', floor:'#ece5fb', accent:'#7c4fe0',
-      lead:'Builder', member:'Pixel',
-      flavors:["Builder added a beam.", "Pixel touched up a section."],
+    { id:'portfolio', name:'Content Building', icon:'🖼️', floor:'#ece5fb', accent:'#7c4fe0',
+      lead:'Builder', member:'Storyteller',
+      subsections:[
+        { id:'portfolio', label:'Portfolio' },
+        { id:'content', label:'Content' }
+      ],
+      flavors:["Builder added a beam.", "Storyteller lit up with an idea.", "Builder touched up a section.", "Storyteller double checked, all clear."],
       cursor:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20"><rect x="9" y="2" width="2" height="12" fill="%238a5a2b"/><rect x="3" y="1" width="10" height="5" rx="1" fill="%236b4fc9" stroke="%23222" stroke-width="1"/></svg>',
-      keywords:['portfolio','webflow','lovable','site','website','page copy','landing page'],
+      keywords:['portfolio','webflow','lovable','site','website','page copy','landing page','backpack','blog','post idea','content','draft post','newsletter','write about','write a post'],
       tips:[
         "One clear project explained well beats five projects listed without context.",
         "A visitor decides whether to keep reading in about five seconds — lead with your best work.",
         "Broken links are worse than no site at all. Worth a periodic click-through.",
         "Write captions like you're explaining it to someone who wasn't there.",
-        "It doesn't need to be finished to be useful — a 'currently building' note is fine."
-      ] },
-    { id:'backpack', name:'Backpack Content', icon:'🎒', floor:'#fdecd2', accent:'#e0821f',
-      lead:'Storyteller', member:'Spark',
-      flavors:["Spark lit up with an idea.", "Echo double checked, all clear."],
-      cursor:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20"><path d="M3 17 L14 3 Q17 2 16 5 L6 16 Q4 18 3 17 Z" fill="%23c97a2b" stroke="%23222" stroke-width="1"/></svg>',
-      keywords:['backpack','blog','post idea','content','draft post','newsletter','write about','write a post'],
-      tips:[
+        "It doesn't need to be finished to be useful — a 'currently building' note is fine.",
         "A rough draft posted beats a perfect draft that never leaves the folder.",
         "Write the headline last — it's easier once you know what the piece actually says.",
-        "One honest post about something you're figuring out tends to land better than ten polished ones.",
-        "Reusing an old idea from a different angle still counts as new content.",
-        "If you're stuck, try writing the ending first."
+        "One honest post about something you're figuring out tends to land better than ten polished ones."
       ] },
-    { id:'budget', name:'Budget & Life', icon:'💰', floor:'#e2f5e6', accent:'#2f9e56',
+    { id:'budget', name:'Life Admin', icon:'💰', floor:'#e2f5e6', accent:'#2f9e56',
       lead:'Ledger', member:'Coin',
       flavors:["Ledger tucked that away.", "Coin counted it twice."],
       cursor:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" fill="%23ffe066" stroke="%238a6a1a" stroke-width="1.5"/><text x="10" y="14" font-size="8" text-anchor="middle" fill="%238a6a1a">%24</text></svg>',
-      keywords:['budget','runway','rent','lease','seattle','move','moving','expenses','savings','spreadsheet','bank'],
+      // Broadened beyond pure finance to general life upkeep, per the
+      // Life Admin rename — appointments/paperwork/errands, not just money.
+      keywords:['budget','runway','rent','lease','seattle','move','moving','expenses','savings','spreadsheet','bank','appointment','paperwork','errand','errands','insurance','doctor','dentist','dmv','renew','renewal','license','passport','taxes','bills','mail','forms','registration'],
       tips:[
         "Checking the numbers even when they're bad is still progress — avoidance costs more than the number itself.",
         "A rough budget you actually look at beats a perfect spreadsheet you don't.",
@@ -499,9 +497,9 @@
   ];
 
   var GOAL_DEFAULTS = [
-    { id:'goal1', name:'Land the role', tag:'Job Search', onTrack:'', categories:['job'] },
-    { id:'goal2', name:'Personal brand is live', tag:'Portfolio & Content', onTrack:'', categories:['portfolio','backpack'] },
-    { id:'goal3', name:'Financially steady through the transition', tag:'Budget & Life', onTrack:'', categories:['budget'] }
+    { id:'goal1', name:'Land the role', tag:'Job Hunt', onTrack:'', categories:['job'] },
+    { id:'goal2', name:'Personal brand is live', tag:'Content Building', onTrack:'', categories:['portfolio'] },
+    { id:'goal3', name:'Financially steady through the transition', tag:'Life Admin', onTrack:'', categories:['budget'] }
   ];
 
   var OUTREACH_SHEET_ID = '1tcm4mRBQOAwXR1e96_oG2ZQm8j8VN1oSaA6KOzQFIGc';
@@ -549,9 +547,10 @@
     if(typeof day.note !== 'string') day.note = '';
     if(typeof day.reviewed !== 'boolean') day.reviewed = false;
     migrateJobCvMerge(day);
+    migratePortfolioBackpackMerge(day);
     return day;
   }
-  // One-time-per-load migration for the Job Search + CV & Applications merge:
+  // One-time-per-load migration for the Job Hunt + CV & Applications merge:
   // 'cv' was its own category before, now it's the "Applications" sub-section
   // of the merged 'job' category — remap so old history still makes sense
   // (still counts toward the same fish/star total it always did) instead of
@@ -564,6 +563,20 @@
         t.sub = 'applications';
       } else if(t.category === 'job' && !t.sub){
         t.sub = detectJobSub(t.text);
+      }
+    });
+  }
+  // Same pattern for the Content Building merge: 'backpack' was its own
+  // category before, now it's the "Content" sub-section of the merged
+  // 'portfolio' category. The old category IS the sub here — no keyword
+  // guessing needed, since we already know which side each task came from.
+  function migratePortfolioBackpackMerge(day){
+    day.tasks.forEach(function(t){
+      if(t.category === 'backpack'){
+        t.category = 'portfolio';
+        t.sub = 'content';
+      } else if(t.category === 'portfolio' && !t.sub){
+        t.sub = 'portfolio';
       }
     });
   }
@@ -682,13 +695,13 @@
     return best;
   }
 
-  // Job Search & Applications is one category with two displayed
-  // sub-sections (Scout's outreach/leads, Editor's applications) sharing a
-  // single fish count and star row — this only decides which sub-section a
-  // job-category task is grouped under, it never changes the task's actual
-  // category or point value. An explicit completed-application word wins
-  // regardless of what else is in the sentence, same reasoning as the old
-  // job-vs-cv category tie-break this replaces.
+  // Job Hunt is one category with two displayed sub-sections (Scout's
+  // outreach/leads, Editor's applications) sharing a single fish count and
+  // star row — this only decides which sub-section a job-category task is
+  // grouped under, it never changes the task's actual category or point
+  // value. An explicit completed-application word wins regardless of what
+  // else is in the sentence, same reasoning as the old job-vs-cv category
+  // tie-break this replaces.
   var JOB_SUB_KEYWORDS = {
     applications: ['cv','resume','résumé','cover letter','tailor','application draft','submit application','cover ltr','applied','application'],
     outreach: ['job','jobs','posting','postings','role','roles','shortlist','linkedin','indeed','recruiter','apply for','pm role','pmm role','opening','openings','lead','leads']
@@ -701,6 +714,20 @@
     JOB_SUB_KEYWORDS.applications.forEach(function(kw){ if(lower.indexOf(kw) !== -1) appScore++; });
     JOB_SUB_KEYWORDS.outreach.forEach(function(kw){ if(lower.indexOf(kw) !== -1) outScore++; });
     return appScore > outScore ? 'applications' : 'outreach';
+  }
+
+  // Same pattern for Content Building (Builder's portfolio work, Storyteller's
+  // writing/content work) sharing one fish count and star row.
+  var CONTENT_SUB_KEYWORDS = {
+    portfolio: ['portfolio','webflow','lovable','site','website','page copy','landing page'],
+    content: ['backpack','blog','post idea','content','draft post','newsletter','write about','write a post']
+  };
+  function detectContentSub(text){
+    var lower = (text || '').toLowerCase();
+    var portScore = 0, contScore = 0;
+    CONTENT_SUB_KEYWORDS.portfolio.forEach(function(kw){ if(lower.indexOf(kw) !== -1) portScore++; });
+    CONTENT_SUB_KEYWORDS.content.forEach(function(kw){ if(lower.indexOf(kw) !== -1) contScore++; });
+    return contScore > portScore ? 'content' : 'portfolio';
   }
   function escapeHtml(s){
     return s.replace(/[&<>"']/g, function(c){ return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]; });
@@ -755,6 +782,7 @@
       if(!exists){
         var task = { id: makeId('t'), text: tpl.text, category: tpl.category, done:false, milestone:false, recurringId: tpl.id, createdAt: Date.now() };
         if(tpl.category === 'job') task.sub = detectJobSub(tpl.text);
+        else if(tpl.category === 'portfolio') task.sub = detectContentSub(tpl.text);
         currentDay.tasks.push(task);
         changed = true;
       }
@@ -1077,8 +1105,9 @@
     }).join('');
     html += '' +
       '<div class="room hub" data-cat="hub">' +
-        '<div class="room-floor" style="background:transparent;"><h3>⚓ Captain\'s Quarters</h3></div>' +
+        '<div class="room-floor" style="background:transparent;"><h3>🏢 Chairman\'s Office</h3></div>' +
         '<div class="hub-body">' +
+          '<div class="rank-current" id="hubRankCurrent"></div>' +
           '<div class="rank-line" id="hubRankLine"></div>' +
           '<div class="streak-line" id="hubStreakLine"></div>' +
         '</div>' +
@@ -1284,7 +1313,7 @@
     });
   }
 
-  // Adds an already-done task to Job Search & Applications (Outreach & Leads
+  // Adds an already-done task to Job Hunt (Outreach & Leads
   // sub-section) for each sheet row with a "Date Reached Out" this browser
   // hasn't already turned into a task, so the two views agree without
   // double-counting on every subsequent fetch.
@@ -1571,11 +1600,9 @@
     hub: 'sprites/hub.png',
     job: 'sprites/job.png',
     cv: 'sprites/cv.png',
-    // Compiler has no real art yet — this is a plain placeholder (dashed
-    // border + "PLACEHOLDER" banner baked into the image itself so it can
-    // never be mistaken for finished art) — swap sprites/learning.png for a
-    // real character sprite whenever one exists.
-    learning: 'sprites/learning.png',
+    // No 'learning' entry: no real Compiler art exists, and a mismatched
+    // placeholder is worse than an empty desk — see the L&D empty-desk
+    // marker drawn in drawOfficeDynamic() below.
     portfolio: 'sprites/portfolio.png',
     backpack: 'sprites/backpack.png',
     budget: 'sprites/budget.png',
@@ -1595,16 +1622,19 @@
   var CHARACTERS_RAW = [
     { id:'hub', catId:'hub', name:'GaYeon', seat:{x:190,y:460}, walkTarget:{x:235,y:460} },
     { id:'job', catId:'job', name:'Scout', seat:{x:210,y:295}, walkTarget:{x:210,y:360}, entrance:{x:350,y:460} },
-    // Editor moved into the second desk of the (already two-desk) Job Search
-    // room art when Job Search + CV & Applications merged into one room;
+    // Editor moved into the second desk of the (already two-desk) Job Hunt
+    // room art when Job Hunt + CV & Applications merged into one room;
     // sprite id stays 'cv' since it's just an asset filename (sprites/cv.png)
     // and both characters now share catId 'job'.
     { id:'cv', catId:'job', name:'Editor', seat:{x:350,y:295}, walkTarget:{x:350,y:360}, entrance:{x:520,y:460} },
-    // Compiler occupies the desk Editor vacated — same room art (reused
-    // as-is), now labeled Learning & Development.
-    { id:'learning', catId:'learning', name:'Compiler', seat:{x:1180,y:295}, walkTarget:{x:1180,y:360}, entrance:{x:690,y:460} },
+    // No real Compiler art exists yet — the L&D desk renders empty rather
+    // than substitute mismatched/placeholder art (see CHAR_SPRITE_SRC below,
+    // 'learning' is intentionally absent from CHARACTERS_RAW).
     { id:'portfolio', catId:'portfolio', name:'Builder', seat:{x:270,y:705}, walkTarget:{x:270,y:770}, entrance:{x:860,y:460} },
-    { id:'backpack', catId:'backpack', name:'Storyteller', seat:{x:855,y:275}, walkTarget:{x:855,y:340}, entrance:{x:1030,y:460} },
+    // Storyteller moved into the Content Building room (Builder's original
+    // room/art) when the two writing/building departments merged; sprite id
+    // stays 'backpack' (sprites/backpack.png), catId is now 'portfolio'.
+    { id:'backpack', catId:'portfolio', name:'Storyteller', seat:{x:130,y:780}, walkTarget:{x:130,y:715}, entrance:{x:1030,y:460} },
     { id:'budget', catId:'budget', name:'Ledger', seat:{x:755,y:705}, walkTarget:{x:755,y:770}, entrance:{x:1200,y:460} },
     { id:'health', catId:'health', name:'Stride', seat:{x:1215,y:735}, walkTarget:{x:1215,y:670}, entrance:{x:1370,y:460} }
   ];
@@ -1630,7 +1660,7 @@
      entrance point) — kept as separate names because they mean different
      things (never worked yet vs. sent home once already), which is worth
      keeping visible in code even though today nothing else reads it.
-     GaYeon (catId 'hub') is excluded entirely: Captain's Quarters isn't
+     GaYeon (catId 'hub') is excluded entirely: Chairman's Office isn't
      driven by a task category, so she's always present, unaffected by this. */
   var ARRIVAL_MS = 2200;
   var charLifecycle = {};
@@ -1803,7 +1833,7 @@
     CHARACTERS.forEach(function(ch){
       var pos, state = { tick: tick };
       if(ch.catId === 'hub'){
-        // GaYeon is always present in Captain's Quarters — no task category
+        // GaYeon is always present in Chairman's Office — no task category
         // drives her, so she's outside the arrival/departure system entirely.
         if(roomAllDone(ch.catId)){ pos = { x: ch.seat.x, y: ch.seat.y }; state.happy = true; }
         else if(roomHasTasks(ch.catId)){ pos = charPosition(ch, tick); state.working = pos.atDesk; }
@@ -1837,6 +1867,16 @@
       drawCharacterSprite(ctx, ch, pos.x, pos.y, state);
     });
 
+    // L&D desk sits empty until real Compiler art exists — a mismatched
+    // placeholder sprite would be worse than no character at all. Small,
+    // clearly-temporary marker rather than silently leaving it unexplained.
+    ctx.save();
+    ctx.font = '13px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(80,60,90,0.55)';
+    ctx.fillText('🚧 not yet staffed', 1180, 350);
+    ctx.restore();
+
     if(hoveredRoomId){
       var hr = ROOM_RECTS[hoveredRoomId];
       ctx.save();
@@ -1854,14 +1894,18 @@
 
   var ROOM_RECTS = {
     job:       { x1:60,  y1:60,  x2:505,  y2:370 },
-    backpack:  { x1:520, y1:60,  x2:965,  y2:370 },
     learning:  { x1:985, y1:60,  x2:1465, y2:370 },
     portfolio: { x1:60,  y1:510, x2:505,  y2:830 },
     budget:    { x1:520, y1:510, x2:965,  y2:830 },
     health:    { x1:985, y1:510, x2:1465, y2:830 },
     hub:       { x1:100, y1:400, x2:280,  y2:500 }
   };
-  var ROOM_LABELS = { job:'Job Search & Applications', learning:'Learning & Development', portfolio:'Portfolio Site', backpack:'Backpack Content', budget:'Budget & Life', health:'Health', hub:"Captain's Quarters" };
+  // The old 'backpack' room slot (top-middle, cozy reading nook) is now
+  // unstaffed after the Content Building merge moved Storyteller into the
+  // portfolio room — left out of ROOM_RECTS/ROOM_LABELS entirely so it's
+  // just quiet background art, no hover/click for a room that no longer maps
+  // to any task card.
+  var ROOM_LABELS = { job:'Job Hunt', learning:'L&D', portfolio:'Content Building', budget:'Life Admin', health:'Health', hub:"Chairman's Office" };
   var hoveredRoomId = null;
 
   function canvasPointFromEvent(canvas, evt){
@@ -1937,7 +1981,13 @@
     var points = totalPointsAllTime();
     var rank = currentRank(points);
     var next = nextRank(points);
-    document.getElementById('hubRankLine').textContent = rank.title + (next ? ' → ' + (next.min-points) + ' fish to ' + next.title : ' (top rank!)');
+    document.getElementById('hubRankCurrent').textContent = '🧊 ' + rank.title;
+    // Distance remaining, not a transition in progress — "X → Y" read like
+    // something already underway. Spelled out as "N more fish to reach Y"
+    // instead, unambiguous at a glance.
+    document.getElementById('hubRankLine').textContent = next
+      ? (next.min - points) + ' more fish to reach ' + next.title
+      : "Top rank reached — there's nowhere higher to climb.";
     document.getElementById('hubStreakLine').textContent = '🛷 ' + computeStreak() + ' day slide streak';
   }
 
@@ -2079,6 +2129,7 @@
       if(!t) return;
       var task = { id: makeId('t'), text: t.text, category: t.category, done:false, milestone: t.milestone, recurringId:null, createdAt: Date.now() };
       if(task.category === 'job') task.sub = t.sub || detectJobSub(t.text);
+      else if(task.category === 'portfolio') task.sub = t.sub || detectContentSub(t.text);
       currentDay.tasks.push(task);
       saveDay(currentDay);
       renderAll();
@@ -2137,6 +2188,7 @@
         }
         var task = { id: makeId('t'), text: p.text, category: p.category, done:false, milestone: p.milestone, recurringId: recurringId, createdAt: Date.now() };
         if(p.category === 'job') task.sub = detectJobSub(p.text);
+        else if(p.category === 'portfolio') task.sub = detectContentSub(p.text);
         currentDay.tasks.push(task);
       });
       var skipped = dailyEntryPreview.filter(function(p){ return !p.category; }).length;
