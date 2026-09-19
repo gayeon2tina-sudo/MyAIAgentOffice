@@ -234,6 +234,15 @@
   .outreach-inline{ font-size:13px; color:var(--text-faint); border-top:1px dashed var(--border); margin-top:6px; padding-top:6px; }
   .outreach-inline .nums{ color:var(--text); font-family:'Press Start 2P', monospace; font-size:11px; }
   .outreach-inline .err{ color:var(--danger); }
+  .outreach-chip{
+    font-family:inherit; font-size:13px; color:var(--text-faint); background:none;
+    border:none; padding:2px 0; cursor:pointer;
+  }
+  .outreach-chip:hover{ color:var(--text); }
+  .outreach-today{ margin-top:6px; display:flex; flex-direction:column; gap:3px; }
+  .outreach-contact{ display:flex; justify-content:space-between; font-size:12px; padding:2px 4px; background:var(--panel-2); border-radius:6px; }
+  .outreach-contact .status{ color:var(--text-faint); }
+  .outreach-contact.empty{ background:none; color:var(--text-faint); font-style:italic; justify-content:flex-start; }
 
   .hub-body{ padding:8px 12px 12px; flex:1; display:flex; flex-direction:column; gap:6px; color:#2a2010; border-top:1px dashed rgba(138,90,0,0.35); margin-top:2px; padding-top:10px; }
   .hub-body h3{ color:#2a2010; }
@@ -1340,6 +1349,20 @@
   function outreachRowKey(row){
     return (row.c || []).map(function(c){ return c ? c.v : ''; }).join('|');
   }
+  // The gviz JSON encodes a date-formatted cell as a literal "Date(Y,M,D)"
+  // string (M is 0-indexed); a plain-text column would just be whatever the
+  // sheet has typed in, so this falls back to letting the Date constructor
+  // parse it directly. Either way, only the calendar date is compared —
+  // never a time component the sheet may or may not include.
+  function gvizDateMatchesToday(raw){
+    if(!raw) return false;
+    var d = null;
+    var m = /^Date\((\d+),(\d+),(\d+)/.exec(String(raw));
+    if(m) d = new Date(Number(m[1]), Number(m[2]), Number(m[3]));
+    else { var parsed = new Date(raw); if(!isNaN(parsed.getTime())) d = parsed; }
+    if(!d) return false;
+    return dateStr(d) === today;
+  }
 
   function fetchOutreach(){
     outreachData = { ok:false, loading:true };
@@ -1357,8 +1380,12 @@
       if(statusIdx === -1) throw new Error('Could not find a Status column in that sheet.');
       var reachedOutIdx = cols.findIndex(function(c){ return c.indexOf('reached out') !== -1; });
       if(reachedOutIdx === -1) throw new Error('Could not find a "Date Reached Out" column in that sheet.');
+      // Optional — used only to show who today's contacts were. Its absence
+      // doesn't break the counts, which is all this ever required before.
+      var nameIdx = cols.findIndex(function(c){ return c.indexOf('name') !== -1; });
       var sent = 0, replied = 0;
       var reachedRows = [];
+      var todaysContacts = [];
       // The tracker is agent-maintained: a row only exists once the scheduled job
       // finds a real conversation, so "Sent" is just "has a Date Reached Out" —
       // there's no planned-but-not-sent state to filter out by status text.
@@ -1369,10 +1396,18 @@
         sent++;
         reachedRows.push(row);
         var statusCell = row.c && row.c[statusIdx];
-        var status = (statusCell && statusCell.v ? String(statusCell.v) : '').trim().toLowerCase();
+        var statusRaw = (statusCell && statusCell.v ? String(statusCell.v) : '').trim();
+        var status = statusRaw.toLowerCase();
         if(OUTREACH_REPLIED_STATUSES.indexOf(status) !== -1) replied++;
+        if(gvizDateMatchesToday(reachedCell.v)){
+          var nameCell = nameIdx !== -1 ? row.c && row.c[nameIdx] : null;
+          todaysContacts.push({
+            name: (nameCell && nameCell.v ? String(nameCell.v) : 'Contact'),
+            status: statusRaw || 'Sent'
+          });
+        }
       });
-      outreachData = { ok:true, loading:false, sent:sent, replied:replied };
+      outreachData = { ok:true, loading:false, sent:sent, replied:replied, todaysContacts:todaysContacts };
       renderOutreachInline();
       autoLogNewOutreach(reachedRows);
     }).catch(function(err){
@@ -1420,22 +1455,40 @@
     }
   }
 
+  var outreachExpanded = false; // ephemeral UI state, not persisted
   function renderOutreachInline(){
     var el = document.getElementById('outreachInline');
     if(!el) return;
     if(outreachData.loading){ el.innerHTML = 'Loading outreach numbers…'; return; }
     if(!outreachData.ok){
+      // Unchanged fallback — this redesign is additive, so a sheet failure
+      // still degrades to exactly what it always has.
       el.innerHTML = '<span class="err">Couldn\'t load the outreach sheet: ' + escapeHtml(outreachData.error||'unknown error') + '</span><br>' +
         'Make sure "LETS_GET_THIS_BREAD" → Outreach Tracker is shared as "Anyone with the link – Viewer." ' +
         '<button class="icon-btn" id="retryOutreachBtn" style="margin-top:4px;">Retry</button>';
-      var btn = document.getElementById('retryOutreachBtn');
-      if(btn) btn.addEventListener('click', fetchOutreach);
+      var errBtn = document.getElementById('retryOutreachBtn');
+      if(errBtn) errBtn.addEventListener('click', fetchOutreach);
       return;
     }
-    el.innerHTML = 'Outreach — <span class="nums">Sent ' + outreachData.sent + '</span> · <span class="nums">Replied ' + outreachData.replied + '</span> ' +
-      '<button class="icon-btn" id="retryOutreachBtn" style="margin-left:6px;">🔄</button>';
-    var btn = document.getElementById('retryOutreachBtn');
-    if(btn) btn.addEventListener('click', fetchOutreach);
+    var contacts = outreachData.todaysContacts || [];
+    var chevron = outreachExpanded ? '▾' : '▸';
+    var html = '' +
+      '<button class="outreach-chip" id="outreachToggle" type="button">' +
+        '<span class="nums">Sent ' + outreachData.sent + '</span> · <span class="nums">Replied ' + outreachData.replied + '</span> ' + chevron +
+      '</button> ' +
+      '<button class="icon-btn" id="retryOutreachBtn">🔄</button>';
+    if(outreachExpanded){
+      html += '<div class="outreach-today">' +
+        (contacts.length
+          ? contacts.map(function(c){ return '<div class="outreach-contact"><span>' + escapeHtml(c.name) + '</span><span class="status">' + escapeHtml(c.status) + '</span></div>'; }).join('')
+          : '<div class="outreach-contact empty">Nothing logged as reached out today yet.</div>') +
+        '</div>';
+    }
+    el.innerHTML = html;
+    var toggleBtn = document.getElementById('outreachToggle');
+    if(toggleBtn) toggleBtn.addEventListener('click', function(){ outreachExpanded = !outreachExpanded; renderOutreachInline(); });
+    var retryBtn = document.getElementById('retryOutreachBtn');
+    if(retryBtn) retryBtn.addEventListener('click', fetchOutreach);
   }
 
   /* ===================== Office blueprint: layout ===================== */
