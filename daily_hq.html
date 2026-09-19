@@ -88,11 +88,28 @@
     display:flex; align-items:center; gap:6px; font-size:14px; font-weight:bold; color:#fff;
     border:2px solid rgba(0,0,0,0.15); border-radius:20px; padding:6px 12px;
     box-shadow:0 3px 0 rgba(0,0,0,0.15);
+    font-family:inherit; cursor:pointer;
+    transition:transform .12s ease, box-shadow .12s ease;
   }
+  .hud-pill:hover{ transform:translateY(-2px); box-shadow:0 5px 0 rgba(0,0,0,0.18), 0 0 0 3px rgba(255,255,255,0.35); }
+  .hud-pill:active{ transform:translateY(1px); box-shadow:0 1px 0 rgba(0,0,0,0.15); }
   .hud-pill.points{ background:linear-gradient(180deg,#ffd54a,var(--gold)); color:#4a2f00; transition:transform .18s ease; }
   .hud-pill.streak{ background:linear-gradient(180deg,#ffab6b,var(--accent)); }
   .hud-pill.rank{ background:linear-gradient(180deg,var(--rank-light),var(--rank-deep)); color:#123049; }
   .hud-pill .val{ font-family:'Press Start 2P', monospace; font-size:11px; }
+
+  .streak-popover-backdrop{ position:fixed; inset:0; z-index:900; }
+  .streak-popover{
+    position:absolute; top:56px; right:16px; z-index:901;
+    background:var(--panel); border:2px solid var(--border); border-radius:12px;
+    padding:14px 16px; box-shadow:0 8px 20px rgba(0,0,0,0.25); width:260px;
+  }
+  .streak-popover h4{ margin:0 0 8px; font-size:14px; }
+  .streak-days{ display:flex; gap:4px; align-items:flex-end; height:60px; }
+  .streak-day{ flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .streak-day .bar{ width:100%; border-radius:3px 3px 0 0; background:var(--border); height:6px; }
+  .streak-day .bar.hit{ background:var(--accent); height:28px; }
+  .streak-day .lbl{ font-size:9px; color:var(--text-faint); }
   .points-today.bump{ transform:scale(1.15); }
 
   .day-progress-wrap{ max-width:1240px; margin:10px auto 0; padding:0 16px; }
@@ -110,12 +127,17 @@
   .morning{ margin-bottom:18px; }
   .add-tasks-bar{ margin-bottom:14px; }
   .reminder-banner{ margin-bottom:18px; border-color:var(--done-deep); background:rgba(31,168,152,0.08); font-size:15px; }
+  .weekly-banner{ margin-bottom:10px; padding:8px 12px; font-size:13px; color:var(--text-dim); display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .weekly-banner .icon-btn{ font-size:12px; padding:2px 8px; }
   .ask-result{ background:var(--panel-2); border:2px solid var(--border); border-radius:8px; padding:10px 12px; font-size:15px; line-height:1.5; white-space:pre-wrap; }
   .ask-result.err{ border-color:var(--danger); color:var(--danger); }
   .ask-result.loading{ color:var(--text-dim); font-style:italic; }
   .settings-row{ display:flex; align-items:center; gap:10px; margin:10px 0; flex-wrap:wrap; }
   .settings-row label{ font-size:14px; color:var(--text-dim); min-width:140px; }
   .settings-note{ font-size:13px; color:var(--text-faint); margin-top:10px; line-height:1.5; }
+  .typo-diff-row{ display:block; font-size:13px; padding:3px 0; }
+  .typo-old{ text-decoration:line-through; color:var(--text-faint); }
+  .typo-new{ color:var(--done-deep); font-weight:bold; }
   .preview-row{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:6px 4px; border-bottom:1px dashed var(--border); }
   .preview-row span.txt{ flex:1 1 160px; min-width:120px; }
   .leftover-row{ display:flex; align-items:center; gap:8px; padding:4px 0; }
@@ -125,9 +147,13 @@
   .del-btn{ background:none; border:none; color:var(--text-faint); font-size:14px; cursor:pointer; padding:0 2px; }
   .del-btn:hover{ color:var(--danger); }
 
-  .office-wrap{ margin-bottom:18px; position:relative; }
+  .office-wrap{ margin-bottom:8px; position:relative; }
   .office-wrap canvas{ width:100%; max-width:640px; height:auto; display:block; margin:0 auto; border-radius:10px; cursor:default; }
-  .office-caption{ font-size:12px; color:var(--text-faint); margin-top:6px; }
+  /* Small and de-emphasized on purpose — attribution/how-it-works trivia,
+     not something that should compete with the office visual above it or
+     the task cards right below; keeps the page feeling continuous instead
+     of like two separate sections with a paragraph wedged between them. */
+  .office-caption{ font-size:10px; line-height:1.4; color:var(--text-faint); opacity:.75; margin-top:4px; }
   /* Matches the canvas's own centered box exactly (same width/max-width,
      aspect-ratio instead of measuring height in JS) so a bubble positioned
      by percentage (x/1536, y/1024) lands on the right spot at any size. */
@@ -150,13 +176,14 @@
   .tip-bubble.loading{ color:var(--text-faint); font-style:italic; }
   .tip-bubble.err{ color:var(--danger); }
 
-  /* Room task panels */
+  /* Room task panels — 5 non-hub rooms since the Content Building merge;
+     "." is a deliberately empty grid cell, not a room that got missed. */
   .floorplan{
     display:grid;
     grid-template-columns: repeat(4, 1fr);
     grid-template-areas:
       "job learning portfolio hub"
-      "backpack budget health hub";
+      "budget health . hub";
     gap:0;
     border:5px solid var(--wall);
     border-radius:16px;
@@ -168,12 +195,12 @@
       grid-template-areas:
         "hub hub"
         "job learning"
-        "portfolio backpack"
-        "budget health"; }
+        "portfolio budget"
+        "health ."; }
   }
   @media (max-width:600px){
     .floorplan{ grid-template-columns: 1fr;
-      grid-template-areas: "hub" "job" "learning" "portfolio" "backpack" "budget" "health"; }
+      grid-template-areas: "hub" "job" "learning" "portfolio" "budget" "health"; }
   }
 
   .room{
@@ -185,7 +212,6 @@
   .room[data-cat="job"]{ grid-area:job; }
   .room[data-cat="learning"]{ grid-area:learning; }
   .room[data-cat="portfolio"]{ grid-area:portfolio; }
-  .room[data-cat="backpack"]{ grid-area:backpack; }
   .room[data-cat="budget"]{ grid-area:budget; }
   .room[data-cat="health"]{ grid-area:health; }
   .room.hub{ grid-area:hub; border-color:var(--gold); border-width:4px; background:var(--hub-bg); }
@@ -208,8 +234,9 @@
   .task-row{ display:flex; align-items:flex-start; gap:6px; padding:4px 2px; border-bottom:1px solid var(--border); position:relative; }
   .task-row:last-child{ border-bottom:none; }
   .task-row input[type=checkbox]{ width:18px; height:18px; margin-top:2px; accent-color:var(--done); cursor:pointer; }
-  .task-row .task-text{ flex:1; word-break:break-word; }
+  .task-row .task-text{ flex:1; word-break:break-word; cursor:text; }
   .task-row .task-text.done{ text-decoration:line-through; color:var(--text-faint); }
+  .task-text-edit{ flex:1; font:inherit; padding:2px 4px; border:1px solid var(--accent); border-radius:4px; }
   .source-tag{ font-size:13px; cursor:help; opacity:.8; }
   .task-subsection + .task-subsection{ margin-top:10px; padding-top:8px; border-top:1px dashed var(--border); }
   .task-subsection h4{ margin:0 0 4px; font-size:12px; text-transform:uppercase; letter-spacing:.03em; color:var(--text-faint); }
@@ -217,17 +244,39 @@
   .outreach-inline{ font-size:13px; color:var(--text-faint); border-top:1px dashed var(--border); margin-top:6px; padding-top:6px; }
   .outreach-inline .nums{ color:var(--text); font-family:'Press Start 2P', monospace; font-size:11px; }
   .outreach-inline .err{ color:var(--danger); }
+  .outreach-chip{
+    font-family:inherit; font-size:13px; color:var(--text-faint); background:none;
+    border:none; padding:2px 0; cursor:pointer;
+  }
+  .outreach-chip:hover{ color:var(--text); }
+  .outreach-today{ margin-top:6px; display:flex; flex-direction:column; gap:3px; }
+  .outreach-contact{ display:flex; justify-content:space-between; font-size:12px; padding:2px 4px; background:var(--panel-2); border-radius:6px; }
+  .outreach-contact .status{ color:var(--text-faint); }
+  .outreach-contact.empty{ background:none; color:var(--text-faint); font-style:italic; justify-content:flex-start; }
 
-  .hub-body{ padding:8px 12px 12px; flex:1; display:flex; flex-direction:column; gap:8px; color:#2a2010; }
+  .hub-body{ padding:8px 12px 12px; flex:1; display:flex; flex-direction:column; gap:6px; color:#2a2010; border-top:1px dashed rgba(138,90,0,0.35); margin-top:2px; padding-top:10px; }
   .hub-body h3{ color:#2a2010; }
-  .rank-line{ font-family:'Press Start 2P', monospace; font-size:11px; color:#8a5a00; }
-  .streak-line{ font-size:15px; }
+  .rank-current{ font-size:15px; font-weight:bold; }
+  .rank-line{ font-family:'Press Start 2P', monospace; font-size:10px; color:#8a5a00; line-height:1.5; }
+  .streak-line{ font-size:15px; padding-top:4px; border-top:1px dashed rgba(138,90,0,0.25); }
 
-  .sparkle{ position:absolute; left:22px; top:0; font-size:16px; pointer-events:none; animation:sparkleUp .55s ease-out forwards; color:var(--accent-deep); font-weight:bold; }
+  /* Anchored to the top-right corner of the .room card (not a .task-row —
+     see spawnSparkle()), clear of .flavor-toast which spans the width
+     starting at top:54px. */
+  .sparkle{ position:absolute; right:8px; top:6px; font-size:16px; pointer-events:none; animation:sparkleUp .55s ease-out forwards; color:var(--accent-deep); font-weight:bold; white-space:nowrap; z-index:6; }
   @keyframes sparkleUp{
     0%{ opacity:1; transform:translateY(0) scale(0.7); }
     40%{ opacity:1; transform:translateY(-10px) scale(1.15); }
     100%{ opacity:0; transform:translateY(-26px) scale(0.9); }
+  }
+  /* Visual-only escalation — never a scoring change, just a bigger flourish. */
+  .sparkle.momentum{ font-size:22px; animation:sparkleUpBig .85s ease-out forwards; color:#ee7b11; }
+  .sparkle.first-fish{ font-size:20px; animation:sparkleUpBig .9s ease-out forwards; color:#0aab8c; }
+  @keyframes sparkleUpBig{
+    0%{ opacity:1; transform:translateY(0) scale(0.6) rotate(-4deg); }
+    35%{ opacity:1; transform:translateY(-16px) scale(1.35) rotate(3deg); }
+    70%{ opacity:1; transform:translateY(-24px) scale(1.15) rotate(-2deg); }
+    100%{ opacity:0; transform:translateY(-40px) scale(0.95) rotate(0deg); }
   }
   .rankup-toast{
     position:fixed; top:76px; left:50%; transform:translateX(-50%);
@@ -315,9 +364,9 @@
 <header class="top">
   <h1 class="title">BIG GY INC</h1>
   <div class="hud">
-    <span class="hud-pill points" id="pointsPill">🐟 <span class="val" id="pointsVal">0</span></span>
-    <span class="hud-pill streak" id="streakPill">🛷 <span class="val" id="streakVal">0</span></span>
-    <span class="hud-pill rank" id="rankPill">🧊 <span class="val" id="rankVal">Snow Patch</span></span>
+    <button class="hud-pill points" id="pointsPill" title="0 fish caught today — click to see your Catch of the Day board">🐟 <span class="val" id="pointsVal">0</span></button>
+    <button class="hud-pill streak" id="streakPill" title="0 day slide streak — click to see the last two weeks">🛷 <span class="val" id="streakVal">0</span></button>
+    <button class="hud-pill rank" id="rankPill" title="Snow Patch — click to visit Chairman's Office">🧊 <span class="val" id="rankVal">Snow Patch</span></button>
   </div>
 </header>
 
@@ -336,6 +385,11 @@
   <div class="add-tasks-bar">
     <button class="primary" id="addTasksBtn">+ Add tasks</button>
   </div>
+
+  <section class="weekly-banner panel-box hidden" id="weeklyBanner">
+    <span id="weeklyBannerText"></span>
+    <button class="icon-btn" id="weeklyBannerDismiss">✕</button>
+  </section>
 
   <section class="office-wrap panel-box">
     <h3>The Office</h3>
@@ -403,7 +457,7 @@
   /* ===================== Config ===================== */
 
   var CATEGORIES = [
-    { id:'job', name:'Job Search & Applications', icon:'🎯', floor:'#dff7f5', accent:'#0aab8c',
+    { id:'job', name:'Job Hunt', icon:'🎯', floor:'#dff7f5', accent:'#0aab8c',
       lead:'Scout', member:'Editor',
       subsections:[
         { id:'outreach', label:'Outreach & Leads' },
@@ -420,7 +474,7 @@
         "Applying to fewer roles you're a strong fit for tends to beat applying to everything.",
         "A LinkedIn comment on the right post can work as well as a cold DM."
       ] },
-    { id:'learning', name:'Learning & Development', icon:'🎓', floor:'#fbe4ec', accent:'#e0397e',
+    { id:'learning', name:'L&D', icon:'🎓', floor:'#fbe4ec', accent:'#e0397e',
       lead:'Compiler',
       flavors:["Compiler shipped a small win.", "Compiler's still deep in it — no rush."],
       cursor:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20"><polygon points="10,3 18,7 10,11 2,7" fill="%23e0397e" stroke="%23222" stroke-width="1"/><line x1="10" y1="11" x2="10" y2="16" stroke="%23222" stroke-width="1.5"/></svg>',
@@ -433,35 +487,32 @@
         "Ten focused minutes on a real problem usually beats an hour of a passive video.",
         "It's fine to abandon a course that isn't working for you — that's information, not failure."
       ] },
-    { id:'portfolio', name:'Portfolio Site', icon:'🖼️', floor:'#ece5fb', accent:'#7c4fe0',
-      lead:'Builder', member:'Pixel',
-      flavors:["Builder added a beam.", "Pixel touched up a section."],
+    { id:'portfolio', name:'Content Building', icon:'🖼️', floor:'#ece5fb', accent:'#7c4fe0',
+      lead:'Builder', member:'Storyteller',
+      subsections:[
+        { id:'portfolio', label:'Portfolio' },
+        { id:'content', label:'Content' }
+      ],
+      flavors:["Builder added a beam.", "Storyteller lit up with an idea.", "Builder touched up a section.", "Storyteller double checked, all clear."],
       cursor:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20"><rect x="9" y="2" width="2" height="12" fill="%238a5a2b"/><rect x="3" y="1" width="10" height="5" rx="1" fill="%236b4fc9" stroke="%23222" stroke-width="1"/></svg>',
-      keywords:['portfolio','webflow','lovable','site','website','page copy','landing page'],
+      keywords:['portfolio','webflow','lovable','site','website','page copy','landing page','backpack','blog','post idea','content','draft post','newsletter','write about','write a post'],
       tips:[
         "One clear project explained well beats five projects listed without context.",
         "A visitor decides whether to keep reading in about five seconds — lead with your best work.",
         "Broken links are worse than no site at all. Worth a periodic click-through.",
         "Write captions like you're explaining it to someone who wasn't there.",
-        "It doesn't need to be finished to be useful — a 'currently building' note is fine."
-      ] },
-    { id:'backpack', name:'Backpack Content', icon:'🎒', floor:'#fdecd2', accent:'#e0821f',
-      lead:'Storyteller', member:'Spark',
-      flavors:["Spark lit up with an idea.", "Echo double checked, all clear."],
-      cursor:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20"><path d="M3 17 L14 3 Q17 2 16 5 L6 16 Q4 18 3 17 Z" fill="%23c97a2b" stroke="%23222" stroke-width="1"/></svg>',
-      keywords:['backpack','blog','post idea','content','draft post','newsletter','write about','write a post'],
-      tips:[
+        "It doesn't need to be finished to be useful — a 'currently building' note is fine.",
         "A rough draft posted beats a perfect draft that never leaves the folder.",
         "Write the headline last — it's easier once you know what the piece actually says.",
-        "One honest post about something you're figuring out tends to land better than ten polished ones.",
-        "Reusing an old idea from a different angle still counts as new content.",
-        "If you're stuck, try writing the ending first."
+        "One honest post about something you're figuring out tends to land better than ten polished ones."
       ] },
-    { id:'budget', name:'Budget & Life', icon:'💰', floor:'#e2f5e6', accent:'#2f9e56',
+    { id:'budget', name:'Life Admin', icon:'💰', floor:'#e2f5e6', accent:'#2f9e56',
       lead:'Ledger', member:'Coin',
       flavors:["Ledger tucked that away.", "Coin counted it twice."],
       cursor:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" fill="%23ffe066" stroke="%238a6a1a" stroke-width="1.5"/><text x="10" y="14" font-size="8" text-anchor="middle" fill="%238a6a1a">%24</text></svg>',
-      keywords:['budget','runway','rent','lease','seattle','move','moving','expenses','savings','spreadsheet','bank'],
+      // Broadened beyond pure finance to general life upkeep, per the
+      // Life Admin rename — appointments/paperwork/errands, not just money.
+      keywords:['budget','runway','rent','lease','seattle','move','moving','expenses','savings','spreadsheet','bank','appointment','paperwork','errand','errands','insurance','doctor','dentist','dmv','renew','renewal','license','passport','taxes','bills','mail','forms','registration'],
       tips:[
         "Checking the numbers even when they're bad is still progress — avoidance costs more than the number itself.",
         "A rough budget you actually look at beats a perfect spreadsheet you don't.",
@@ -499,9 +550,9 @@
   ];
 
   var GOAL_DEFAULTS = [
-    { id:'goal1', name:'Land the role', tag:'Job Search', onTrack:'', categories:['job'] },
-    { id:'goal2', name:'Personal brand is live', tag:'Portfolio & Content', onTrack:'', categories:['portfolio','backpack'] },
-    { id:'goal3', name:'Financially steady through the transition', tag:'Budget & Life', onTrack:'', categories:['budget'] }
+    { id:'goal1', name:'Land the role', tag:'Job Hunt', onTrack:'', categories:['job'] },
+    { id:'goal2', name:'Personal brand is live', tag:'Content Building', onTrack:'', categories:['portfolio'] },
+    { id:'goal3', name:'Financially steady through the transition', tag:'Life Admin', onTrack:'', categories:['budget'] }
   ];
 
   var OUTREACH_SHEET_ID = '1tcm4mRBQOAwXR1e96_oG2ZQm8j8VN1oSaA6KOzQFIGc';
@@ -516,6 +567,8 @@
   var GOALS_KEY = STORAGE_PREFIX + 'goals';
   var REMINDERS_KEY = STORAGE_PREFIX + 'reminders';
   var OUTREACH_SEEN_KEY = STORAGE_PREFIX + 'outreachSeen';
+  var SOUND_KEY = STORAGE_PREFIX + 'soundEnabled';
+  var WEEKLY_BANNER_KEY = STORAGE_PREFIX + 'weeklyBannerDismissedWeek';
 
   /* ===================== Date helpers ===================== */
 
@@ -549,9 +602,10 @@
     if(typeof day.note !== 'string') day.note = '';
     if(typeof day.reviewed !== 'boolean') day.reviewed = false;
     migrateJobCvMerge(day);
+    migratePortfolioBackpackMerge(day);
     return day;
   }
-  // One-time-per-load migration for the Job Search + CV & Applications merge:
+  // One-time-per-load migration for the Job Hunt + CV & Applications merge:
   // 'cv' was its own category before, now it's the "Applications" sub-section
   // of the merged 'job' category — remap so old history still makes sense
   // (still counts toward the same fish/star total it always did) instead of
@@ -564,6 +618,20 @@
         t.sub = 'applications';
       } else if(t.category === 'job' && !t.sub){
         t.sub = detectJobSub(t.text);
+      }
+    });
+  }
+  // Same pattern for the Content Building merge: 'backpack' was its own
+  // category before, now it's the "Content" sub-section of the merged
+  // 'portfolio' category. The old category IS the sub here — no keyword
+  // guessing needed, since we already know which side each task came from.
+  function migratePortfolioBackpackMerge(day){
+    day.tasks.forEach(function(t){
+      if(t.category === 'backpack'){
+        t.category = 'portfolio';
+        t.sub = 'content';
+      } else if(t.category === 'portfolio' && !t.sub){
+        t.sub = 'portfolio';
       }
     });
   }
@@ -669,6 +737,55 @@
 
   function makeId(prefix){ return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7); }
 
+  /* ===================== Typo handling (Tier 1: always on, no server) =====================
+     Runs on every task line as it's typed in, before it's ever shown in
+     preview. Deliberately narrow — this fixes mechanical slips, not
+     wording, and never touches anything that looks like a real acronym. */
+  var TYPO_ACRONYM_ALLOWLIST = ['AWS','CV','PM','PMM','UX','UI','API','US','USA','PDF','HTML','CSS','JS','SQL','AI','ML','HR','CEO','CFO','CTO','DMV','ID','SEO','FAQ','ASAP','DIY','ETA','FYI','LLC'];
+  var TYPO_CACHE_KEY = STORAGE_PREFIX + 'typoCache';
+  function loadTypoCache(){ return safeParse(localStorage.getItem(TYPO_CACHE_KEY), {}); }
+  function saveTypoCache(cache){
+    // Capped the same way the outreach-seen list is — only recent
+    // corrections matter, this can't grow forever.
+    var keys = Object.keys(cache);
+    if(keys.length > 300){
+      var trimmed = {};
+      keys.slice(-300).forEach(function(k){ trimmed[k] = cache[k]; });
+      cache = trimmed;
+    }
+    localStorage.setItem(TYPO_CACHE_KEY, JSON.stringify(cache));
+  }
+  // A word that's an accidental double-capital slip (holding Shift a beat
+  // too long) — "APply" -> "Apply", "BEzeos" -> "Bezeos" — not a real
+  // acronym like "AWS" or "CV", which stays exactly as typed.
+  function fixAccidentalCaps(word){
+    var m = /^([A-Z]{2,})([a-z]+)$/.exec(word);
+    if(!m) return word;
+    var whole = m[1] + m[2];
+    if(TYPO_ACRONYM_ALLOWLIST.indexOf(whole.toUpperCase()) !== -1) return word;
+    if(TYPO_ACRONYM_ALLOWLIST.indexOf(m[1]) !== -1) return word;
+    return whole.charAt(0).toUpperCase() + whole.slice(1).toLowerCase();
+  }
+  function cleanTaskText(raw){
+    var text = (raw || '').trim().replace(/\s+/g, ' ');
+    if(!text) return text;
+    text = text.split(' ').map(fixAccidentalCaps).join(' ');
+    text = text.charAt(0).toUpperCase() + text.slice(1);
+    var cache = loadTypoCache();
+    var cached = cache[text.toLowerCase()];
+    if(cached) text = cached;
+    return text;
+  }
+  // Called when a task's text is hand-edited after being added (see the
+  // click-to-rename handler on .task-text) — remembers the exact correction
+  // so the same mechanical typo auto-fixes itself next time, silently.
+  function learnTypoCorrection(oldText, newText){
+    if(!oldText || !newText || oldText === newText) return;
+    var cache = loadTypoCache();
+    cache[oldText.toLowerCase()] = newText;
+    saveTypoCache(cache);
+  }
+
   /* ===================== Category detection ===================== */
 
   function detectCategory(text){
@@ -682,13 +799,13 @@
     return best;
   }
 
-  // Job Search & Applications is one category with two displayed
-  // sub-sections (Scout's outreach/leads, Editor's applications) sharing a
-  // single fish count and star row — this only decides which sub-section a
-  // job-category task is grouped under, it never changes the task's actual
-  // category or point value. An explicit completed-application word wins
-  // regardless of what else is in the sentence, same reasoning as the old
-  // job-vs-cv category tie-break this replaces.
+  // Job Hunt is one category with two displayed sub-sections (Scout's
+  // outreach/leads, Editor's applications) sharing a single fish count and
+  // star row — this only decides which sub-section a job-category task is
+  // grouped under, it never changes the task's actual category or point
+  // value. An explicit completed-application word wins regardless of what
+  // else is in the sentence, same reasoning as the old job-vs-cv category
+  // tie-break this replaces.
   var JOB_SUB_KEYWORDS = {
     applications: ['cv','resume','résumé','cover letter','tailor','application draft','submit application','cover ltr','applied','application'],
     outreach: ['job','jobs','posting','postings','role','roles','shortlist','linkedin','indeed','recruiter','apply for','pm role','pmm role','opening','openings','lead','leads']
@@ -701,6 +818,20 @@
     JOB_SUB_KEYWORDS.applications.forEach(function(kw){ if(lower.indexOf(kw) !== -1) appScore++; });
     JOB_SUB_KEYWORDS.outreach.forEach(function(kw){ if(lower.indexOf(kw) !== -1) outScore++; });
     return appScore > outScore ? 'applications' : 'outreach';
+  }
+
+  // Same pattern for Content Building (Builder's portfolio work, Storyteller's
+  // writing/content work) sharing one fish count and star row.
+  var CONTENT_SUB_KEYWORDS = {
+    portfolio: ['portfolio','webflow','lovable','site','website','page copy','landing page'],
+    content: ['backpack','blog','post idea','content','draft post','newsletter','write about','write a post']
+  };
+  function detectContentSub(text){
+    var lower = (text || '').toLowerCase();
+    var portScore = 0, contScore = 0;
+    CONTENT_SUB_KEYWORDS.portfolio.forEach(function(kw){ if(lower.indexOf(kw) !== -1) portScore++; });
+    CONTENT_SUB_KEYWORDS.content.forEach(function(kw){ if(lower.indexOf(kw) !== -1) contScore++; });
+    return contScore > portScore ? 'content' : 'portfolio';
   }
   function escapeHtml(s){
     return s.replace(/[&<>"']/g, function(c){ return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]; });
@@ -732,6 +863,11 @@
     for(var i=0;i<RANKS.length;i++){ if(RANKS[i].min > points) return RANKS[i]; }
     return null;
   }
+  function rankIndex(points){
+    var idx = 0;
+    RANKS.forEach(function(rk, i){ if(points >= rk.min) idx = i; });
+    return idx;
+  }
   function computeStreak(){
     var d = today;
     var t = loadDay(today);
@@ -755,6 +891,7 @@
       if(!exists){
         var task = { id: makeId('t'), text: tpl.text, category: tpl.category, done:false, milestone:false, recurringId: tpl.id, createdAt: Date.now() };
         if(tpl.category === 'job') task.sub = detectJobSub(tpl.text);
+        else if(tpl.category === 'portfolio') task.sub = detectContentSub(tpl.text);
         currentDay.tasks.push(task);
         changed = true;
       }
@@ -789,6 +926,35 @@
     }
     return { goals:g, firstRun:false };
   }
+
+  // Monday of the current week, as a date string — used only as a dismiss
+  // key so the banner reappears once a new week starts, never to compute
+  // anything scoring-related.
+  function currentWeekKey(){
+    var d = new Date(today.split('-')[0], today.split('-')[1]-1, today.split('-')[2]);
+    var dow = d.getDay(); // 0=Sun..6=Sat
+    var toMonday = dow === 0 ? -6 : 1 - dow;
+    d.setDate(d.getDate() + toMonday);
+    return dateStr(d);
+  }
+  function renderWeeklyBanner(){
+    var banner = document.getElementById('weeklyBanner');
+    var wk = currentWeekKey();
+    if(localStorage.getItem(WEEKLY_BANNER_KEY) === wk){ banner.classList.add('hidden'); return; }
+    var goalsState = ensureGoals();
+    // Whichever goal has a "this month" note set is this week's featured
+    // focus; purely informational, never framed as behind/overdue.
+    var featured = goalsState.goals.find(function(g){ return g.onTrack && g.onTrack.trim(); }) || goalsState.goals[0];
+    if(!featured){ banner.classList.add('hidden'); return; }
+    var text = '🧭 This week\'s expedition: ' + escapeHtml(featured.name) +
+      (featured.onTrack && featured.onTrack.trim() ? ' — ' + escapeHtml(featured.onTrack.trim()) : '');
+    document.getElementById('weeklyBannerText').innerHTML = text;
+    banner.classList.remove('hidden');
+  }
+  document.getElementById('weeklyBannerDismiss').addEventListener('click', function(){
+    localStorage.setItem(WEEKLY_BANNER_KEY, currentWeekKey());
+    document.getElementById('weeklyBanner').classList.add('hidden');
+  });
 
   function checkGoalNudges(goals){
     var cutoff = addDays(today, -14);
@@ -966,6 +1132,8 @@
             (permState !== 'granted' ? ' <button class="icon-btn" id="remRequestPerm">Enable in browser</button>' : '') +
           '</span></div>' +
           '<p class="settings-note">Reminders only fire while this app is open — a foreground tab or window, or one recently backgrounded (checks may run less often once backgrounded, depending on your browser). If you fully close the tab or app, nothing will remind you until you reopen it. This is not a background/always-on service.</p>' +
+          '<div class="settings-row"><label>Sound effects</label><input type="checkbox" id="soundEnabledInput" '+(soundEnabled()?'checked':'')+'></div>' +
+          '<p class="settings-note">Off by default. When on: a soft pop on check-off, a light chime for your first catch of the day or a run of quick check-offs. Synthesized in the browser — nothing to download.</p>' +
           '<div style="text-align:right; margin-top:10px;"><button class="primary" id="saveRemindersBtn">Save</button></div>' +
         '</div>' +
       '</div>';
@@ -984,6 +1152,7 @@
         alert("Reminders are on, but browser notification permission isn't granted yet — click \"Enable in browser\" first.");
       }
       saveReminderSettings(next);
+      setSoundEnabled(document.getElementById('soundEnabledInput').checked);
       startReminderLoop();
       renderReminderBanner();
       closeModal();
@@ -1028,14 +1197,98 @@
   /* ===================== Header / HUD ===================== */
 
   function renderHUD(){
-    document.getElementById('pointsVal').textContent = totalPointsToday();
-    document.getElementById('streakVal').textContent = computeStreak();
-    document.getElementById('rankVal').textContent = currentRank(totalPointsAllTime()).title;
+    var todayFish = totalPointsToday();
+    var streak = computeStreak();
+    var rankTitle = currentRank(totalPointsAllTime()).title;
+    document.getElementById('pointsVal').textContent = todayFish;
+    document.getElementById('streakVal').textContent = streak;
+    document.getElementById('rankVal').textContent = rankTitle;
+    document.getElementById('pointsPill').title = todayFish + ' fish caught today — click to see your Catch of the Day board';
+    document.getElementById('streakPill').title = streak + ' day slide streak — click to see the last two weeks';
+    document.getElementById('rankPill').title = rankTitle + " — click to visit Chairman's Office";
   }
+  // HUD chips are real, routed buttons, not decoration: fish -> Catch of
+  // the Day (openTrophyShelf, defined below — hoisted, safe to reference
+  // here), streak -> a small popover built fresh each click, rank -> jump
+  // to Chairman's Office (reusing the same scroll+flash the canvas room
+  // clicks already use).
+  document.getElementById('pointsPill').addEventListener('click', function(){ openTrophyShelf(); });
+  document.getElementById('rankPill').addEventListener('click', function(){
+    showTab('office');
+    var card = document.querySelector('.room.hub');
+    if(!card) return;
+    card.scrollIntoView({ behavior:'smooth', block:'center' });
+    card.classList.add('room-flash');
+    setTimeout(function(){ card.classList.remove('room-flash'); }, 900);
+  });
+  document.getElementById('streakPill').addEventListener('click', openStreakPopover);
+
+  function closeStreakPopover(){
+    var el = document.getElementById('streakPopoverRoot');
+    if(el) el.remove();
+  }
+  function openStreakPopover(){
+    closeStreakPopover();
+    var days = [];
+    for(var i=13;i>=0;i--){ var d = addDays(today, -i); days.push({ date:d, hit: loadDay(d).tasks.some(function(t){ return t.done; }) }); }
+    var bars = days.map(function(d){
+      var dd = new Date(d.date.split('-')[0], d.date.split('-')[1]-1, d.date.split('-')[2]);
+      var lbl = dd.toLocaleDateString(undefined, { weekday:'narrow' });
+      return '<div class="streak-day"><div class="bar'+(d.hit?' hit':'')+'"></div><div class="lbl">'+lbl+'</div></div>';
+    }).join('');
+    var root = document.createElement('div');
+    root.id = 'streakPopoverRoot';
+    root.innerHTML =
+      '<div class="streak-popover-backdrop" id="streakPopoverBackdrop"></div>' +
+      '<div class="streak-popover">' +
+        '<h4>🛷 ' + computeStreak() + ' day slide streak</h4>' +
+        '<div class="streak-days">' + bars + '</div>' +
+      '</div>';
+    document.body.appendChild(root);
+    document.getElementById('streakPopoverBackdrop').addEventListener('click', closeStreakPopover);
+  }
+
   function bumpPoints(){
     var el = document.getElementById('pointsPill');
     el.classList.add('bump');
     setTimeout(function(){ el.classList.remove('bump'); }, 220);
+  }
+
+  /* ===================== Sound effects (default OFF, synthesized — no
+     external audio asset needed) ===================== */
+  function soundEnabled(){ return localStorage.getItem(SOUND_KEY) === '1'; }
+  function setSoundEnabled(v){ localStorage.setItem(SOUND_KEY, v ? '1' : '0'); }
+  var sharedAudioCtx = null;
+  function audioCtx(){
+    if(!sharedAudioCtx){
+      var Ctor = window.AudioContext || window.webkitAudioContext;
+      if(!Ctor) return null;
+      sharedAudioCtx = new Ctor();
+    }
+    return sharedAudioCtx;
+  }
+  function playTone(freqStart, freqEnd, durationMs, gainPeak){
+    if(!soundEnabled()) return;
+    var ctx = audioCtx();
+    if(!ctx) return;
+    try{
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.type = 'sine';
+      var now = ctx.currentTime;
+      osc.frequency.setValueAtTime(freqStart, now);
+      osc.frequency.linearRampToValueAtTime(freqEnd, now + durationMs/1000);
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(gainPeak, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + durationMs/1000);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(now); osc.stop(now + durationMs/1000 + 0.02);
+    } catch(e){ /* audio unsupported/blocked — skip silently */ }
+  }
+  function playPopSound(){ playTone(520, 700, 90, 0.12); }
+  function playAmbientTone(){
+    playTone(660, 880, 260, 0.09);
+    setTimeout(function(){ playTone(880, 990, 320, 0.07); }, 140);
   }
 
   function renderDayProgress(){
@@ -1077,8 +1330,9 @@
     }).join('');
     html += '' +
       '<div class="room hub" data-cat="hub">' +
-        '<div class="room-floor" style="background:transparent;"><h3>⚓ Captain\'s Quarters</h3></div>' +
+        '<div class="room-floor" style="background:transparent;"><h3>🏢 Chairman\'s Office</h3></div>' +
         '<div class="hub-body">' +
+          '<div class="rank-current" id="hubRankCurrent"></div>' +
           '<div class="rank-line" id="hubRankLine"></div>' +
           '<div class="streak-line" id="hubStreakLine"></div>' +
         '</div>' +
@@ -1121,7 +1375,7 @@
       '<div class="task-row" data-id="'+t.id+'">' +
         '<input type="checkbox" data-role="check" '+(t.done?'checked':'')+'>' +
         '<button class="star-btn '+(t.milestone?'':'off')+'" data-role="star">⭐</button>' +
-        '<span class="task-text '+(t.done?'done':'')+'">'+escapeHtml(t.text)+'</span>' +
+        '<span class="task-text '+(t.done?'done':'')+'" data-role="text" title="Click to fix a typo">'+escapeHtml(t.text)+'</span>' +
         sourceTagHtml(t) +
         '<button class="del-btn" data-role="remove">✕</button>' +
       '</div>';
@@ -1164,6 +1418,32 @@
     var id = row.dataset.id;
     var task = currentDay.tasks.find(function(t){ return t.id === id; });
     if(!task) return;
+    if(e.target.dataset.role === 'text' && !e.target.querySelector('input')){
+      // Click-to-fix-a-typo: swapped for a plain input, not a rewrite of
+      // the task list UI — committing a real change teaches the typo
+      // cache (learnTypoCorrection) so the same slip auto-fixes next time.
+      var span = e.target;
+      var oldText = task.text;
+      var input = document.createElement('input');
+      input.type = 'text'; input.value = oldText; input.className = 'task-text-edit';
+      span.replaceWith(input);
+      input.focus(); input.select();
+      var commit = function(){
+        var newText = cleanTaskText(input.value) || oldText;
+        if(newText !== oldText){
+          task.text = newText;
+          learnTypoCorrection(oldText, newText);
+          saveDay(currentDay);
+        }
+        renderAll();
+      };
+      input.addEventListener('blur', commit);
+      input.addEventListener('keydown', function(ev){
+        if(ev.key === 'Enter') input.blur();
+        else if(ev.key === 'Escape'){ input.removeEventListener('blur', commit); renderAll(); }
+      });
+      return;
+    }
     if(e.target.dataset.role === 'star'){ task.milestone = !task.milestone; saveDay(currentDay); renderAll(); }
     else if(e.target.dataset.role === 'remove'){ currentDay.tasks = currentDay.tasks.filter(function(t){ return t.id !== id; }); saveDay(currentDay); renderAll(); }
   });
@@ -1171,6 +1451,7 @@
   document.getElementById('floorplan').addEventListener('change', function(e){
     if(e.target.dataset.role !== 'check') return;
     var row = e.target.closest('.task-row');
+    var room = row.closest('.room');
     var id = row.dataset.id;
     var task = currentDay.tasks.find(function(t){ return t.id === id; });
     if(!task) return;
@@ -1183,7 +1464,11 @@
     if(task.category === 'budget'){ mechanics.budgetFill = Math.max(0, mechanics.budgetFill + (task.done?1:-1)); saveMechanics(mechanics); mechanicsChanged = true; }
     if(mechanicsChanged) renderStaticOffice();
     if(task.done && !wasDone){
-      spawnSparkle(row);
+      var isFirstFishToday = currentDay.tasks.filter(function(t){ return t.done; }).length === 1;
+      var momentum = registerCheckOffMomentum();
+      if(isFirstFishToday){ spawnSparkle(room, 'first-fish'); playAmbientTone(); }
+      else if(momentum >= 3){ spawnSparkle(room, 'momentum'); playAmbientTone(); }
+      else { spawnSparkle(room); playPopSound(); }
       bumpPoints();
       showFlavor(task.category);
       var newRank = currentRank(totalPointsAllTime());
@@ -1204,11 +1489,30 @@
   }
 
   var sparkleSeq = 0;
-  function spawnSparkle(row){
+  // Attaches to the .room card, not the .task-row: the row is about to be
+  // destroyed by renderRoomTasks()'s innerHTML replacement later in the
+  // same change handler, which was silently eating this animation every
+  // time (it never painted a single frame) before this fix — the .room
+  // card itself is never replaced wholesale, only its inner list is.
+  function spawnSparkle(room, variant){
     var s = document.createElement('span');
-    s.className = 'sparkle'; s.textContent = '✨ +1';
-    row.appendChild(s);
-    setTimeout(function(){ if(s.parentNode) s.parentNode.removeChild(s); }, 600);
+    s.className = 'sparkle' + (variant ? ' ' + variant : '');
+    s.textContent = variant === 'first-fish' ? '🐟✨ first catch!' : (variant === 'momentum' ? '✨✨ +1' : '✨ +1');
+    room.appendChild(s);
+    setTimeout(function(){ if(s.parentNode) s.parentNode.removeChild(s); }, variant ? 900 : 600);
+  }
+
+  // Momentum: purely visual escalation for 3+ check-offs in quick
+  // succession — never changes the flat +1-per-task scoring rule, just
+  // makes the sparkle bigger. Resets if the gap between check-offs is too
+  // long to read as "on a roll."
+  var MOMENTUM_WINDOW_MS = 20000;
+  var momentumCount = 0, lastCheckOffAt = 0;
+  function registerCheckOffMomentum(){
+    var now = Date.now();
+    momentumCount = (now - lastCheckOffAt < MOMENTUM_WINDOW_MS) ? momentumCount + 1 : 1;
+    lastCheckOffAt = now;
+    return momentumCount;
   }
   function showFlavor(catId){
     var cat = CAT_BY_ID[catId];
@@ -1242,6 +1546,20 @@
   function outreachRowKey(row){
     return (row.c || []).map(function(c){ return c ? c.v : ''; }).join('|');
   }
+  // The gviz JSON encodes a date-formatted cell as a literal "Date(Y,M,D)"
+  // string (M is 0-indexed); a plain-text column would just be whatever the
+  // sheet has typed in, so this falls back to letting the Date constructor
+  // parse it directly. Either way, only the calendar date is compared —
+  // never a time component the sheet may or may not include.
+  function gvizDateMatchesToday(raw){
+    if(!raw) return false;
+    var d = null;
+    var m = /^Date\((\d+),(\d+),(\d+)/.exec(String(raw));
+    if(m) d = new Date(Number(m[1]), Number(m[2]), Number(m[3]));
+    else { var parsed = new Date(raw); if(!isNaN(parsed.getTime())) d = parsed; }
+    if(!d) return false;
+    return dateStr(d) === today;
+  }
 
   function fetchOutreach(){
     outreachData = { ok:false, loading:true };
@@ -1259,8 +1577,12 @@
       if(statusIdx === -1) throw new Error('Could not find a Status column in that sheet.');
       var reachedOutIdx = cols.findIndex(function(c){ return c.indexOf('reached out') !== -1; });
       if(reachedOutIdx === -1) throw new Error('Could not find a "Date Reached Out" column in that sheet.');
+      // Optional — used only to show who today's contacts were. Its absence
+      // doesn't break the counts, which is all this ever required before.
+      var nameIdx = cols.findIndex(function(c){ return c.indexOf('name') !== -1; });
       var sent = 0, replied = 0;
       var reachedRows = [];
+      var todaysContacts = [];
       // The tracker is agent-maintained: a row only exists once the scheduled job
       // finds a real conversation, so "Sent" is just "has a Date Reached Out" —
       // there's no planned-but-not-sent state to filter out by status text.
@@ -1271,10 +1593,18 @@
         sent++;
         reachedRows.push(row);
         var statusCell = row.c && row.c[statusIdx];
-        var status = (statusCell && statusCell.v ? String(statusCell.v) : '').trim().toLowerCase();
+        var statusRaw = (statusCell && statusCell.v ? String(statusCell.v) : '').trim();
+        var status = statusRaw.toLowerCase();
         if(OUTREACH_REPLIED_STATUSES.indexOf(status) !== -1) replied++;
+        if(gvizDateMatchesToday(reachedCell.v)){
+          var nameCell = nameIdx !== -1 ? row.c && row.c[nameIdx] : null;
+          todaysContacts.push({
+            name: (nameCell && nameCell.v ? String(nameCell.v) : 'Contact'),
+            status: statusRaw || 'Sent'
+          });
+        }
       });
-      outreachData = { ok:true, loading:false, sent:sent, replied:replied };
+      outreachData = { ok:true, loading:false, sent:sent, replied:replied, todaysContacts:todaysContacts };
       renderOutreachInline();
       autoLogNewOutreach(reachedRows);
     }).catch(function(err){
@@ -1284,7 +1614,7 @@
     });
   }
 
-  // Adds an already-done task to Job Search & Applications (Outreach & Leads
+  // Adds an already-done task to Job Hunt (Outreach & Leads
   // sub-section) for each sheet row with a "Date Reached Out" this browser
   // hasn't already turned into a task, so the two views agree without
   // double-counting on every subsequent fetch.
@@ -1322,22 +1652,40 @@
     }
   }
 
+  var outreachExpanded = false; // ephemeral UI state, not persisted
   function renderOutreachInline(){
     var el = document.getElementById('outreachInline');
     if(!el) return;
     if(outreachData.loading){ el.innerHTML = 'Loading outreach numbers…'; return; }
     if(!outreachData.ok){
+      // Unchanged fallback — this redesign is additive, so a sheet failure
+      // still degrades to exactly what it always has.
       el.innerHTML = '<span class="err">Couldn\'t load the outreach sheet: ' + escapeHtml(outreachData.error||'unknown error') + '</span><br>' +
         'Make sure "LETS_GET_THIS_BREAD" → Outreach Tracker is shared as "Anyone with the link – Viewer." ' +
         '<button class="icon-btn" id="retryOutreachBtn" style="margin-top:4px;">Retry</button>';
-      var btn = document.getElementById('retryOutreachBtn');
-      if(btn) btn.addEventListener('click', fetchOutreach);
+      var errBtn = document.getElementById('retryOutreachBtn');
+      if(errBtn) errBtn.addEventListener('click', fetchOutreach);
       return;
     }
-    el.innerHTML = 'Outreach — <span class="nums">Sent ' + outreachData.sent + '</span> · <span class="nums">Replied ' + outreachData.replied + '</span> ' +
-      '<button class="icon-btn" id="retryOutreachBtn" style="margin-left:6px;">🔄</button>';
-    var btn = document.getElementById('retryOutreachBtn');
-    if(btn) btn.addEventListener('click', fetchOutreach);
+    var contacts = outreachData.todaysContacts || [];
+    var chevron = outreachExpanded ? '▾' : '▸';
+    var html = '' +
+      '<button class="outreach-chip" id="outreachToggle" type="button">' +
+        '<span class="nums">Sent ' + outreachData.sent + '</span> · <span class="nums">Replied ' + outreachData.replied + '</span> ' + chevron +
+      '</button> ' +
+      '<button class="icon-btn" id="retryOutreachBtn">🔄</button>';
+    if(outreachExpanded){
+      html += '<div class="outreach-today">' +
+        (contacts.length
+          ? contacts.map(function(c){ return '<div class="outreach-contact"><span>' + escapeHtml(c.name) + '</span><span class="status">' + escapeHtml(c.status) + '</span></div>'; }).join('')
+          : '<div class="outreach-contact empty">Nothing logged as reached out today yet.</div>') +
+        '</div>';
+    }
+    el.innerHTML = html;
+    var toggleBtn = document.getElementById('outreachToggle');
+    if(toggleBtn) toggleBtn.addEventListener('click', function(){ outreachExpanded = !outreachExpanded; renderOutreachInline(); });
+    var retryBtn = document.getElementById('retryOutreachBtn');
+    if(retryBtn) retryBtn.addEventListener('click', fetchOutreach);
   }
 
   /* ===================== Office blueprint: layout ===================== */
@@ -1571,11 +1919,9 @@
     hub: 'sprites/hub.png',
     job: 'sprites/job.png',
     cv: 'sprites/cv.png',
-    // Compiler has no real art yet — this is a plain placeholder (dashed
-    // border + "PLACEHOLDER" banner baked into the image itself so it can
-    // never be mistaken for finished art) — swap sprites/learning.png for a
-    // real character sprite whenever one exists.
-    learning: 'sprites/learning.png',
+    // No 'learning' entry: no real Compiler art exists, and a mismatched
+    // placeholder is worse than an empty desk — see the L&D empty-desk
+    // marker drawn in drawOfficeDynamic() below.
     portfolio: 'sprites/portfolio.png',
     backpack: 'sprites/backpack.png',
     budget: 'sprites/budget.png',
@@ -1595,16 +1941,19 @@
   var CHARACTERS_RAW = [
     { id:'hub', catId:'hub', name:'GaYeon', seat:{x:190,y:460}, walkTarget:{x:235,y:460} },
     { id:'job', catId:'job', name:'Scout', seat:{x:210,y:295}, walkTarget:{x:210,y:360}, entrance:{x:350,y:460} },
-    // Editor moved into the second desk of the (already two-desk) Job Search
-    // room art when Job Search + CV & Applications merged into one room;
+    // Editor moved into the second desk of the (already two-desk) Job Hunt
+    // room art when Job Hunt + CV & Applications merged into one room;
     // sprite id stays 'cv' since it's just an asset filename (sprites/cv.png)
     // and both characters now share catId 'job'.
     { id:'cv', catId:'job', name:'Editor', seat:{x:350,y:295}, walkTarget:{x:350,y:360}, entrance:{x:520,y:460} },
-    // Compiler occupies the desk Editor vacated — same room art (reused
-    // as-is), now labeled Learning & Development.
-    { id:'learning', catId:'learning', name:'Compiler', seat:{x:1180,y:295}, walkTarget:{x:1180,y:360}, entrance:{x:690,y:460} },
+    // No real Compiler art exists yet — the L&D desk renders empty rather
+    // than substitute mismatched/placeholder art (see CHAR_SPRITE_SRC below,
+    // 'learning' is intentionally absent from CHARACTERS_RAW).
     { id:'portfolio', catId:'portfolio', name:'Builder', seat:{x:270,y:705}, walkTarget:{x:270,y:770}, entrance:{x:860,y:460} },
-    { id:'backpack', catId:'backpack', name:'Storyteller', seat:{x:855,y:275}, walkTarget:{x:855,y:340}, entrance:{x:1030,y:460} },
+    // Storyteller moved into the Content Building room (Builder's original
+    // room/art) when the two writing/building departments merged; sprite id
+    // stays 'backpack' (sprites/backpack.png), catId is now 'portfolio'.
+    { id:'backpack', catId:'portfolio', name:'Storyteller', seat:{x:130,y:780}, walkTarget:{x:130,y:715}, entrance:{x:1030,y:460} },
     { id:'budget', catId:'budget', name:'Ledger', seat:{x:755,y:705}, walkTarget:{x:755,y:770}, entrance:{x:1200,y:460} },
     { id:'health', catId:'health', name:'Stride', seat:{x:1215,y:735}, walkTarget:{x:1215,y:670}, entrance:{x:1370,y:460} }
   ];
@@ -1630,7 +1979,7 @@
      entrance point) — kept as separate names because they mean different
      things (never worked yet vs. sent home once already), which is worth
      keeping visible in code even though today nothing else reads it.
-     GaYeon (catId 'hub') is excluded entirely: Captain's Quarters isn't
+     GaYeon (catId 'hub') is excluded entirely: Chairman's Office isn't
      driven by a task category, so she's always present, unaffected by this. */
   var ARRIVAL_MS = 2200;
   var charLifecycle = {};
@@ -1791,6 +2140,90 @@
     });
   }
 
+  /* ===================== Igloo growth (rank made visible) =====================
+     A small structure near Chairman's Office that visibly changes shape at
+     each of the 7 rank tiers, so the rank number means something you can
+     actually watch change, not just read. Drawn with plain canvas shapes
+     (no new art asset) at a fixed spot just above the hub's own position. */
+  // Centered in the corridor band (rooms end at y~370/start again at y~510),
+  // offset left of GaYeon's own seat (190) and away from her walk target
+  // (235) so her 150px-wide sprite doesn't sit directly on top of it —
+  // the first placement overlapped Job Hunt's floor mat instead of reading
+  // as something standing in the hallway.
+  var IGLOO_X = 130, IGLOO_GROUND_Y = 495;
+  function iglooBrick(ctx, x, y, w, h){
+    ctx.fillStyle = '#dceffc';
+    roundRectPath(ctx, x, y, w, h, 3);
+    ctx.fill();
+    ctx.strokeStyle = '#7fb8e0';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+  function drawIgloo(ctx, tier){
+    // tier: 0 Snow Patch .. 6 BIG GY
+    var x = IGLOO_X, gy = IGLOO_GROUND_Y;
+    ctx.save();
+    // Ground patch, present at every tier.
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.beginPath();
+    ctx.ellipse(x, gy+4, 46 + tier*4, 12, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(74,144,194,0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    if(tier >= 1){ // First Brick — a single block
+      iglooBrick(ctx, x-14, gy-16, 28, 16);
+    }
+    if(tier >= 2){ // Half Igloo — a few bricks forming a low arc, open top
+      for(var a=-50;a<=50;a+=25){
+        var rad = a*Math.PI/180;
+        iglooBrick(ctx, x + Math.sin(rad)*30 - 12, gy - 14 - Math.cos(rad)*22, 22, 14);
+      }
+    }
+    if(tier >= 3){ // Igloo Complete — full dome + door arch
+      ctx.fillStyle = '#dceffc';
+      ctx.beginPath();
+      ctx.arc(x, gy-6, 42, Math.PI, 0);
+      ctx.fill();
+      ctx.strokeStyle = '#7fb8e0'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = '#1f8fe0';
+      ctx.beginPath();
+      ctx.arc(x, gy-6, 12, Math.PI, 0);
+      ctx.fill();
+    }
+    if(tier >= 4){ // Ice Palace Wing — a side wing with its own small dome
+      ctx.fillStyle = '#dceffc';
+      ctx.beginPath();
+      ctx.arc(x+52, gy-2, 22, Math.PI, 0);
+      ctx.fill();
+      ctx.strokeStyle = '#7fb8e0'; ctx.lineWidth = 2; ctx.stroke();
+    }
+    if(tier >= 5){ // Frozen Fortress — a second wing + a small flagpole
+      ctx.fillStyle = '#dceffc';
+      ctx.beginPath();
+      ctx.arc(x-52, gy-2, 22, Math.PI, 0);
+      ctx.fill();
+      ctx.strokeStyle = '#7fb8e0'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = '#4a4a4a'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x, gy-48); ctx.lineTo(x, gy-72); ctx.stroke();
+    }
+    if(tier >= 6){ // BIG GY — flag flying + a subtle glow
+      ctx.fillStyle = '#ee7b11';
+      ctx.beginPath();
+      ctx.moveTo(x, gy-72); ctx.lineTo(x+18, gy-66); ctx.lineTo(x, gy-60);
+      ctx.closePath(); ctx.fill();
+      ctx.save();
+      ctx.globalAlpha = 0.5 + Math.sin(Date.now()/400)*0.15;
+      ctx.fillStyle = '#fff4cc';
+      ctx.beginPath();
+      ctx.arc(x, gy-30, 60, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
   function drawOfficeDynamic(tick){
     var canvas = document.getElementById('officeCanvas');
     if(!canvas) return;
@@ -1798,12 +2231,13 @@
     ctx.imageSmoothingEnabled = true;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(staticCanvas, 0, 0);
+    drawIgloo(ctx, rankIndex(totalPointsAllTime()));
 
     var now = Date.now();
     CHARACTERS.forEach(function(ch){
       var pos, state = { tick: tick };
       if(ch.catId === 'hub'){
-        // GaYeon is always present in Captain's Quarters — no task category
+        // GaYeon is always present in Chairman's Office — no task category
         // drives her, so she's outside the arrival/departure system entirely.
         if(roomAllDone(ch.catId)){ pos = { x: ch.seat.x, y: ch.seat.y }; state.happy = true; }
         else if(roomHasTasks(ch.catId)){ pos = charPosition(ch, tick); state.working = pos.atDesk; }
@@ -1837,6 +2271,27 @@
       drawCharacterSprite(ctx, ch, pos.x, pos.y, state);
     });
 
+    // L&D desk sits empty until real Compiler art exists — a mismatched
+    // placeholder sprite would be worse than no character at all. Small,
+    // clearly-temporary marker rather than silently leaving it unexplained.
+    ctx.save();
+    ctx.font = '13px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(80,60,90,0.55)';
+    ctx.fillText('🚧 not yet staffed', 1180, 350);
+    ctx.restore();
+
+    if(catchHotspotHovered){
+      ctx.save();
+      ctx.fillStyle = 'rgba(255,212,74,0.28)';
+      roundRectPath(ctx, CATCH_HOTSPOT.x1, CATCH_HOTSPOT.y1, CATCH_HOTSPOT.x2-CATCH_HOTSPOT.x1, CATCH_HOTSPOT.y2-CATCH_HOTSPOT.y1, 10);
+      ctx.fill();
+      ctx.strokeStyle = '#ffd54a';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.restore();
+    }
+
     if(hoveredRoomId){
       var hr = ROOM_RECTS[hoveredRoomId];
       ctx.save();
@@ -1854,15 +2309,24 @@
 
   var ROOM_RECTS = {
     job:       { x1:60,  y1:60,  x2:505,  y2:370 },
-    backpack:  { x1:520, y1:60,  x2:965,  y2:370 },
     learning:  { x1:985, y1:60,  x2:1465, y2:370 },
     portfolio: { x1:60,  y1:510, x2:505,  y2:830 },
     budget:    { x1:520, y1:510, x2:965,  y2:830 },
     health:    { x1:985, y1:510, x2:1465, y2:830 },
     hub:       { x1:100, y1:400, x2:280,  y2:500 }
   };
-  var ROOM_LABELS = { job:'Job Search & Applications', learning:'Learning & Development', portfolio:'Portfolio Site', backpack:'Backpack Content', budget:'Budget & Life', health:'Health', hub:"Captain's Quarters" };
+  // The old 'backpack' room slot (top-middle, cozy reading nook) is now
+  // unstaffed after the Content Building merge moved Storyteller into the
+  // portfolio room — left out of ROOM_RECTS/ROOM_LABELS entirely so it's
+  // just quiet background art, no hover/click for a room that no longer maps
+  // to any task card.
+  var ROOM_LABELS = { job:'Job Hunt', learning:'L&D', portfolio:'Content Building', budget:'Life Admin', health:'Health', hub:"Chairman's Office" };
   var hoveredRoomId = null;
+  var catchHotspotHovered = false;
+  // The "BIG GY INC" signboard already painted into the office art (bottom
+  // center) doubles as a second, discoverable way into Catch of the Day —
+  // in addition to the HUD fish chip, not a replacement for it.
+  var CATCH_HOTSPOT = { x1:650, y1:845, x2:860, y2:915 };
 
   function canvasPointFromEvent(canvas, evt){
     var rect = canvas.getBoundingClientRect();
@@ -1870,6 +2334,9 @@
       x: (evt.clientX - rect.left) * (canvas.width / rect.width),
       y: (evt.clientY - rect.top) * (canvas.height / rect.height)
     };
+  }
+  function inCatchHotspot(pt){
+    return pt.x >= CATCH_HOTSPOT.x1 && pt.x <= CATCH_HOTSPOT.x2 && pt.y >= CATCH_HOTSPOT.y1 && pt.y <= CATCH_HOTSPOT.y2;
   }
   function roomAtPoint(pt){
     var found = null;
@@ -1893,7 +2360,16 @@
   (function(){
     var canvas = document.getElementById('officeCanvas');
     canvas.addEventListener('mousemove', function(e){
-      var id = roomAtPoint(canvasPointFromEvent(canvas, e));
+      var pt = canvasPointFromEvent(canvas, e);
+      if(inCatchHotspot(pt)){
+        hoveredRoomId = null;
+        catchHotspotHovered = true;
+        canvas.style.cursor = 'pointer';
+        canvas.title = 'Catch of the Day';
+        return;
+      }
+      catchHotspotHovered = false;
+      var id = roomAtPoint(pt);
       if(id === hoveredRoomId) return;
       hoveredRoomId = id;
       canvas.style.cursor = id ? 'pointer' : 'default';
@@ -1901,11 +2377,13 @@
     });
     canvas.addEventListener('mouseleave', function(){
       hoveredRoomId = null;
+      catchHotspotHovered = false;
       canvas.style.cursor = 'default';
       canvas.title = '';
     });
     canvas.addEventListener('click', function(e){
       var pt = canvasPointFromEvent(canvas, e);
+      if(inCatchHotspot(pt)){ openTrophyShelf(); return; }
       var ch = characterAtPoint(pt);
       if(ch && ch.catId !== 'hub'){
         var pos = lastCharPos[ch.id];
@@ -1937,7 +2415,13 @@
     var points = totalPointsAllTime();
     var rank = currentRank(points);
     var next = nextRank(points);
-    document.getElementById('hubRankLine').textContent = rank.title + (next ? ' → ' + (next.min-points) + ' fish to ' + next.title : ' (top rank!)');
+    document.getElementById('hubRankCurrent').textContent = '🧊 ' + rank.title;
+    // Distance remaining, not a transition in progress — "X → Y" read like
+    // something already underway. Spelled out as "N more fish to reach Y"
+    // instead, unambiguous at a glance.
+    document.getElementById('hubRankLine').textContent = next
+      ? (next.min - points) + ' more fish to reach ' + next.title
+      : "Top rank reached — there's nowhere higher to climb.";
     document.getElementById('hubStreakLine').textContent = '🛷 ' + computeStreak() + ' day slide streak';
   }
 
@@ -2043,6 +2527,10 @@
             '<button class="ghost" id="dailyEntryDismissBtn">Not now</button>' +
           '</div>' +
           '<div id="dailyEntryPreviewList" style="margin-top:10px;"></div>' +
+          '<div id="dailyEntryAiCleanRow" class="hidden" style="margin-top:8px;">' +
+            '<button class="ghost" id="dailyEntryAiCleanBtn">✨ Clean up typos (needs local server)</button>' +
+          '</div>' +
+          '<div id="dailyEntryAiCleanResult"></div>' +
           '<div id="dailyEntryConfirmRow" class="hidden" style="margin-top:8px;">' +
             '<button class="pink" id="dailyEntryConfirmBtn">Add to today\'s list</button>' +
           '</div>' +
@@ -2079,6 +2567,7 @@
       if(!t) return;
       var task = { id: makeId('t'), text: t.text, category: t.category, done:false, milestone: t.milestone, recurringId:null, createdAt: Date.now() };
       if(task.category === 'job') task.sub = t.sub || detectJobSub(t.text);
+      else if(task.category === 'portfolio') task.sub = t.sub || detectContentSub(t.text);
       currentDay.tasks.push(task);
       saveDay(currentDay);
       renderAll();
@@ -2088,8 +2577,11 @@
     function renderDailyEntryPreview(){
       var box = document.getElementById('dailyEntryPreviewList');
       var confirmRow = document.getElementById('dailyEntryConfirmRow');
-      if(dailyEntryPreview.length === 0){ box.innerHTML=''; confirmRow.classList.add('hidden'); return; }
+      var aiRow = document.getElementById('dailyEntryAiCleanRow');
+      document.getElementById('dailyEntryAiCleanResult').innerHTML = '';
+      if(dailyEntryPreview.length === 0){ box.innerHTML=''; confirmRow.classList.add('hidden'); aiRow.classList.add('hidden'); return; }
       confirmRow.classList.remove('hidden');
+      aiRow.classList.remove('hidden');
       box.innerHTML = dailyEntryPreview.map(function(p, idx){
         var opts = '<option value="">— pick category —</option>' + CATEGORIES.map(function(c){
           return '<option value="'+c.id+'"'+(p.category===c.id?' selected':'')+'>'+c.icon+' '+c.name+'</option>';
@@ -2107,9 +2599,64 @@
 
     document.getElementById('dailyEntryPreviewBtn').addEventListener('click', function(){
       var raw = document.getElementById('dailyEntryInput').value;
-      var lines = raw.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+      var lines = raw.split('\n').map(function(l){ return cleanTaskText(l); }).filter(Boolean);
       dailyEntryPreview = lines.map(function(line){ return { text: line, category: detectCategory(line), milestone:false, repeats:false }; });
       renderDailyEntryPreview();
+    });
+
+    // Tier 2 (optional, local-server-only): sends current preview lines to
+    // the same /api/ask backend Radio to Base uses, asking for typo fixes.
+    // Nothing is ever applied without being shown first — accept/reject is
+    // per line, default-checked, and "Apply selected fixes" is a separate,
+    // explicit step from just running the check.
+    document.getElementById('dailyEntryAiCleanBtn').addEventListener('click', function(){
+      var resultBox = document.getElementById('dailyEntryAiCleanResult');
+      resultBox.innerHTML = '<p class="settings-note">Asking Base to check for typos…</p>';
+      var lines = dailyEntryPreview.map(function(p){ return p.text; });
+      var question = 'Fix only obvious typos, misspellings, or accidental capitalization in each of these task lines — do not rephrase or reword anything that is already correct. ' +
+        'Reply with ONLY a JSON array of strings, same length and order as the input, no other text. Input: ' + JSON.stringify(lines);
+      fetch('/api/ask', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: question, goals: [], todayTasks: [] })
+      }).then(function(res){ return res.json().then(function(data){ return { status: res.status, data: data }; }); })
+      .then(function(r){
+        if(!r.data || !r.data.ok){
+          resultBox.innerHTML = '<p class="settings-note" style="color:var(--danger);">' + escapeHtml((r.data && r.data.error) || ('Request failed (HTTP ' + r.status + ').')) + '</p>';
+          return;
+        }
+        var suggestions;
+        try{
+          var m = /\[[\s\S]*\]/.exec(r.data.answer);
+          suggestions = JSON.parse(m ? m[0] : r.data.answer);
+        } catch(e){
+          resultBox.innerHTML = '<p class="settings-note" style="color:var(--danger);">Couldn\'t read Base\'s response as a clean list — nothing changed.</p>';
+          return;
+        }
+        if(!Array.isArray(suggestions) || suggestions.length !== lines.length){
+          resultBox.innerHTML = '<p class="settings-note" style="color:var(--danger);">Base\'s response didn\'t match — nothing changed.</p>';
+          return;
+        }
+        var diffs = suggestions.map(function(s, i){ return { idx:i, from: lines[i], to: String(s) }; }).filter(function(d){ return d.to !== d.from; });
+        if(diffs.length === 0){
+          resultBox.innerHTML = '<p class="settings-note">No typos found.</p>';
+          return;
+        }
+        resultBox.innerHTML = '<p class="settings-note">Suggested fixes — review before applying:</p>' +
+          diffs.map(function(d, di){
+            return '<label class="typo-diff-row"><input type="checkbox" checked data-diff-idx="'+di+'"> ' +
+              '<span class="typo-old">'+escapeHtml(d.from)+'</span> → <span class="typo-new">'+escapeHtml(d.to)+'</span></label>';
+          }).join('') +
+          '<button class="primary" id="dailyEntryApplyFixesBtn" style="margin-top:6px;">Apply selected fixes</button>';
+        document.getElementById('dailyEntryApplyFixesBtn').addEventListener('click', function(){
+          diffs.forEach(function(d, di){
+            var checked = resultBox.querySelector('input[data-diff-idx="'+di+'"]').checked;
+            if(checked) dailyEntryPreview[d.idx].text = d.to;
+          });
+          renderDailyEntryPreview();
+        });
+      }).catch(function(){
+        resultBox.innerHTML = '<p class="settings-note" style="color:var(--danger);">Can\'t reach Base. Make sure the local server is running: npm run server (then open this page via http://localhost:8787/daily_hq.html, not as a file).</p>';
+      });
     });
     document.getElementById('dailyEntryPreviewList').addEventListener('click', function(e){
       var row = e.target.closest('.preview-row'); if(!row) return;
@@ -2137,6 +2684,7 @@
         }
         var task = { id: makeId('t'), text: p.text, category: p.category, done:false, milestone: p.milestone, recurringId: recurringId, createdAt: Date.now() };
         if(p.category === 'job') task.sub = detectJobSub(p.text);
+        else if(p.category === 'portfolio') task.sub = detectContentSub(p.text);
         currentDay.tasks.push(task);
       });
       var skipped = dailyEntryPreview.filter(function(p){ return !p.category; }).length;
@@ -2338,6 +2886,7 @@
   fetchOutreach();
   requestAnimationFrame(animLoop);
   renderReminderBanner();
+  renderWeeklyBanner();
   var bootReminderSettings = loadReminderSettings();
   if(bootReminderSettings.enabled && typeof Notification !== 'undefined' && Notification.permission === 'granted'){
     startReminderLoop();
