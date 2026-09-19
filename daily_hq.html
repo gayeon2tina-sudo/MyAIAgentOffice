@@ -108,6 +108,7 @@
   .panel-box h3{ margin:0 0 8px; font-size:16px; color:var(--accent-deep); text-transform:uppercase; letter-spacing:1px; }
 
   .morning{ margin-bottom:18px; }
+  .add-tasks-bar{ margin-bottom:14px; }
   .reminder-banner{ margin-bottom:18px; border-color:var(--done-deep); background:rgba(31,168,152,0.08); font-size:15px; }
   .ask-result{ background:var(--panel-2); border:2px solid var(--border); border-radius:8px; padding:10px 12px; font-size:15px; line-height:1.5; white-space:pre-wrap; }
   .ask-result.err{ border-color:var(--danger); color:var(--danger); }
@@ -308,6 +309,26 @@
   </div>
 
   <div id="officeView">
+  <div class="add-tasks-bar">
+    <button class="primary" id="addTasksBtn">+ Add tasks</button>
+  </div>
+
+  <section class="office-wrap panel-box">
+    <h3>The Office</h3>
+    <canvas id="officeCanvas" class="pixel" width="1536" height="1024"></canvas>
+    <p class="office-caption">Hand-drawn on canvas — original characters, not traced from any existing game or asset pack. Everyone's at their desk when there's work waiting, wanders to their own furniture sometimes, and kicks back once their room's list is clear.</p>
+  </section>
+
+  <section class="floorplan" id="floorplan"></section>
+
+  <section class="reminder-banner panel-box hidden" id="reminderBanner">
+    <p style="margin:0 0 8px;">Want a nudge if tasks are still open later today? Reminders only fire while this app is open (a foreground or backgrounded tab/window) — not if it's fully closed.</p>
+    <div style="display:flex; gap:8px;">
+      <button class="primary" id="reminderBannerEnable">Enable reminders</button>
+      <button class="ghost" id="reminderBannerDismiss">Not now</button>
+    </div>
+  </section>
+
   <div class="toolbar">
     <button id="goalsBtn">🧭 Goals</button>
     <button id="remindersBtn">🔔 Reminders</button>
@@ -318,47 +339,14 @@
   </div>
 
   <section class="morning panel-box">
-    <h3>This morning</h3>
-    <textarea id="taskInput" placeholder="Type today's tasks, one per line...&#10;e.g. Review today's leads&#10;30 min run&#10;Draft backpack post idea"></textarea>
-    <div style="margin-top:8px; display:flex; gap:8px;">
-      <button class="primary" id="previewBtn">Preview tasks →</button>
-      <button class="ghost" id="clearInputBtn">Clear</button>
+    <h3>📻 Radio to Base</h3>
+    <p style="font-size:13px; color:var(--text-faint); margin:0 0 8px;">Needs the local server running (<code>npm run server</code>) — try "what should I focus on this week?"</p>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <input type="text" id="askInput" placeholder="Message Base..." style="flex:1; min-width:220px;">
+      <button class="pink" id="askBtn">Radio Base</button>
     </div>
-    <div id="previewList" style="margin-top:10px;"></div>
-    <div id="confirmRow" class="hidden" style="margin-top:8px;">
-      <button class="pink" id="confirmAddBtn">Add to today's list</button>
-    </div>
-    <div id="leftoverBox" class="hidden" style="margin-top:16px;">
-      <h3>From yesterday (unchecked)</h3>
-      <div id="leftoverList"></div>
-    </div>
-
-    <div style="margin-top:18px; border-top:2px dashed var(--border); padding-top:14px;">
-      <h3>📻 Radio to Base</h3>
-      <p style="font-size:13px; color:var(--text-faint); margin:0 0 8px;">Needs the local server running (<code>npm run server</code>) — try "what should I focus on this week?"</p>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <input type="text" id="askInput" placeholder="Message Base..." style="flex:1; min-width:220px;">
-        <button class="pink" id="askBtn">Radio Base</button>
-      </div>
-      <div id="askResult" style="margin-top:10px;"></div>
-    </div>
+    <div id="askResult" style="margin-top:10px;"></div>
   </section>
-
-  <section class="reminder-banner panel-box hidden" id="reminderBanner">
-    <p style="margin:0 0 8px;">Want a nudge if tasks are still open later today? Reminders only fire while this app is open (a foreground or backgrounded tab/window) — not if it's fully closed.</p>
-    <div style="display:flex; gap:8px;">
-      <button class="primary" id="reminderBannerEnable">Enable reminders</button>
-      <button class="ghost" id="reminderBannerDismiss">Not now</button>
-    </div>
-  </section>
-
-  <section class="office-wrap panel-box">
-    <h3>The Office</h3>
-    <canvas id="officeCanvas" class="pixel" width="1536" height="1024"></canvas>
-    <p class="office-caption">Hand-drawn on canvas — original characters, not traced from any existing game or asset pack. Everyone's at their desk when there's work waiting, wanders to their own furniture sometimes, and kicks back once their room's list is clear.</p>
-  </section>
-
-  <section class="floorplan" id="floorplan"></section>
   </div>
 
   <div id="calendarView" class="hidden">
@@ -539,7 +527,6 @@
   var today = todayStr();
   var currentDay = loadDay(today);
   var mechanics = loadMechanics();
-  var pendingPreview = [];
   var outreachData = { ok:false, loading:true };
 
   function totalPointsToday(){ return currentDay.tasks.filter(function(t){ return t.done; }).length; }
@@ -876,101 +863,6 @@
     document.getElementById('dayProgressFill').style.width = pct + '%';
   }
 
-  /* ===================== Morning input ===================== */
-
-  function renderPreview(){
-    var box = document.getElementById('previewList');
-    var confirmRow = document.getElementById('confirmRow');
-    if(pendingPreview.length === 0){ box.innerHTML=''; confirmRow.classList.add('hidden'); return; }
-    confirmRow.classList.remove('hidden');
-    box.innerHTML = pendingPreview.map(function(p, idx){
-      var opts = '<option value="">— pick category —</option>' + CATEGORIES.map(function(c){
-        return '<option value="'+c.id+'"'+(p.category===c.id?' selected':'')+'>'+c.icon+' '+c.name+'</option>';
-      }).join('');
-      return '' +
-        '<div class="preview-row" data-idx="'+idx+'">' +
-          '<span class="txt">'+escapeHtml(p.text)+'</span>' +
-          '<select data-role="cat">'+opts+'</select>' +
-          '<button class="star-btn '+(p.milestone?'':'off')+'" data-role="star" title="milestone">⭐</button>' +
-          '<label style="font-size:13px;color:var(--text-dim);"><input type="checkbox" data-role="repeats" '+(p.repeats?'checked':'')+'> repeats</label>' +
-          '<button class="del-btn" data-role="remove" title="remove">✕</button>' +
-        '</div>';
-    }).join('');
-  }
-
-  document.getElementById('previewBtn').addEventListener('click', function(){
-    var raw = document.getElementById('taskInput').value;
-    var lines = raw.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
-    pendingPreview = lines.map(function(line){ return { text: line, category: detectCategory(line), milestone:false, repeats:false }; });
-    renderPreview();
-  });
-  document.getElementById('clearInputBtn').addEventListener('click', function(){
-    document.getElementById('taskInput').value = ''; pendingPreview = []; renderPreview();
-  });
-  document.getElementById('previewList').addEventListener('click', function(e){
-    var row = e.target.closest('.preview-row'); if(!row) return;
-    var idx = Number(row.dataset.idx);
-    if(e.target.dataset.role === 'star'){ pendingPreview[idx].milestone = !pendingPreview[idx].milestone; renderPreview(); }
-    else if(e.target.dataset.role === 'remove'){ pendingPreview.splice(idx,1); renderPreview(); }
-  });
-  document.getElementById('previewList').addEventListener('change', function(e){
-    var row = e.target.closest('.preview-row'); if(!row) return;
-    var idx = Number(row.dataset.idx);
-    if(e.target.dataset.role === 'cat') pendingPreview[idx].category = e.target.value;
-    if(e.target.dataset.role === 'repeats') pendingPreview[idx].repeats = e.target.checked;
-  });
-  document.getElementById('confirmAddBtn').addEventListener('click', function(){
-    var recurring = loadRecurring();
-    var recurringChanged = false;
-    pendingPreview.forEach(function(p){
-      if(!p.category) return;
-      var recurringId = null;
-      if(p.repeats){
-        var tpl = recurring.find(function(r){ return r.text === p.text && r.category === p.category; });
-        if(tpl){ recurringId = tpl.id; tpl.active = true; }
-        else{ tpl = { id: makeId('rec'), text: p.text, category: p.category, active:true }; recurring.push(tpl); recurringId = tpl.id; }
-        recurringChanged = true;
-      }
-      currentDay.tasks.push({ id: makeId('t'), text: p.text, category: p.category, done:false, milestone: p.milestone, recurringId: recurringId, createdAt: Date.now() });
-    });
-    var skipped = pendingPreview.filter(function(p){ return !p.category; }).length;
-    saveDay(currentDay);
-    if(recurringChanged) saveRecurring(recurring);
-    pendingPreview = [];
-    document.getElementById('taskInput').value = '';
-    renderPreview();
-    renderAll();
-    if(skipped > 0) alert(skipped + ' line(s) had no category picked and were not added. Preview again and choose one.');
-  });
-
-  function renderLeftovers(){
-    var prevDate = addDays(today, -1);
-    var prevDay = loadDay(prevDate);
-    var undone = prevDay.tasks.filter(function(t){ return !t.done; });
-    var box = document.getElementById('leftoverBox');
-    var list = document.getElementById('leftoverList');
-    if(undone.length === 0){ box.classList.add('hidden'); return; }
-    box.classList.remove('hidden');
-    list.innerHTML = undone.map(function(t){
-      var cat = CAT_BY_ID[t.category];
-      return '' +
-        '<div class="leftover-row" data-id="'+t.id+'">' +
-          '<span>'+(t.milestone?'⭐ ':'')+escapeHtml(t.text)+' <span class="cat-tag">'+(cat?cat.icon+' '+cat.name:'')+'</span></span>' +
-          '<button class="icon-btn" data-role="addleftover">+ add to today</button>' +
-        '</div>';
-    }).join('');
-  }
-  document.getElementById('leftoverList').addEventListener('click', function(e){
-    if(e.target.dataset.role !== 'addleftover') return;
-    var row = e.target.closest('.leftover-row');
-    var prevDay = loadDay(addDays(today, -1));
-    var t = prevDay.tasks.find(function(x){ return x.id === row.dataset.id; });
-    if(!t) return;
-    currentDay.tasks.push({ id: makeId('t'), text: t.text, category: t.category, done:false, milestone: t.milestone, recurringId:null, createdAt: Date.now() });
-    saveDay(currentDay);
-    renderAll();
-  });
-
   /* ===================== Rooms & tasks ===================== */
 
   function tasksForCategory(catId){ return currentDay.tasks.filter(function(t){ return t.category === catId; }); }
@@ -1026,10 +918,13 @@
     var room = document.querySelector('.room[data-cat="'+catId+'"]');
     var list = room.querySelector('[data-role="list"]');
     var status = room.querySelector('[data-role="status"]');
-    var tasks = tasksForCategory(catId);
+    // Stable sort (Array.prototype.sort preserves relative order of equal
+    // keys in all current engines): unchecked first, checked after, each
+    // group keeping the order tasks were added in. No priority beyond that.
+    var tasks = tasksForCategory(catId).slice().sort(function(a, b){ return (a.done?1:0) - (b.done?1:0); });
     var bodyHtml = '';
     if(tasks.length === 0){
-      bodyHtml = '<div class="empty-msg">No tasks yet — add some this morning.</div>';
+      bodyHtml = '<div class="empty-msg">No tasks yet — use the + Add tasks button above.</div>';
       status.textContent = '';
     } else {
       var doneCount = tasks.filter(function(t){ return t.done; }).length;
@@ -1595,6 +1490,7 @@
   }
 
   document.getElementById('trophyBtn').addEventListener('click', openTrophyShelf);
+  document.getElementById('addTasksBtn').addEventListener('click', openDailyEntryModal);
   function openTrophyShelf(){
     var trophies = [];
     allDayDates().forEach(function(d){
@@ -1688,7 +1584,7 @@
         '<div class="modal">' +
           '<button class="close-x icon-btn" id="closeDailyEntryModal">✕</button>' +
           '<h2>What are you fishing for today?</h2>' +
-          '<p style="color:var(--text-dim); font-size:14px;">One task per line. Skip this if you\'d rather add them later — the same box is further down the page.</p>' +
+          '<p style="color:var(--text-dim); font-size:14px;">One task per line. Skip this if you\'d rather add them later — the "+ Add tasks" button near the top reopens this any time.</p>' +
           '<textarea id="dailyEntryInput" placeholder="e.g. Review today\'s leads&#10;30 min run&#10;Draft backpack post idea"></textarea>' +
           '<div style="margin-top:8px; display:flex; gap:8px;">' +
             '<button class="primary" id="dailyEntryPreviewBtn">Preview tasks →</button>' +
@@ -1698,9 +1594,42 @@
           '<div id="dailyEntryConfirmRow" class="hidden" style="margin-top:8px;">' +
             '<button class="pink" id="dailyEntryConfirmBtn">Add to today\'s list</button>' +
           '</div>' +
+          '<div id="dailyEntryLeftoverBox" class="hidden" style="margin-top:18px; border-top:2px dashed var(--border); padding-top:12px;">' +
+            '<h3 style="margin:0 0 6px;">From yesterday (unchecked)</h3>' +
+            '<div id="dailyEntryLeftoverList"></div>' +
+          '</div>' +
         '</div>' +
       '</div>';
     document.getElementById('modalRoot').innerHTML = html;
+
+    function renderDailyEntryLeftovers(){
+      var prevDay = loadDay(addDays(today, -1));
+      var undone = prevDay.tasks.filter(function(t){ return !t.done; });
+      var box = document.getElementById('dailyEntryLeftoverBox');
+      var list = document.getElementById('dailyEntryLeftoverList');
+      if(undone.length === 0){ box.classList.add('hidden'); return; }
+      box.classList.remove('hidden');
+      list.innerHTML = undone.map(function(t){
+        var cat = CAT_BY_ID[t.category];
+        return '' +
+          '<div class="leftover-row" data-id="'+t.id+'">' +
+            '<span>'+(t.milestone?'⭐ ':'')+escapeHtml(t.text)+' <span class="cat-tag">'+(cat?cat.icon+' '+cat.name:'')+'</span></span>' +
+            '<button class="icon-btn" data-role="addleftover">+ add to today</button>' +
+          '</div>';
+      }).join('');
+    }
+    renderDailyEntryLeftovers();
+    document.getElementById('dailyEntryLeftoverList').addEventListener('click', function(e){
+      if(e.target.dataset.role !== 'addleftover') return;
+      var row = e.target.closest('.leftover-row');
+      var prevDay = loadDay(addDays(today, -1));
+      var t = prevDay.tasks.find(function(x){ return x.id === row.dataset.id; });
+      if(!t) return;
+      currentDay.tasks.push({ id: makeId('t'), text: t.text, category: t.category, done:false, milestone: t.milestone, recurringId:null, createdAt: Date.now() });
+      saveDay(currentDay);
+      renderAll();
+      renderDailyEntryLeftovers();
+    });
 
     function renderDailyEntryPreview(){
       var box = document.getElementById('dailyEntryPreviewList');
@@ -1917,8 +1846,6 @@
 
   function renderAll(){
     renderHUD();
-    renderPreview();
-    renderLeftovers();
     renderAllRoomTasks();
     renderHubBody();
     renderDayProgress();
