@@ -759,6 +759,11 @@
     for(var i=0;i<RANKS.length;i++){ if(RANKS[i].min > points) return RANKS[i]; }
     return null;
   }
+  function rankIndex(points){
+    var idx = 0;
+    RANKS.forEach(function(rk, i){ if(points >= rk.min) idx = i; });
+    return idx;
+  }
   function computeStreak(){
     var d = today;
     var t = loadDay(today);
@@ -1821,6 +1826,90 @@
     });
   }
 
+  /* ===================== Igloo growth (rank made visible) =====================
+     A small structure near Chairman's Office that visibly changes shape at
+     each of the 7 rank tiers, so the rank number means something you can
+     actually watch change, not just read. Drawn with plain canvas shapes
+     (no new art asset) at a fixed spot just above the hub's own position. */
+  // Centered in the corridor band (rooms end at y~370/start again at y~510),
+  // offset left of GaYeon's own seat (190) and away from her walk target
+  // (235) so her 150px-wide sprite doesn't sit directly on top of it —
+  // the first placement overlapped Job Hunt's floor mat instead of reading
+  // as something standing in the hallway.
+  var IGLOO_X = 130, IGLOO_GROUND_Y = 495;
+  function iglooBrick(ctx, x, y, w, h){
+    ctx.fillStyle = '#dceffc';
+    roundRectPath(ctx, x, y, w, h, 3);
+    ctx.fill();
+    ctx.strokeStyle = '#7fb8e0';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+  function drawIgloo(ctx, tier){
+    // tier: 0 Snow Patch .. 6 BIG GY
+    var x = IGLOO_X, gy = IGLOO_GROUND_Y;
+    ctx.save();
+    // Ground patch, present at every tier.
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.beginPath();
+    ctx.ellipse(x, gy+4, 46 + tier*4, 12, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(74,144,194,0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    if(tier >= 1){ // First Brick — a single block
+      iglooBrick(ctx, x-14, gy-16, 28, 16);
+    }
+    if(tier >= 2){ // Half Igloo — a few bricks forming a low arc, open top
+      for(var a=-50;a<=50;a+=25){
+        var rad = a*Math.PI/180;
+        iglooBrick(ctx, x + Math.sin(rad)*30 - 12, gy - 14 - Math.cos(rad)*22, 22, 14);
+      }
+    }
+    if(tier >= 3){ // Igloo Complete — full dome + door arch
+      ctx.fillStyle = '#dceffc';
+      ctx.beginPath();
+      ctx.arc(x, gy-6, 42, Math.PI, 0);
+      ctx.fill();
+      ctx.strokeStyle = '#7fb8e0'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = '#1f8fe0';
+      ctx.beginPath();
+      ctx.arc(x, gy-6, 12, Math.PI, 0);
+      ctx.fill();
+    }
+    if(tier >= 4){ // Ice Palace Wing — a side wing with its own small dome
+      ctx.fillStyle = '#dceffc';
+      ctx.beginPath();
+      ctx.arc(x+52, gy-2, 22, Math.PI, 0);
+      ctx.fill();
+      ctx.strokeStyle = '#7fb8e0'; ctx.lineWidth = 2; ctx.stroke();
+    }
+    if(tier >= 5){ // Frozen Fortress — a second wing + a small flagpole
+      ctx.fillStyle = '#dceffc';
+      ctx.beginPath();
+      ctx.arc(x-52, gy-2, 22, Math.PI, 0);
+      ctx.fill();
+      ctx.strokeStyle = '#7fb8e0'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = '#4a4a4a'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x, gy-48); ctx.lineTo(x, gy-72); ctx.stroke();
+    }
+    if(tier >= 6){ // BIG GY — flag flying + a subtle glow
+      ctx.fillStyle = '#ee7b11';
+      ctx.beginPath();
+      ctx.moveTo(x, gy-72); ctx.lineTo(x+18, gy-66); ctx.lineTo(x, gy-60);
+      ctx.closePath(); ctx.fill();
+      ctx.save();
+      ctx.globalAlpha = 0.5 + Math.sin(Date.now()/400)*0.15;
+      ctx.fillStyle = '#fff4cc';
+      ctx.beginPath();
+      ctx.arc(x, gy-30, 60, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
   function drawOfficeDynamic(tick){
     var canvas = document.getElementById('officeCanvas');
     if(!canvas) return;
@@ -1828,6 +1917,7 @@
     ctx.imageSmoothingEnabled = true;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(staticCanvas, 0, 0);
+    drawIgloo(ctx, rankIndex(totalPointsAllTime()));
 
     var now = Date.now();
     CHARACTERS.forEach(function(ch){
