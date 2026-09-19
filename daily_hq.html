@@ -446,6 +446,7 @@
   var MECH_KEY = STORAGE_PREFIX + 'mechanics';
   var GOALS_KEY = STORAGE_PREFIX + 'goals';
   var REMINDERS_KEY = STORAGE_PREFIX + 'reminders';
+  var OUTREACH_SEEN_KEY = STORAGE_PREFIX + 'outreachSeen';
 
   /* ===================== Date helpers ===================== */
 
@@ -1159,6 +1160,20 @@
     return 'https://docs.google.com/spreadsheets/d/' + OUTREACH_SHEET_ID + '/gviz/tq?tqx=out:json&sheet=' + encodeURIComponent(OUTREACH_TAB);
   }
 
+  function loadOutreachSeen(){ return safeParse(localStorage.getItem(OUTREACH_SEEN_KEY), []); }
+  function saveOutreachSeen(list){
+    // Capped so this can't grow forever — only the most recent rows matter
+    // for dedup, since older ones are vanishingly unlikely to reappear.
+    localStorage.setItem(OUTREACH_SEEN_KEY, JSON.stringify(list.slice(-500)));
+  }
+  // No stable row id in this sheet (see fetchOutreach) — the full row's
+  // content is the closest thing to one. Only changes if the row itself is
+  // edited later, which is an acceptable rare edge case, not a schema this
+  // app controls.
+  function outreachRowKey(row){
+    return (row.c || []).map(function(c){ return c ? c.v : ''; }).join('|');
+  }
+
   function fetchOutreach(){
     outreachData = { ok:false, loading:true };
     renderOutreachInline();
@@ -1176,6 +1191,7 @@
       var reachedOutIdx = cols.findIndex(function(c){ return c.indexOf('reached out') !== -1; });
       if(reachedOutIdx === -1) throw new Error('Could not find a "Date Reached Out" column in that sheet.');
       var sent = 0, replied = 0;
+      var reachedRows = [];
       // The tracker is agent-maintained: a row only exists once the scheduled job
       // finds a real conversation, so "Sent" is just "has a Date Reached Out" —
       // there's no planned-but-not-sent state to filter out by status text.
@@ -1184,16 +1200,57 @@
         var reachedOut = reachedCell && reachedCell.v !== null && reachedCell.v !== '';
         if(!reachedOut) return;
         sent++;
+        reachedRows.push(row);
         var statusCell = row.c && row.c[statusIdx];
         var status = (statusCell && statusCell.v ? String(statusCell.v) : '').trim().toLowerCase();
         if(OUTREACH_REPLIED_STATUSES.indexOf(status) !== -1) replied++;
       });
       outreachData = { ok:true, loading:false, sent:sent, replied:replied };
       renderOutreachInline();
+      autoLogNewOutreach(reachedRows);
     }).catch(function(err){
       outreachData = { ok:false, loading:false, error: err.message };
       renderOutreachInline();
+      // Sheet unreachable — skip silently, no retry loop, no auto-logged tasks.
     });
+  }
+
+  // Adds an already-done task to Job Search & Applications (Outreach & Leads
+  // sub-section) for each sheet row with a "Date Reached Out" this browser
+  // hasn't already turned into a task, so the two views agree without
+  // double-counting on every subsequent fetch.
+  function autoLogNewOutreach(reachedRows){
+    // First time this browser has ever fetched the sheet: every existing row
+    // is "new" relative to an empty seen-list, but backfilling the entire
+    // sheet's history as tasks on first load isn't what "new activity" means
+    // here. Capture everything already there as the baseline, silently, and
+    // only auto-log rows that show up after this point.
+    var isFirstEverFetch = localStorage.getItem(OUTREACH_SEEN_KEY) === null;
+    var seen = loadOutreachSeen();
+    if(isFirstEverFetch){
+      saveOutreachSeen(reachedRows.map(outreachRowKey));
+      return;
+    }
+    var seenSet = {};
+    seen.forEach(function(k){ seenSet[k] = true; });
+    var added = false;
+    reachedRows.forEach(function(row){
+      var key = outreachRowKey(row);
+      if(seenSet[key]) return;
+      seenSet[key] = true;
+      seen.push(key);
+      currentDay.tasks.push({
+        id: makeId('t'), text: 'Reached out (auto-logged from tracker)',
+        category: 'job', sub: 'outreach', done: true, milestone: false,
+        recurringId: null, createdAt: Date.now(), source: 'outreach-auto'
+      });
+      added = true;
+    });
+    if(added){
+      saveOutreachSeen(seen);
+      saveDay(currentDay);
+      renderAll();
+    }
   }
 
   function renderOutreachInline(){
