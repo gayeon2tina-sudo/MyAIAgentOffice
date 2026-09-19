@@ -38,10 +38,26 @@ function loadDayFile(dateStr){
     var raw = fs.readFileSync(dayFilePath(dateStr), 'utf8');
     var day = JSON.parse(raw);
     if(!Array.isArray(day.tasks)) day.tasks = [];
+    migrateJobCvMerge(day);
     return day;
   } catch(e){
     return defaultDay(dateStr);
   }
+}
+
+// Mirrors the same migration in daily_hq.html's loadDay(): 'cv' was its own
+// category before Job Search + CV & Applications merged, now it's the
+// "Applications" sub-section of 'job' — remap on read so old files on disk
+// still make sense instead of referencing a category that no longer exists.
+function migrateJobCvMerge(day){
+  day.tasks.forEach(function(t){
+    if(t.category === 'cv'){
+      t.category = 'job';
+      t.sub = 'applications';
+    } else if(t.category === 'job' && !t.sub){
+      t.sub = detectJobSub(t.text);
+    }
+  });
 }
 function saveDayFile(dateStr, day){
   // Checked on every write, not once at server start: the directory being
@@ -59,9 +75,13 @@ function saveDayFile(dateStr, day){
 // ("log that I applied to the Google PM role") should read the sentence
 // and pass the right category itself — it has context this heuristic
 // doesn't.
+// Job Search and CV & Applications are one category now ('job'); the old
+// 'cv' keywords still count toward it, just via JOB_SUB_KEYWORDS below,
+// which additionally decides its "Outreach & Leads" vs "Applications"
+// sub-section for display.
 var CATEGORY_KEYWORDS = {
-  job: ['job','jobs','posting','postings','role','roles','shortlist','linkedin','indeed','recruiter','apply for','pm role','pmm role','opening','openings','lead','leads'],
-  cv: ['cv','resume','résumé','cover letter','tailor','application draft','submit application','cover ltr','applied','application'],
+  job: ['job','jobs','posting','postings','role','roles','shortlist','linkedin','indeed','recruiter','apply for','pm role','pmm role','opening','openings','lead','leads','cv','resume','résumé','cover letter','tailor','application draft','submit application','cover ltr','applied','application'],
+  learning: ['certification','certified','course','learn','learning','build','side project','app','anthropic','skill','study'],
   portfolio: ['portfolio','webflow','lovable','site','website','page copy','landing page'],
   backpack: ['backpack','blog','post idea','content','draft post','newsletter','write about','write a post'],
   budget: ['budget','runway','rent','lease','seattle','move','moving','expenses','savings','spreadsheet','bank'],
@@ -70,14 +90,6 @@ var CATEGORY_KEYWORDS = {
 var VALID_CATEGORIES = Object.keys(CATEGORY_KEYWORDS);
 function detectCategory(text){
   var lower = (text || '').toLowerCase();
-  // "Applied to the Google PM role" contains both an unambiguous CV & Applications
-  // signal ("applied") and a Job Search one ("pm role") — plain keyword-count
-  // scoring ties 1-to-1 and silently falls to whichever category happens to be
-  // listed first. An explicit completed-application word is decisive regardless
-  // of what else is in the sentence, so it's checked before generic scoring.
-  var APPLICATION_ACTION_WORDS = ['applied','application','submitted my application','sent my application'];
-  if(APPLICATION_ACTION_WORDS.some(function(w){ return lower.indexOf(w) !== -1; })) return 'cv';
-
   var best = null, bestScore = 0;
   VALID_CATEGORIES.forEach(function(cat){
     var score = 0;
@@ -85,6 +97,25 @@ function detectCategory(text){
     if(score > bestScore){ bestScore = score; best = cat; }
   });
   return best;
+}
+
+var JOB_SUB_KEYWORDS = {
+  applications: ['cv','resume','résumé','cover letter','tailor','application draft','submit application','cover ltr','applied','application'],
+  outreach: ['job','jobs','posting','postings','role','roles','shortlist','linkedin','indeed','recruiter','apply for','pm role','pmm role','opening','openings','lead','leads']
+};
+function detectJobSub(text){
+  var lower = (text || '').toLowerCase();
+  // "Applied to the Google PM role" contains both an unambiguous Applications
+  // signal ("applied") and an Outreach & Leads one ("pm role") — plain
+  // keyword-count scoring ties 1-to-1 and silently falls to whichever side
+  // happens to be checked first. An explicit completed-application word is
+  // decisive regardless of what else is in the sentence.
+  var APPLICATION_ACTION_WORDS = ['applied','application','submitted my application','sent my application'];
+  if(APPLICATION_ACTION_WORDS.some(function(w){ return lower.indexOf(w) !== -1; })) return 'applications';
+  var appScore = 0, outScore = 0;
+  JOB_SUB_KEYWORDS.applications.forEach(function(kw){ if(lower.indexOf(kw) !== -1) appScore++; });
+  JOB_SUB_KEYWORDS.outreach.forEach(function(kw){ if(lower.indexOf(kw) !== -1) outScore++; });
+  return appScore > outScore ? 'applications' : 'outreach';
 }
 
 app.get('/api/day', function(req, res){
@@ -142,6 +173,7 @@ app.post('/api/log-task', function(req, res){
     createdAt: Date.now(),
     source: 'claude-code'
   };
+  if(category === 'job') task.sub = req.body && (req.body.sub === 'applications' || req.body.sub === 'outreach') ? req.body.sub : detectJobSub(text);
   day.tasks.push(task);
   saveDayFile(date, day);
   return res.json({ ok:true, task: task, day: day });

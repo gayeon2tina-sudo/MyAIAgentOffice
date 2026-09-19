@@ -134,7 +134,7 @@
     display:grid;
     grid-template-columns: repeat(4, 1fr);
     grid-template-areas:
-      "job cv portfolio hub"
+      "job learning portfolio hub"
       "backpack budget health hub";
     gap:0;
     border:5px solid var(--wall);
@@ -146,13 +146,13 @@
     .floorplan{ grid-template-columns: repeat(2, 1fr);
       grid-template-areas:
         "hub hub"
-        "job cv"
+        "job learning"
         "portfolio backpack"
         "budget health"; }
   }
   @media (max-width:600px){
     .floorplan{ grid-template-columns: 1fr;
-      grid-template-areas: "hub" "job" "cv" "portfolio" "backpack" "budget" "health"; }
+      grid-template-areas: "hub" "job" "learning" "portfolio" "backpack" "budget" "health"; }
   }
 
   .room{
@@ -162,7 +162,7 @@
     position:relative;
   }
   .room[data-cat="job"]{ grid-area:job; }
-  .room[data-cat="cv"]{ grid-area:cv; }
+  .room[data-cat="learning"]{ grid-area:learning; }
   .room[data-cat="portfolio"]{ grid-area:portfolio; }
   .room[data-cat="backpack"]{ grid-area:backpack; }
   .room[data-cat="budget"]{ grid-area:budget; }
@@ -190,6 +190,8 @@
   .task-row .task-text{ flex:1; word-break:break-word; }
   .task-row .task-text.done{ text-decoration:line-through; color:var(--text-faint); }
   .source-tag{ font-size:13px; cursor:help; opacity:.8; }
+  .task-subsection + .task-subsection{ margin-top:10px; padding-top:8px; border-top:1px dashed var(--border); }
+  .task-subsection h4{ margin:0 0 4px; font-size:12px; text-transform:uppercase; letter-spacing:.03em; color:var(--text-faint); }
   .empty-msg{ color:var(--text-faint); font-size:14px; padding:6px 2px; }
   .outreach-inline{ font-size:13px; color:var(--text-faint); border-top:1px dashed var(--border); margin-top:6px; padding-top:6px; }
   .outreach-inline .nums{ color:var(--text); font-family:'Press Start 2P', monospace; font-size:11px; }
@@ -379,16 +381,20 @@
   /* ===================== Config ===================== */
 
   var CATEGORIES = [
-    { id:'job', name:'Job Search', icon:'🎯', floor:'#dff7f5', accent:'#0aab8c',
-      lead:'Scout', member:'Radar',
-      flavors:["Scout found one.", "Radar's tracking a lead."],
+    { id:'job', name:'Job Search & Applications', icon:'🎯', floor:'#dff7f5', accent:'#0aab8c',
+      lead:'Scout', member:'Editor',
+      subsections:[
+        { id:'outreach', label:'Outreach & Leads' },
+        { id:'applications', label:'Applications' }
+      ],
+      flavors:["Scout found one.", "Editor stamped it.", "Scout's tracking a lead.", "Editor's letting that rest before the final pass."],
       cursor:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20"><circle cx="8" cy="8" r="6" fill="none" stroke="%23222" stroke-width="2"/><line x1="13" y1="13" x2="18" y2="18" stroke="%23222" stroke-width="2"/></svg>',
-      keywords:['job','jobs','posting','postings','role','roles','shortlist','linkedin','indeed','recruiter','apply for','pm role','pmm role','opening','openings','lead','leads'] },
-    { id:'cv', name:'CV & Applications', icon:'📝', floor:'#fbe4ec', accent:'#e0397e',
-      lead:'Editor', member:'Wordsmith',
-      flavors:["Editor stamped it.", "Wordsmith's letting that rest before the final pass."],
-      cursor:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20"><rect x="4" y="10" width="12" height="7" rx="1" fill="%23c93c81" stroke="%23222" stroke-width="1"/><rect x="7" y="4" width="6" height="6" fill="%23c93c81" stroke="%23222" stroke-width="1"/></svg>',
-      keywords:['cv','resume','résumé','cover letter','tailor','application draft','submit application','cover ltr'] },
+      keywords:['job','jobs','posting','postings','role','roles','shortlist','linkedin','indeed','recruiter','apply for','pm role','pmm role','opening','openings','lead','leads','cv','resume','résumé','cover letter','tailor','application draft','submit application','cover ltr','applied','application'] },
+    { id:'learning', name:'Learning & Development', icon:'🎓', floor:'#fbe4ec', accent:'#e0397e',
+      lead:'Compiler',
+      flavors:["Compiler shipped a small win.", "Compiler's still deep in it — no rush."],
+      cursor:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20"><polygon points="10,3 18,7 10,11 2,7" fill="%23e0397e" stroke="%23222" stroke-width="1"/><line x1="10" y1="11" x2="10" y2="16" stroke="%23222" stroke-width="1.5"/></svg>',
+      keywords:['certification','certified','course','learn','learning','build','side project','app','anthropic','skill','study'] },
     { id:'portfolio', name:'Portfolio Site', icon:'🖼️', floor:'#ece5fb', accent:'#7c4fe0',
       lead:'Builder', member:'Pixel',
       flavors:["Builder added a beam.", "Pixel touched up a section."],
@@ -424,7 +430,7 @@
   ];
 
   var GOAL_DEFAULTS = [
-    { id:'goal1', name:'Land the role', tag:'Job Search', onTrack:'', categories:['job','cv'] },
+    { id:'goal1', name:'Land the role', tag:'Job Search', onTrack:'', categories:['job'] },
     { id:'goal2', name:'Personal brand is live', tag:'Portfolio & Content', onTrack:'', categories:['portfolio','backpack'] },
     { id:'goal3', name:'Financially steady through the transition', tag:'Budget & Life', onTrack:'', categories:['budget'] }
   ];
@@ -472,7 +478,24 @@
     if(!Array.isArray(day.tasks)) day.tasks = [];
     if(typeof day.note !== 'string') day.note = '';
     if(typeof day.reviewed !== 'boolean') day.reviewed = false;
+    migrateJobCvMerge(day);
     return day;
+  }
+  // One-time-per-load migration for the Job Search + CV & Applications merge:
+  // 'cv' was its own category before, now it's the "Applications" sub-section
+  // of the merged 'job' category — remap so old history still makes sense
+  // (still counts toward the same fish/star total it always did) instead of
+  // silently vanishing from a category that no longer exists. Old 'job'
+  // tasks get an explicit sub too, so every job-category task has one.
+  function migrateJobCvMerge(day){
+    day.tasks.forEach(function(t){
+      if(t.category === 'cv'){
+        t.category = 'job';
+        t.sub = 'applications';
+      } else if(t.category === 'job' && !t.sub){
+        t.sub = detectJobSub(t.text);
+      }
+    });
   }
   function saveDay(day){
     localStorage.setItem(DAY_KEY(day.date), JSON.stringify(day));
@@ -518,8 +541,23 @@
       .then(function(res){ if(!res.ok) throw new Error('no server'); return res.json(); })
       .then(function(data){
         if(data && data.ok && data.day){
-          localStorage.setItem(DAY_KEY(dateStr), JSON.stringify(data.day));
-          return true;
+          // A blind overwrite here would be a real data-loss bug: if the
+          // server has never seen this date yet (a fresh server start, a
+          // deleted data/ dir, anything), loadDayFile() hands back an empty
+          // default day, and treating that as authoritative would erase
+          // whatever's already in this browser's localStorage. Merge
+          // instead — union in anything the server has that the browser
+          // doesn't (by id), same reasoning as saveDay()'s own merge, just
+          // in the other direction.
+          var existing = loadDay(dateStr);
+          var knownIds = {};
+          existing.tasks.forEach(function(t){ knownIds[t.id] = true; });
+          var missingFromClient = data.day.tasks.filter(function(t){ return !knownIds[t.id]; });
+          var merged = missingFromClient.length
+            ? Object.assign({}, existing, { tasks: existing.tasks.concat(missingFromClient) })
+            : existing;
+          localStorage.setItem(DAY_KEY(dateStr), JSON.stringify(merged));
+          return missingFromClient.length > 0;
         }
         return false;
       })
@@ -573,6 +611,27 @@
     });
     return best;
   }
+
+  // Job Search & Applications is one category with two displayed
+  // sub-sections (Scout's outreach/leads, Editor's applications) sharing a
+  // single fish count and star row — this only decides which sub-section a
+  // job-category task is grouped under, it never changes the task's actual
+  // category or point value. An explicit completed-application word wins
+  // regardless of what else is in the sentence, same reasoning as the old
+  // job-vs-cv category tie-break this replaces.
+  var JOB_SUB_KEYWORDS = {
+    applications: ['cv','resume','résumé','cover letter','tailor','application draft','submit application','cover ltr','applied','application'],
+    outreach: ['job','jobs','posting','postings','role','roles','shortlist','linkedin','indeed','recruiter','apply for','pm role','pmm role','opening','openings','lead','leads']
+  };
+  function detectJobSub(text){
+    var lower = (text || '').toLowerCase();
+    var APPLICATION_ACTION_WORDS = ['applied','application','submitted my application','sent my application'];
+    if(APPLICATION_ACTION_WORDS.some(function(w){ return lower.indexOf(w) !== -1; })) return 'applications';
+    var appScore = 0, outScore = 0;
+    JOB_SUB_KEYWORDS.applications.forEach(function(kw){ if(lower.indexOf(kw) !== -1) appScore++; });
+    JOB_SUB_KEYWORDS.outreach.forEach(function(kw){ if(lower.indexOf(kw) !== -1) outScore++; });
+    return appScore > outScore ? 'applications' : 'outreach';
+  }
   function escapeHtml(s){
     return s.replace(/[&<>"']/g, function(c){ return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]; });
   }
@@ -624,7 +683,9 @@
     recurring.forEach(function(tpl){
       var exists = currentDay.tasks.some(function(t){ return t.recurringId === tpl.id; });
       if(!exists){
-        currentDay.tasks.push({ id: makeId('t'), text: tpl.text, category: tpl.category, done:false, milestone:false, recurringId: tpl.id, createdAt: Date.now() });
+        var task = { id: makeId('t'), text: tpl.text, category: tpl.category, done:false, milestone:false, recurringId: tpl.id, createdAt: Date.now() };
+        if(tpl.category === 'job') task.sub = detectJobSub(tpl.text);
+        currentDay.tasks.push(task);
         changed = true;
       }
     });
@@ -979,34 +1040,48 @@
     starRow.innerHTML = html;
   }
 
+  // Stable sort (Array.prototype.sort preserves relative order of equal
+  // keys in all current engines): unchecked first, checked after, each
+  // group keeping the order tasks were added in. No priority beyond that.
+  function sortUncheckedFirst(tasks){
+    return tasks.slice().sort(function(a, b){ return (a.done?1:0) - (b.done?1:0); });
+  }
+  function taskRowHtml(t){
+    return '' +
+      '<div class="task-row" data-id="'+t.id+'">' +
+        '<input type="checkbox" data-role="check" '+(t.done?'checked':'')+'>' +
+        '<button class="star-btn '+(t.milestone?'':'off')+'" data-role="star">⭐</button>' +
+        '<span class="task-text '+(t.done?'done':'')+'">'+escapeHtml(t.text)+'</span>' +
+        sourceTagHtml(t) +
+        '<button class="del-btn" data-role="remove">✕</button>' +
+      '</div>';
+  }
+
   function renderRoomTasks(catId){
     var room = document.querySelector('.room[data-cat="'+catId+'"]');
     var list = room.querySelector('[data-role="list"]');
     var status = room.querySelector('[data-role="status"]');
-    // Stable sort (Array.prototype.sort preserves relative order of equal
-    // keys in all current engines): unchecked first, checked after, each
-    // group keeping the order tasks were added in. No priority beyond that.
-    var tasks = tasksForCategory(catId).slice().sort(function(a, b){ return (a.done?1:0) - (b.done?1:0); });
-    var bodyHtml = '';
-    if(tasks.length === 0){
-      bodyHtml = '<div class="empty-msg">No tasks yet — use the + Add tasks button above.</div>';
-      status.textContent = '';
-    } else {
-      var doneCount = tasks.filter(function(t){ return t.done; }).length;
-      status.textContent = doneCount + '/' + tasks.length;
-      bodyHtml = tasks.map(function(t){
-        return '' +
-          '<div class="task-row" data-id="'+t.id+'">' +
-            '<input type="checkbox" data-role="check" '+(t.done?'checked':'')+'>' +
-            '<button class="star-btn '+(t.milestone?'':'off')+'" data-role="star">⭐</button>' +
-            '<span class="task-text '+(t.done?'done':'')+'">'+escapeHtml(t.text)+'</span>' +
-            sourceTagHtml(t) +
-            '<button class="del-btn" data-role="remove">✕</button>' +
-          '</div>';
+    var cat = CAT_BY_ID[catId];
+    var tasks = tasksForCategory(catId);
+    status.textContent = tasks.length ? (tasks.filter(function(t){ return t.done; }).length + '/' + tasks.length) : '';
+    var bodyHtml;
+    if(cat.subsections){
+      // Two labeled sub-sections sharing this one fish count and star row —
+      // the split is display-only grouping, never a second category. Shown
+      // whether or not either side has tasks yet, since it's a fixed part
+      // of this card's layout, not something that appears once populated.
+      bodyHtml = cat.subsections.map(function(sub){
+        var subTasks = sortUncheckedFirst(tasks.filter(function(t){ return (t.sub || 'outreach') === sub.id; }));
+        var rows = subTasks.length
+          ? subTasks.map(taskRowHtml).join('')
+          : '<div class="empty-msg">Nothing here yet.</div>';
+        var inlineHtml = sub.id === 'outreach' ? '<div class="outreach-inline" id="outreachInline"></div>' : '';
+        return '<div class="task-subsection"><h4>'+escapeHtml(sub.label)+'</h4>'+rows+inlineHtml+'</div>';
       }).join('');
-    }
-    if(catId === 'job'){
-      bodyHtml += '<div class="outreach-inline" id="outreachInline"></div>';
+    } else if(tasks.length === 0){
+      bodyHtml = '<div class="empty-msg">No tasks yet — use the + Add tasks button above.</div>';
+    } else {
+      bodyHtml = sortUncheckedFirst(tasks).map(taskRowHtml).join('');
     }
     list.innerHTML = bodyHtml;
     if(catId === 'job') renderOutreachInline();
@@ -1370,6 +1445,11 @@
     hub: 'sprites/hub.png',
     job: 'sprites/job.png',
     cv: 'sprites/cv.png',
+    // Compiler has no real art yet — this is a plain placeholder (dashed
+    // border + "PLACEHOLDER" banner baked into the image itself so it can
+    // never be mistaken for finished art) — swap sprites/learning.png for a
+    // real character sprite whenever one exists.
+    learning: 'sprites/learning.png',
     portfolio: 'sprites/portfolio.png',
     backpack: 'sprites/backpack.png',
     budget: 'sprites/budget.png',
@@ -1385,7 +1465,14 @@
   var CHARACTERS_RAW = [
     { id:'hub', catId:'hub', name:'GaYeon', seat:{x:190,y:460}, walkTarget:{x:235,y:460} },
     { id:'job', catId:'job', name:'Scout', seat:{x:210,y:295}, walkTarget:{x:210,y:335} },
-    { id:'cv', catId:'cv', name:'Editor', seat:{x:1180,y:295}, walkTarget:{x:1180,y:335} },
+    // Editor moved into the second desk of the (already two-desk) Job Search
+    // room art when Job Search + CV & Applications merged into one room;
+    // sprite id stays 'cv' since it's just an asset filename (sprites/cv.png)
+    // and both characters now share catId 'job'.
+    { id:'cv', catId:'job', name:'Editor', seat:{x:350,y:295}, walkTarget:{x:350,y:335} },
+    // Compiler occupies the desk Editor vacated — same room art (reused
+    // as-is), now labeled Learning & Development.
+    { id:'learning', catId:'learning', name:'Compiler', seat:{x:1180,y:295}, walkTarget:{x:1180,y:335} },
     { id:'portfolio', catId:'portfolio', name:'Builder', seat:{x:270,y:705}, walkTarget:{x:270,y:745} },
     { id:'backpack', catId:'backpack', name:'Storyteller', seat:{x:855,y:275}, walkTarget:{x:855,y:315} },
     { id:'budget', catId:'budget', name:'Ledger', seat:{x:755,y:705}, walkTarget:{x:755,y:745} },
@@ -1487,13 +1574,13 @@
   var ROOM_RECTS = {
     job:       { x1:60,  y1:60,  x2:505,  y2:370 },
     backpack:  { x1:520, y1:60,  x2:965,  y2:370 },
-    cv:        { x1:985, y1:60,  x2:1465, y2:370 },
+    learning:  { x1:985, y1:60,  x2:1465, y2:370 },
     portfolio: { x1:60,  y1:510, x2:505,  y2:830 },
     budget:    { x1:520, y1:510, x2:965,  y2:830 },
     health:    { x1:985, y1:510, x2:1465, y2:830 },
     hub:       { x1:100, y1:400, x2:280,  y2:500 }
   };
-  var ROOM_LABELS = { job:'Job Search', cv:'CV & Applications', portfolio:'Portfolio Site', backpack:'Backpack Content', budget:'Budget & Life', health:'Health', hub:"Captain's Quarters" };
+  var ROOM_LABELS = { job:'Job Search & Applications', learning:'Learning & Development', portfolio:'Portfolio Site', backpack:'Backpack Content', budget:'Budget & Life', health:'Health', hub:"Captain's Quarters" };
   var hoveredRoomId = null;
 
   function canvasPointFromEvent(canvas, evt){
@@ -1691,7 +1778,9 @@
       var prevDay = loadDay(addDays(today, -1));
       var t = prevDay.tasks.find(function(x){ return x.id === row.dataset.id; });
       if(!t) return;
-      currentDay.tasks.push({ id: makeId('t'), text: t.text, category: t.category, done:false, milestone: t.milestone, recurringId:null, createdAt: Date.now() });
+      var task = { id: makeId('t'), text: t.text, category: t.category, done:false, milestone: t.milestone, recurringId:null, createdAt: Date.now() };
+      if(task.category === 'job') task.sub = t.sub || detectJobSub(t.text);
+      currentDay.tasks.push(task);
       saveDay(currentDay);
       renderAll();
       renderDailyEntryLeftovers();
@@ -1747,7 +1836,9 @@
           else{ tpl = { id: makeId('rec'), text: p.text, category: p.category, active:true }; recurring.push(tpl); recurringId = tpl.id; }
           recurringChanged = true;
         }
-        currentDay.tasks.push({ id: makeId('t'), text: p.text, category: p.category, done:false, milestone: p.milestone, recurringId: recurringId, createdAt: Date.now() });
+        var task = { id: makeId('t'), text: p.text, category: p.category, done:false, milestone: p.milestone, recurringId: recurringId, createdAt: Date.now() };
+        if(p.category === 'job') task.sub = detectJobSub(p.text);
+        currentDay.tasks.push(task);
       });
       var skipped = dailyEntryPreview.filter(function(p){ return !p.category; }).length;
       saveDay(currentDay);
