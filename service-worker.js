@@ -1,4 +1,4 @@
-const CACHE_NAME = 'biggyinc-v2';
+const CACHE_NAME = 'biggyinc-v3';
 // Requests whose content actually changes between deploys (the app's own HTML —
 // everything, including all JS, lives inside daily_hq.html) must go network-first.
 // Cache-first here would mean a feature added after someone's first visit stays
@@ -56,6 +56,13 @@ self.addEventListener('fetch', (event) => {
   // those must stay live/network-only, not served from cache.
   if (url.origin !== self.location.origin) return;
   if (event.request.method !== 'GET') return;
+  // /api/* is the local server's live day-log data (polled on boot and every
+  // window focus). It's never static like the sprites/manifest, so it must
+  // never be served from this cache — not even as a stale-while-revalidate
+  // "instant" response — or a browser tab can sit showing yesterday's
+  // (or a minute-old) task list after a Claude-Code-logged task or another
+  // tab's edit actually changed the file on disk. Pass it straight through.
+  if (url.pathname.startsWith('/api/')) return;
 
   if (isNetworkFirst(url.pathname)) {
     event.respondWith(

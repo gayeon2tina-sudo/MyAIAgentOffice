@@ -189,6 +189,7 @@
   .task-row input[type=checkbox]{ width:18px; height:18px; margin-top:2px; accent-color:var(--done); cursor:pointer; }
   .task-row .task-text{ flex:1; word-break:break-word; }
   .task-row .task-text.done{ text-decoration:line-through; color:var(--text-faint); }
+  .source-tag{ font-size:13px; cursor:help; opacity:.8; }
   .empty-msg{ color:var(--text-faint); font-size:14px; padding:6px 2px; }
   .outreach-inline{ font-size:13px; color:var(--text-faint); border-top:1px dashed var(--border); margin-top:6px; padding-top:6px; }
   .outreach-inline .nums{ color:var(--text); font-family:'Press Start 2P', monospace; font-size:11px; }
@@ -473,7 +474,61 @@
     if(typeof day.reviewed !== 'boolean') day.reviewed = false;
     return day;
   }
-  function saveDay(day){ localStorage.setItem(DAY_KEY(day.date), JSON.stringify(day)); }
+  function saveDay(day){
+    localStorage.setItem(DAY_KEY(day.date), JSON.stringify(day));
+    // Keeps the on-disk file (local server only) in sync with browser edits
+    // too, not just one-directional from a Claude Code session writing to
+    // it. A blind PUT of the browser's own state would be a real data-loss
+    // bug here: if a task was appended server-side (log-task) between this
+    // browser's last read and now, overwriting with what the browser
+    // thinks the day looks like would silently erase it. So this reads the
+    // current file first and unions in any tasks present there but not
+    // in the browser's own list (by id) before writing back — a merge,
+    // not a blind overwrite. No-ops silently on static GitHub Pages
+    // hosting, where this fetch has nothing to reach.
+    fetch('/api/day?date=' + encodeURIComponent(day.date), { cache: 'no-store' })
+      .then(function(res){ return res.ok ? res.json() : null; })
+      .then(function(data){
+        var merged = day;
+        if(data && data.ok && data.day && Array.isArray(data.day.tasks)){
+          var knownIds = {};
+          day.tasks.forEach(function(t){ knownIds[t.id] = true; });
+          var missingFromClient = data.day.tasks.filter(function(t){ return !knownIds[t.id]; });
+          if(missingFromClient.length){
+            merged = Object.assign({}, day, { tasks: day.tasks.concat(missingFromClient) });
+            localStorage.setItem(DAY_KEY(day.date), JSON.stringify(merged));
+          }
+        }
+        return fetch('/api/day', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(merged)
+        });
+      })
+      .catch(function(){});
+  }
+  // The local server's on-disk file is the source of truth when it's running
+  // (that's what lets a Claude Code session log a task directly) — pulls it
+  // into localStorage before anything reads today's data. Resolves false,
+  // never rejects, so callers don't need their own try/catch: static GitHub
+  // Pages hosting (no server to answer this) is an expected, silent case,
+  // not a failure.
+  function syncDayFromServer(dateStr){
+    var fetchPromise = fetch('/api/day?date=' + encodeURIComponent(dateStr), { cache: 'no-store' })
+      .then(function(res){ if(!res.ok) throw new Error('no server'); return res.json(); })
+      .then(function(data){
+        if(data && data.ok && data.day){
+          localStorage.setItem(DAY_KEY(dateStr), JSON.stringify(data.day));
+          return true;
+        }
+        return false;
+      })
+      .catch(function(){ return false; });
+    // Bounded so static hosting (no server to ever answer this) can't add
+    // real delay to boot — a slow/absent network shouldn't hold up the page.
+    var timeout = new Promise(function(resolve){ setTimeout(function(){ resolve(false); }, 1500); });
+    return Promise.race([fetchPromise, timeout]);
+  }
 
   function loadRecurring(){ return safeParse(localStorage.getItem(RECURRING_KEY), []); }
   function saveRecurring(list){ localStorage.setItem(RECURRING_KEY, JSON.stringify(list)); }
@@ -867,6 +922,16 @@
 
   function tasksForCategory(catId){ return currentDay.tasks.filter(function(t){ return t.category === catId; }); }
 
+  var SOURCE_TAGS = {
+    'claude-code': { icon:'📻', title:'Logged via Claude Code' },
+    'outreach-auto': { icon:'🎣', title:'Auto-logged from the outreach tracker' }
+  };
+  function sourceTagHtml(t){
+    var tag = SOURCE_TAGS[t.source];
+    if(!tag) return '';
+    return '<span class="source-tag" title="'+tag.title+'">'+tag.icon+'</span>';
+  }
+
   function cursorStyle(cat){ return "url('data:image/svg+xml;utf8," + cat.cursor + "') 10 10, auto"; }
 
   function buildFloorplan(){
@@ -935,6 +1000,7 @@
             '<input type="checkbox" data-role="check" '+(t.done?'checked':'')+'>' +
             '<button class="star-btn '+(t.milestone?'':'off')+'" data-role="star">⭐</button>' +
             '<span class="task-text '+(t.done?'done':'')+'">'+escapeHtml(t.text)+'</span>' +
+            sourceTagHtml(t) +
             '<button class="del-btn" data-role="remove">✕</button>' +
           '</div>';
       }).join('');
@@ -1869,6 +1935,11 @@
 
   buildFloorplan();
   var pendingReviewDate = initDayRollover();
+  // The on-disk file (local server only) is the source of truth when it
+  // exists — pull it into localStorage before anything else reads today's
+  // data, so a task logged directly to the file (by a Claude Code session,
+  // or by this same browser earlier) is never stale relative to it.
+  syncDayFromServer(today).then(function(){
   currentDay = loadDay(today);
   applyRecurring();
   currentDay = loadDay(today);
@@ -1899,6 +1970,16 @@
   } else {
     afterOpeningReview();
   }
+
+  // Re-syncs on refocus so a task logged straight to the file — by a
+  // Claude Code session, typically — while this tab was already open
+  // shows up without needing a manual reload.
+  window.addEventListener('focus', function(){
+    syncDayFromServer(today).then(function(changed){
+      if(changed){ currentDay = loadDay(today); renderAll(); }
+    });
+  });
+  });
 
 })();
 </script>
