@@ -142,9 +142,13 @@
   .del-btn{ background:none; border:none; color:var(--text-faint); font-size:14px; cursor:pointer; padding:0 2px; }
   .del-btn:hover{ color:var(--danger); }
 
-  .office-wrap{ margin-bottom:18px; position:relative; }
+  .office-wrap{ margin-bottom:8px; position:relative; }
   .office-wrap canvas{ width:100%; max-width:640px; height:auto; display:block; margin:0 auto; border-radius:10px; cursor:default; }
-  .office-caption{ font-size:12px; color:var(--text-faint); margin-top:6px; }
+  /* Small and de-emphasized on purpose — attribution/how-it-works trivia,
+     not something that should compete with the office visual above it or
+     the task cards right below; keeps the page feeling continuous instead
+     of like two separate sections with a paragraph wedged between them. */
+  .office-caption{ font-size:10px; line-height:1.4; color:var(--text-faint); opacity:.75; margin-top:4px; }
   /* Matches the canvas's own centered box exactly (same width/max-width,
      aspect-ratio instead of measuring height in JS) so a bubble positioned
      by percentage (x/1536, y/1024) lands on the right spot at any size. */
