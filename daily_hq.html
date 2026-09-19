@@ -88,11 +88,28 @@
     display:flex; align-items:center; gap:6px; font-size:14px; font-weight:bold; color:#fff;
     border:2px solid rgba(0,0,0,0.15); border-radius:20px; padding:6px 12px;
     box-shadow:0 3px 0 rgba(0,0,0,0.15);
+    font-family:inherit; cursor:pointer;
+    transition:transform .12s ease, box-shadow .12s ease;
   }
+  .hud-pill:hover{ transform:translateY(-2px); box-shadow:0 5px 0 rgba(0,0,0,0.18), 0 0 0 3px rgba(255,255,255,0.35); }
+  .hud-pill:active{ transform:translateY(1px); box-shadow:0 1px 0 rgba(0,0,0,0.15); }
   .hud-pill.points{ background:linear-gradient(180deg,#ffd54a,var(--gold)); color:#4a2f00; transition:transform .18s ease; }
   .hud-pill.streak{ background:linear-gradient(180deg,#ffab6b,var(--accent)); }
   .hud-pill.rank{ background:linear-gradient(180deg,var(--rank-light),var(--rank-deep)); color:#123049; }
   .hud-pill .val{ font-family:'Press Start 2P', monospace; font-size:11px; }
+
+  .streak-popover-backdrop{ position:fixed; inset:0; z-index:900; }
+  .streak-popover{
+    position:absolute; top:56px; right:16px; z-index:901;
+    background:var(--panel); border:2px solid var(--border); border-radius:12px;
+    padding:14px 16px; box-shadow:0 8px 20px rgba(0,0,0,0.25); width:260px;
+  }
+  .streak-popover h4{ margin:0 0 8px; font-size:14px; }
+  .streak-days{ display:flex; gap:4px; align-items:flex-end; height:60px; }
+  .streak-day{ flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .streak-day .bar{ width:100%; border-radius:3px 3px 0 0; background:var(--border); height:6px; }
+  .streak-day .bar.hit{ background:var(--accent); height:28px; }
+  .streak-day .lbl{ font-size:9px; color:var(--text-faint); }
   .points-today.bump{ transform:scale(1.15); }
 
   .day-progress-wrap{ max-width:1240px; margin:10px auto 0; padding:0 16px; }
@@ -316,9 +333,9 @@
 <header class="top">
   <h1 class="title">BIG GY INC</h1>
   <div class="hud">
-    <span class="hud-pill points" id="pointsPill">🐟 <span class="val" id="pointsVal">0</span></span>
-    <span class="hud-pill streak" id="streakPill">🛷 <span class="val" id="streakVal">0</span></span>
-    <span class="hud-pill rank" id="rankPill">🧊 <span class="val" id="rankVal">Snow Patch</span></span>
+    <button class="hud-pill points" id="pointsPill" title="0 fish caught today — click to see your Catch of the Day board">🐟 <span class="val" id="pointsVal">0</span></button>
+    <button class="hud-pill streak" id="streakPill" title="0 day slide streak — click to see the last two weeks">🛷 <span class="val" id="streakVal">0</span></button>
+    <button class="hud-pill rank" id="rankPill" title="Snow Patch — click to visit Chairman's Office">🧊 <span class="val" id="rankVal">Snow Patch</span></button>
   </div>
 </header>
 
@@ -1061,10 +1078,57 @@
   /* ===================== Header / HUD ===================== */
 
   function renderHUD(){
-    document.getElementById('pointsVal').textContent = totalPointsToday();
-    document.getElementById('streakVal').textContent = computeStreak();
-    document.getElementById('rankVal').textContent = currentRank(totalPointsAllTime()).title;
+    var todayFish = totalPointsToday();
+    var streak = computeStreak();
+    var rankTitle = currentRank(totalPointsAllTime()).title;
+    document.getElementById('pointsVal').textContent = todayFish;
+    document.getElementById('streakVal').textContent = streak;
+    document.getElementById('rankVal').textContent = rankTitle;
+    document.getElementById('pointsPill').title = todayFish + ' fish caught today — click to see your Catch of the Day board';
+    document.getElementById('streakPill').title = streak + ' day slide streak — click to see the last two weeks';
+    document.getElementById('rankPill').title = rankTitle + " — click to visit Chairman's Office";
   }
+  // HUD chips are real, routed buttons, not decoration: fish -> Catch of
+  // the Day (openTrophyShelf, defined below — hoisted, safe to reference
+  // here), streak -> a small popover built fresh each click, rank -> jump
+  // to Chairman's Office (reusing the same scroll+flash the canvas room
+  // clicks already use).
+  document.getElementById('pointsPill').addEventListener('click', function(){ openTrophyShelf(); });
+  document.getElementById('rankPill').addEventListener('click', function(){
+    showTab('office');
+    var card = document.querySelector('.room.hub');
+    if(!card) return;
+    card.scrollIntoView({ behavior:'smooth', block:'center' });
+    card.classList.add('room-flash');
+    setTimeout(function(){ card.classList.remove('room-flash'); }, 900);
+  });
+  document.getElementById('streakPill').addEventListener('click', openStreakPopover);
+
+  function closeStreakPopover(){
+    var el = document.getElementById('streakPopoverRoot');
+    if(el) el.remove();
+  }
+  function openStreakPopover(){
+    closeStreakPopover();
+    var days = [];
+    for(var i=13;i>=0;i--){ var d = addDays(today, -i); days.push({ date:d, hit: loadDay(d).tasks.some(function(t){ return t.done; }) }); }
+    var bars = days.map(function(d){
+      var dd = new Date(d.date.split('-')[0], d.date.split('-')[1]-1, d.date.split('-')[2]);
+      var lbl = dd.toLocaleDateString(undefined, { weekday:'narrow' });
+      return '<div class="streak-day"><div class="bar'+(d.hit?' hit':'')+'"></div><div class="lbl">'+lbl+'</div></div>';
+    }).join('');
+    var root = document.createElement('div');
+    root.id = 'streakPopoverRoot';
+    root.innerHTML =
+      '<div class="streak-popover-backdrop" id="streakPopoverBackdrop"></div>' +
+      '<div class="streak-popover">' +
+        '<h4>🛷 ' + computeStreak() + ' day slide streak</h4>' +
+        '<div class="streak-days">' + bars + '</div>' +
+      '</div>';
+    document.body.appendChild(root);
+    document.getElementById('streakPopoverBackdrop').addEventListener('click', closeStreakPopover);
+  }
+
   function bumpPoints(){
     var el = document.getElementById('pointsPill');
     el.classList.add('bump');
