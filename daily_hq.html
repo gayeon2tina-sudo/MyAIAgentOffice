@@ -135,6 +135,9 @@
   .settings-row{ display:flex; align-items:center; gap:10px; margin:10px 0; flex-wrap:wrap; }
   .settings-row label{ font-size:14px; color:var(--text-dim); min-width:140px; }
   .settings-note{ font-size:13px; color:var(--text-faint); margin-top:10px; line-height:1.5; }
+  .typo-diff-row{ display:block; font-size:13px; padding:3px 0; }
+  .typo-old{ text-decoration:line-through; color:var(--text-faint); }
+  .typo-new{ color:var(--done-deep); font-weight:bold; }
   .preview-row{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:6px 4px; border-bottom:1px dashed var(--border); }
   .preview-row span.txt{ flex:1 1 160px; min-width:120px; }
   .leftover-row{ display:flex; align-items:center; gap:8px; padding:4px 0; }
@@ -231,8 +234,9 @@
   .task-row{ display:flex; align-items:flex-start; gap:6px; padding:4px 2px; border-bottom:1px solid var(--border); position:relative; }
   .task-row:last-child{ border-bottom:none; }
   .task-row input[type=checkbox]{ width:18px; height:18px; margin-top:2px; accent-color:var(--done); cursor:pointer; }
-  .task-row .task-text{ flex:1; word-break:break-word; }
+  .task-row .task-text{ flex:1; word-break:break-word; cursor:text; }
   .task-row .task-text.done{ text-decoration:line-through; color:var(--text-faint); }
+  .task-text-edit{ flex:1; font:inherit; padding:2px 4px; border:1px solid var(--accent); border-radius:4px; }
   .source-tag{ font-size:13px; cursor:help; opacity:.8; }
   .task-subsection + .task-subsection{ margin-top:10px; padding-top:8px; border-top:1px dashed var(--border); }
   .task-subsection h4{ margin:0 0 4px; font-size:12px; text-transform:uppercase; letter-spacing:.03em; color:var(--text-faint); }
@@ -732,6 +736,55 @@
   }
 
   function makeId(prefix){ return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7); }
+
+  /* ===================== Typo handling (Tier 1: always on, no server) =====================
+     Runs on every task line as it's typed in, before it's ever shown in
+     preview. Deliberately narrow — this fixes mechanical slips, not
+     wording, and never touches anything that looks like a real acronym. */
+  var TYPO_ACRONYM_ALLOWLIST = ['AWS','CV','PM','PMM','UX','UI','API','US','USA','PDF','HTML','CSS','JS','SQL','AI','ML','HR','CEO','CFO','CTO','DMV','ID','SEO','FAQ','ASAP','DIY','ETA','FYI','LLC'];
+  var TYPO_CACHE_KEY = STORAGE_PREFIX + 'typoCache';
+  function loadTypoCache(){ return safeParse(localStorage.getItem(TYPO_CACHE_KEY), {}); }
+  function saveTypoCache(cache){
+    // Capped the same way the outreach-seen list is — only recent
+    // corrections matter, this can't grow forever.
+    var keys = Object.keys(cache);
+    if(keys.length > 300){
+      var trimmed = {};
+      keys.slice(-300).forEach(function(k){ trimmed[k] = cache[k]; });
+      cache = trimmed;
+    }
+    localStorage.setItem(TYPO_CACHE_KEY, JSON.stringify(cache));
+  }
+  // A word that's an accidental double-capital slip (holding Shift a beat
+  // too long) — "APply" -> "Apply", "BEzeos" -> "Bezeos" — not a real
+  // acronym like "AWS" or "CV", which stays exactly as typed.
+  function fixAccidentalCaps(word){
+    var m = /^([A-Z]{2,})([a-z]+)$/.exec(word);
+    if(!m) return word;
+    var whole = m[1] + m[2];
+    if(TYPO_ACRONYM_ALLOWLIST.indexOf(whole.toUpperCase()) !== -1) return word;
+    if(TYPO_ACRONYM_ALLOWLIST.indexOf(m[1]) !== -1) return word;
+    return whole.charAt(0).toUpperCase() + whole.slice(1).toLowerCase();
+  }
+  function cleanTaskText(raw){
+    var text = (raw || '').trim().replace(/\s+/g, ' ');
+    if(!text) return text;
+    text = text.split(' ').map(fixAccidentalCaps).join(' ');
+    text = text.charAt(0).toUpperCase() + text.slice(1);
+    var cache = loadTypoCache();
+    var cached = cache[text.toLowerCase()];
+    if(cached) text = cached;
+    return text;
+  }
+  // Called when a task's text is hand-edited after being added (see the
+  // click-to-rename handler on .task-text) — remembers the exact correction
+  // so the same mechanical typo auto-fixes itself next time, silently.
+  function learnTypoCorrection(oldText, newText){
+    if(!oldText || !newText || oldText === newText) return;
+    var cache = loadTypoCache();
+    cache[oldText.toLowerCase()] = newText;
+    saveTypoCache(cache);
+  }
 
   /* ===================== Category detection ===================== */
 
@@ -1322,7 +1375,7 @@
       '<div class="task-row" data-id="'+t.id+'">' +
         '<input type="checkbox" data-role="check" '+(t.done?'checked':'')+'>' +
         '<button class="star-btn '+(t.milestone?'':'off')+'" data-role="star">⭐</button>' +
-        '<span class="task-text '+(t.done?'done':'')+'">'+escapeHtml(t.text)+'</span>' +
+        '<span class="task-text '+(t.done?'done':'')+'" data-role="text" title="Click to fix a typo">'+escapeHtml(t.text)+'</span>' +
         sourceTagHtml(t) +
         '<button class="del-btn" data-role="remove">✕</button>' +
       '</div>';
@@ -1365,6 +1418,32 @@
     var id = row.dataset.id;
     var task = currentDay.tasks.find(function(t){ return t.id === id; });
     if(!task) return;
+    if(e.target.dataset.role === 'text' && !e.target.querySelector('input')){
+      // Click-to-fix-a-typo: swapped for a plain input, not a rewrite of
+      // the task list UI — committing a real change teaches the typo
+      // cache (learnTypoCorrection) so the same slip auto-fixes next time.
+      var span = e.target;
+      var oldText = task.text;
+      var input = document.createElement('input');
+      input.type = 'text'; input.value = oldText; input.className = 'task-text-edit';
+      span.replaceWith(input);
+      input.focus(); input.select();
+      var commit = function(){
+        var newText = cleanTaskText(input.value) || oldText;
+        if(newText !== oldText){
+          task.text = newText;
+          learnTypoCorrection(oldText, newText);
+          saveDay(currentDay);
+        }
+        renderAll();
+      };
+      input.addEventListener('blur', commit);
+      input.addEventListener('keydown', function(ev){
+        if(ev.key === 'Enter') input.blur();
+        else if(ev.key === 'Escape'){ input.removeEventListener('blur', commit); renderAll(); }
+      });
+      return;
+    }
     if(e.target.dataset.role === 'star'){ task.milestone = !task.milestone; saveDay(currentDay); renderAll(); }
     else if(e.target.dataset.role === 'remove'){ currentDay.tasks = currentDay.tasks.filter(function(t){ return t.id !== id; }); saveDay(currentDay); renderAll(); }
   });
@@ -2448,6 +2527,10 @@
             '<button class="ghost" id="dailyEntryDismissBtn">Not now</button>' +
           '</div>' +
           '<div id="dailyEntryPreviewList" style="margin-top:10px;"></div>' +
+          '<div id="dailyEntryAiCleanRow" class="hidden" style="margin-top:8px;">' +
+            '<button class="ghost" id="dailyEntryAiCleanBtn">✨ Clean up typos (needs local server)</button>' +
+          '</div>' +
+          '<div id="dailyEntryAiCleanResult"></div>' +
           '<div id="dailyEntryConfirmRow" class="hidden" style="margin-top:8px;">' +
             '<button class="pink" id="dailyEntryConfirmBtn">Add to today\'s list</button>' +
           '</div>' +
@@ -2494,8 +2577,11 @@
     function renderDailyEntryPreview(){
       var box = document.getElementById('dailyEntryPreviewList');
       var confirmRow = document.getElementById('dailyEntryConfirmRow');
-      if(dailyEntryPreview.length === 0){ box.innerHTML=''; confirmRow.classList.add('hidden'); return; }
+      var aiRow = document.getElementById('dailyEntryAiCleanRow');
+      document.getElementById('dailyEntryAiCleanResult').innerHTML = '';
+      if(dailyEntryPreview.length === 0){ box.innerHTML=''; confirmRow.classList.add('hidden'); aiRow.classList.add('hidden'); return; }
       confirmRow.classList.remove('hidden');
+      aiRow.classList.remove('hidden');
       box.innerHTML = dailyEntryPreview.map(function(p, idx){
         var opts = '<option value="">— pick category —</option>' + CATEGORIES.map(function(c){
           return '<option value="'+c.id+'"'+(p.category===c.id?' selected':'')+'>'+c.icon+' '+c.name+'</option>';
@@ -2513,9 +2599,64 @@
 
     document.getElementById('dailyEntryPreviewBtn').addEventListener('click', function(){
       var raw = document.getElementById('dailyEntryInput').value;
-      var lines = raw.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+      var lines = raw.split('\n').map(function(l){ return cleanTaskText(l); }).filter(Boolean);
       dailyEntryPreview = lines.map(function(line){ return { text: line, category: detectCategory(line), milestone:false, repeats:false }; });
       renderDailyEntryPreview();
+    });
+
+    // Tier 2 (optional, local-server-only): sends current preview lines to
+    // the same /api/ask backend Radio to Base uses, asking for typo fixes.
+    // Nothing is ever applied without being shown first — accept/reject is
+    // per line, default-checked, and "Apply selected fixes" is a separate,
+    // explicit step from just running the check.
+    document.getElementById('dailyEntryAiCleanBtn').addEventListener('click', function(){
+      var resultBox = document.getElementById('dailyEntryAiCleanResult');
+      resultBox.innerHTML = '<p class="settings-note">Asking Base to check for typos…</p>';
+      var lines = dailyEntryPreview.map(function(p){ return p.text; });
+      var question = 'Fix only obvious typos, misspellings, or accidental capitalization in each of these task lines — do not rephrase or reword anything that is already correct. ' +
+        'Reply with ONLY a JSON array of strings, same length and order as the input, no other text. Input: ' + JSON.stringify(lines);
+      fetch('/api/ask', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: question, goals: [], todayTasks: [] })
+      }).then(function(res){ return res.json().then(function(data){ return { status: res.status, data: data }; }); })
+      .then(function(r){
+        if(!r.data || !r.data.ok){
+          resultBox.innerHTML = '<p class="settings-note" style="color:var(--danger);">' + escapeHtml((r.data && r.data.error) || ('Request failed (HTTP ' + r.status + ').')) + '</p>';
+          return;
+        }
+        var suggestions;
+        try{
+          var m = /\[[\s\S]*\]/.exec(r.data.answer);
+          suggestions = JSON.parse(m ? m[0] : r.data.answer);
+        } catch(e){
+          resultBox.innerHTML = '<p class="settings-note" style="color:var(--danger);">Couldn\'t read Base\'s response as a clean list — nothing changed.</p>';
+          return;
+        }
+        if(!Array.isArray(suggestions) || suggestions.length !== lines.length){
+          resultBox.innerHTML = '<p class="settings-note" style="color:var(--danger);">Base\'s response didn\'t match — nothing changed.</p>';
+          return;
+        }
+        var diffs = suggestions.map(function(s, i){ return { idx:i, from: lines[i], to: String(s) }; }).filter(function(d){ return d.to !== d.from; });
+        if(diffs.length === 0){
+          resultBox.innerHTML = '<p class="settings-note">No typos found.</p>';
+          return;
+        }
+        resultBox.innerHTML = '<p class="settings-note">Suggested fixes — review before applying:</p>' +
+          diffs.map(function(d, di){
+            return '<label class="typo-diff-row"><input type="checkbox" checked data-diff-idx="'+di+'"> ' +
+              '<span class="typo-old">'+escapeHtml(d.from)+'</span> → <span class="typo-new">'+escapeHtml(d.to)+'</span></label>';
+          }).join('') +
+          '<button class="primary" id="dailyEntryApplyFixesBtn" style="margin-top:6px;">Apply selected fixes</button>';
+        document.getElementById('dailyEntryApplyFixesBtn').addEventListener('click', function(){
+          diffs.forEach(function(d, di){
+            var checked = resultBox.querySelector('input[data-diff-idx="'+di+'"]').checked;
+            if(checked) dailyEntryPreview[d.idx].text = d.to;
+          });
+          renderDailyEntryPreview();
+        });
+      }).catch(function(){
+        resultBox.innerHTML = '<p class="settings-note" style="color:var(--danger);">Can\'t reach Base. Make sure the local server is running: npm run server (then open this page via http://localhost:8787/daily_hq.html, not as a file).</p>';
+      });
     });
     document.getElementById('dailyEntryPreviewList').addEventListener('click', function(e){
       var row = e.target.closest('.preview-row'); if(!row) return;
