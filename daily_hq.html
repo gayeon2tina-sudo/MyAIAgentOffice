@@ -559,6 +559,16 @@
   var OUTREACH_TAB = 'Outreach Tracker';
   var OUTREACH_REPLIED_STATUSES = ['replied', 'scheduled', 'met'];
 
+  var APPLICATIONS_SHEET_ID = '1EFn6STRzT1eSs6kNjG4nJfs2v7Su7L1sdr25yEqYp0A';
+  var APPLICATIONS_GID = '414606882';
+  // Confirmed schema: "Round Status" is a fixed dropdown — "0-Prospecting"
+  // means not yet submitted (a lead under consideration, do not log it);
+  // any other value means an application was genuinely submitted at some
+  // point. "Date Applied" is deliberately NOT used as the submitted signal
+  // on its own — it's filled in on some rows that are still 0-Prospecting,
+  // which would over-count.
+  var APPLICATIONS_NOT_SUBMITTED_STATUS = '0-prospecting';
+
   var STORAGE_PREFIX = 'dailyhq:';
   var DAY_KEY = function(d){ return STORAGE_PREFIX + 'day:' + d; };
   var RECURRING_KEY = STORAGE_PREFIX + 'recurring';
@@ -567,6 +577,7 @@
   var GOALS_KEY = STORAGE_PREFIX + 'goals';
   var REMINDERS_KEY = STORAGE_PREFIX + 'reminders';
   var OUTREACH_SEEN_KEY = STORAGE_PREFIX + 'outreachSeen';
+  var APPLICATIONS_SEEN_KEY = STORAGE_PREFIX + 'applicationsSeen';
   var SOUND_KEY = STORAGE_PREFIX + 'soundEnabled';
   var WEEKLY_BANNER_KEY = STORAGE_PREFIX + 'weeklyBannerDismissedWeek';
 
@@ -1308,7 +1319,8 @@
 
   var SOURCE_TAGS = {
     'claude-code': { icon:'📻', title:'Logged via Claude Code' },
-    'outreach-auto': { icon:'🎣', title:'Auto-logged from the outreach tracker' }
+    'outreach-auto': { icon:'🎣', title:'Auto-logged from the outreach tracker' },
+    'application-auto': { icon:'📨', title:'Auto-logged from the applications tracker' }
   };
   function sourceTagHtml(t){
     var tag = SOURCE_TAGS[t.source];
@@ -1647,6 +1659,84 @@
     });
     if(added){
       saveOutreachSeen(seen);
+      saveDay(currentDay);
+      renderAll();
+    }
+  }
+
+  /* ===================== Applications (live sheet read) =====================
+     Mirrors the outreach auto-log pattern exactly (same dedup-by-row-
+     content approach, same first-fetch baseline capture, same silent
+     skip-on-failure), but with a real submitted/not-submitted distinction
+     confirmed against the actual sheet schema — "Round Status" of
+     "0-Prospecting" means the role is still just a lead, not something
+     actually applied to, so it's never logged. */
+  function applicationsGvizUrl(){
+    return 'https://docs.google.com/spreadsheets/d/' + APPLICATIONS_SHEET_ID + '/gviz/tq?tqx=out:json&gid=' + APPLICATIONS_GID;
+  }
+  function loadApplicationsSeen(){ return safeParse(localStorage.getItem(APPLICATIONS_SEEN_KEY), []); }
+  function saveApplicationsSeen(list){ localStorage.setItem(APPLICATIONS_SEEN_KEY, JSON.stringify(list.slice(-500))); }
+  function applicationRowKey(row){
+    return (row.c || []).map(function(c){ return c ? c.v : ''; }).join('|');
+  }
+  function fetchApplications(){
+    fetch(applicationsGvizUrl()).then(function(res){
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      return res.text();
+    }).then(function(text){
+      var start = text.indexOf('{');
+      var end = text.lastIndexOf('}');
+      if(start === -1 || end === -1) throw new Error('Unexpected response.');
+      var data = JSON.parse(text.substring(start, end+1));
+      var cols = data.table.cols.map(function(c){ return (c.label||'').toLowerCase(); });
+      var statusIdx = cols.findIndex(function(c){ return c.indexOf('round status') !== -1; });
+      if(statusIdx === -1) return; // schema mismatch — skip silently, same as an unreachable sheet
+      // Optional, for a slightly more specific auto-logged task line; the
+      // logic never depends on finding this.
+      var roleIdx = cols.findIndex(function(c){ return c.indexOf('role') !== -1 || c.indexOf('position') !== -1 || c.indexOf('title') !== -1; });
+      var companyIdx = cols.findIndex(function(c){ return c.indexOf('company') !== -1; });
+      var submittedRows = [];
+      (data.table.rows||[]).forEach(function(row){
+        var statusCell = row.c && row.c[statusIdx];
+        var status = (statusCell && statusCell.v ? String(statusCell.v) : '').trim().toLowerCase();
+        if(!status || status === APPLICATIONS_NOT_SUBMITTED_STATUS) return; // no status yet, or still just prospecting
+        var company = companyIdx !== -1 && row.c && row.c[companyIdx] && row.c[companyIdx].v ? String(row.c[companyIdx].v) : '';
+        var role = roleIdx !== -1 && row.c && row.c[roleIdx] && row.c[roleIdx].v ? String(row.c[roleIdx].v) : '';
+        submittedRows.push({ row: row, company: company, role: role });
+      });
+      autoLogNewApplications(submittedRows);
+    }).catch(function(){
+      // Sheet unreachable, wrong schema, or anything else — skip silently.
+      // There's no dedicated UI counter for this (unlike outreach), so
+      // there's nothing to show an error in either.
+    });
+  }
+  function autoLogNewApplications(submittedRows){
+    var isFirstEverFetch = localStorage.getItem(APPLICATIONS_SEEN_KEY) === null;
+    var seen = loadApplicationsSeen();
+    if(isFirstEverFetch){
+      saveApplicationsSeen(submittedRows.map(function(r){ return applicationRowKey(r.row); }));
+      return;
+    }
+    var seenSet = {};
+    seen.forEach(function(k){ seenSet[k] = true; });
+    var added = false;
+    submittedRows.forEach(function(r){
+      var key = applicationRowKey(r.row);
+      if(seenSet[key]) return;
+      seenSet[key] = true;
+      seen.push(key);
+      var detail = [r.role, r.company].filter(Boolean).join(' at ');
+      currentDay.tasks.push({
+        id: makeId('t'),
+        text: 'Application submitted' + (detail ? ' — ' + detail : '') + ' (auto-logged from tracker)',
+        category: 'job', sub: 'applications', done: true, milestone: false,
+        recurringId: null, createdAt: Date.now(), source: 'application-auto'
+      });
+      added = true;
+    });
+    if(added){
+      saveApplicationsSeen(seen);
       saveDay(currentDay);
       renderAll();
     }
@@ -2977,6 +3067,7 @@
   renderStaticOffice();
   renderAll();
   fetchOutreach();
+  fetchApplications();
   requestAnimationFrame(animLoop);
   renderReminderBanner();
   renderWeeklyBanner();
