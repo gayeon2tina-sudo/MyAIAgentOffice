@@ -559,6 +559,16 @@
   var OUTREACH_TAB = 'Outreach Tracker';
   var OUTREACH_REPLIED_STATUSES = ['replied', 'scheduled', 'met'];
 
+  var APPLICATIONS_SHEET_ID = '1EFn6STRzT1eSs6kNjG4nJfs2v7Su7L1sdr25yEqYp0A';
+  var APPLICATIONS_GID = '414606882';
+  // Confirmed schema: "Round Status" is a fixed dropdown — "0-Prospecting"
+  // means not yet submitted (a lead under consideration, do not log it);
+  // any other value means an application was genuinely submitted at some
+  // point. "Date Applied" is deliberately NOT used as the submitted signal
+  // on its own — it's filled in on some rows that are still 0-Prospecting,
+  // which would over-count.
+  var APPLICATIONS_NOT_SUBMITTED_STATUS = '0-prospecting';
+
   var STORAGE_PREFIX = 'dailyhq:';
   var DAY_KEY = function(d){ return STORAGE_PREFIX + 'day:' + d; };
   var RECURRING_KEY = STORAGE_PREFIX + 'recurring';
@@ -567,6 +577,7 @@
   var GOALS_KEY = STORAGE_PREFIX + 'goals';
   var REMINDERS_KEY = STORAGE_PREFIX + 'reminders';
   var OUTREACH_SEEN_KEY = STORAGE_PREFIX + 'outreachSeen';
+  var APPLICATIONS_SEEN_KEY = STORAGE_PREFIX + 'applicationsSeen';
   var SOUND_KEY = STORAGE_PREFIX + 'soundEnabled';
   var WEEKLY_BANNER_KEY = STORAGE_PREFIX + 'weeklyBannerDismissedWeek';
 
@@ -1308,7 +1319,8 @@
 
   var SOURCE_TAGS = {
     'claude-code': { icon:'📻', title:'Logged via Claude Code' },
-    'outreach-auto': { icon:'🎣', title:'Auto-logged from the outreach tracker' }
+    'outreach-auto': { icon:'🎣', title:'Auto-logged from the outreach tracker' },
+    'application-auto': { icon:'📨', title:'Auto-logged from the applications tracker' }
   };
   function sourceTagHtml(t){
     var tag = SOURCE_TAGS[t.source];
@@ -1647,6 +1659,84 @@
     });
     if(added){
       saveOutreachSeen(seen);
+      saveDay(currentDay);
+      renderAll();
+    }
+  }
+
+  /* ===================== Applications (live sheet read) =====================
+     Mirrors the outreach auto-log pattern exactly (same dedup-by-row-
+     content approach, same first-fetch baseline capture, same silent
+     skip-on-failure), but with a real submitted/not-submitted distinction
+     confirmed against the actual sheet schema — "Round Status" of
+     "0-Prospecting" means the role is still just a lead, not something
+     actually applied to, so it's never logged. */
+  function applicationsGvizUrl(){
+    return 'https://docs.google.com/spreadsheets/d/' + APPLICATIONS_SHEET_ID + '/gviz/tq?tqx=out:json&gid=' + APPLICATIONS_GID;
+  }
+  function loadApplicationsSeen(){ return safeParse(localStorage.getItem(APPLICATIONS_SEEN_KEY), []); }
+  function saveApplicationsSeen(list){ localStorage.setItem(APPLICATIONS_SEEN_KEY, JSON.stringify(list.slice(-500))); }
+  function applicationRowKey(row){
+    return (row.c || []).map(function(c){ return c ? c.v : ''; }).join('|');
+  }
+  function fetchApplications(){
+    fetch(applicationsGvizUrl()).then(function(res){
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      return res.text();
+    }).then(function(text){
+      var start = text.indexOf('{');
+      var end = text.lastIndexOf('}');
+      if(start === -1 || end === -1) throw new Error('Unexpected response.');
+      var data = JSON.parse(text.substring(start, end+1));
+      var cols = data.table.cols.map(function(c){ return (c.label||'').toLowerCase(); });
+      var statusIdx = cols.findIndex(function(c){ return c.indexOf('round status') !== -1; });
+      if(statusIdx === -1) return; // schema mismatch — skip silently, same as an unreachable sheet
+      // Optional, for a slightly more specific auto-logged task line; the
+      // logic never depends on finding this.
+      var roleIdx = cols.findIndex(function(c){ return c.indexOf('role') !== -1 || c.indexOf('position') !== -1 || c.indexOf('title') !== -1; });
+      var companyIdx = cols.findIndex(function(c){ return c.indexOf('company') !== -1; });
+      var submittedRows = [];
+      (data.table.rows||[]).forEach(function(row){
+        var statusCell = row.c && row.c[statusIdx];
+        var status = (statusCell && statusCell.v ? String(statusCell.v) : '').trim().toLowerCase();
+        if(!status || status === APPLICATIONS_NOT_SUBMITTED_STATUS) return; // no status yet, or still just prospecting
+        var company = companyIdx !== -1 && row.c && row.c[companyIdx] && row.c[companyIdx].v ? String(row.c[companyIdx].v) : '';
+        var role = roleIdx !== -1 && row.c && row.c[roleIdx] && row.c[roleIdx].v ? String(row.c[roleIdx].v) : '';
+        submittedRows.push({ row: row, company: company, role: role });
+      });
+      autoLogNewApplications(submittedRows);
+    }).catch(function(){
+      // Sheet unreachable, wrong schema, or anything else — skip silently.
+      // There's no dedicated UI counter for this (unlike outreach), so
+      // there's nothing to show an error in either.
+    });
+  }
+  function autoLogNewApplications(submittedRows){
+    var isFirstEverFetch = localStorage.getItem(APPLICATIONS_SEEN_KEY) === null;
+    var seen = loadApplicationsSeen();
+    if(isFirstEverFetch){
+      saveApplicationsSeen(submittedRows.map(function(r){ return applicationRowKey(r.row); }));
+      return;
+    }
+    var seenSet = {};
+    seen.forEach(function(k){ seenSet[k] = true; });
+    var added = false;
+    submittedRows.forEach(function(r){
+      var key = applicationRowKey(r.row);
+      if(seenSet[key]) return;
+      seenSet[key] = true;
+      seen.push(key);
+      var detail = [r.role, r.company].filter(Boolean).join(' at ');
+      currentDay.tasks.push({
+        id: makeId('t'),
+        text: 'Application submitted' + (detail ? ' — ' + detail : '') + ' (auto-logged from tracker)',
+        category: 'job', sub: 'applications', done: true, milestone: false,
+        recurringId: null, createdAt: Date.now(), source: 'application-auto'
+      });
+      added = true;
+    });
+    if(added){
+      saveApplicationsSeen(seen);
       saveDay(currentDay);
       renderAll();
     }
@@ -2047,13 +2137,104 @@
 
   var CHAR_SPRITE_SIZE = 150;
 
+  /* ===================== Movement variety ("bits") =====================
+     Flourishes layered on the existing wander/working/idle states — same
+     transform-only technique as the original bob/rotate (translate/rotate/
+     scale on the one static sprite), not new frame-by-frame artwork, and
+     not a new state machine: which state a character is in still comes
+     entirely from updateLifecycle()/charPosition() above, unchanged. This
+     only decides what a character's sprite transform looks like *within*
+     whichever state it's already in. Original animations, inspired by the
+     general idea of playful pixel-character loops — not modeled on any
+     specific existing artwork. */
+  var MOVE_BIT_TRANSIT_CHANCE = 0.22; // rolled once per wander-out excursion
+  var MOVE_BIT_IDLE_CHANCE = 0.22;    // rolled once per arrival back at the desk
+  var MOVE_BIT_SIGNATURE_CHANCE = 0.35; // of the idle rolls that hit, how many use the signature move instead of a generic fidget
+  var charMoveBit = {}; // ch.id -> { type, since, duration }
+
+  // One signature move per character where a prop-tie-in genuinely fits —
+  // deliberately not forced onto every character (Builder, Storyteller,
+  // Ledger just draw from the generic transit/idle pools below).
+  var SIGNATURE_MOVE_TYPES = { job: 'lookaround', health: 'stride', cv: 'stamp' };
+
+  var MOVE_BIT_FN = {
+    // Mid-walk hop: a couple of little bounces, not a single big one.
+    hop: function(p){
+      var bounce = Math.abs(Math.sin(p*Math.PI*2.5));
+      return { dy: -bounce*10, rot: Math.sin(p*Math.PI*2.5)*0.06, scale:1 };
+    },
+    // A brief full spin mid-walk.
+    spin: function(p){
+      return { dy: -Math.sin(p*Math.PI)*4, rot: p*Math.PI*2, scale:1 };
+    },
+    // Idle fidget while paused: weight shift + a small stretch, not a
+    // frozen pose.
+    fidget: function(p){
+      var sway = Math.sin(p*Math.PI*2) * 3;
+      var stretch = 1 + Math.sin(p*Math.PI)*0.05;
+      return { dx: sway, dy: -Math.abs(Math.sin(p*Math.PI*2))*2.5, rot: Math.sin(p*Math.PI*2)*0.04, scale: stretch };
+    },
+    // Scout (job): a quick look-around — holds each side briefly rather
+    // than a smooth sine, reading more like a head-turn than a wobble.
+    lookaround: function(p){
+      var hold = p < 0.3 ? p/0.3 : p < 0.7 ? 1 : (1-p)/0.3;
+      var side = p < 0.5 ? -1 : 1;
+      return { dx:0, dy:-1, rot: side*hold*0.22, scale:1 };
+    },
+    // Stride (health): an exaggerated jog-in-place, fitting the athletic
+    // theme without needing new leg artwork.
+    stride: function(p){
+      var bounce = Math.abs(Math.sin(p*Math.PI*6));
+      return { dy: -bounce*11, rot: Math.sin(p*Math.PI*6)*0.1, scale: 1 + bounce*0.03 };
+    },
+    // Editor (cv, Job Hunt's second desk): a quick stamping chop, tied to
+    // their existing stamp prop.
+    stamp: function(p){
+      var chop = Math.abs(Math.sin(p*Math.PI*4));
+      return { dy: chop*3, rot: -chop*0.16, scale:1 };
+    }
+  };
+
+  function rollMoveBit(ch, pool, now, duration){
+    var type = pool[Math.floor(Math.random()*pool.length)];
+    charMoveBit[ch.id] = { type: type, since: now, duration: duration };
+  }
+  // Called on the two edges where a character's motion phase changes —
+  // reuses the same edge-detection lastAtDesk already tracks, so this
+  // never fires mid-cycle or on every frame.
+  function maybeRollMoveBit(ch, wasAtDesk, nowAtDesk, now){
+    if(wasAtDesk === undefined) return; // first frame for this character — not a real transition
+    if(wasAtDesk && !nowAtDesk){ // heading out to wander
+      if(Math.random() < MOVE_BIT_TRANSIT_CHANCE) rollMoveBit(ch, ['hop','spin'], now, 1300 + Math.random()*500);
+    } else if(!wasAtDesk && nowAtDesk){ // just settled back at the desk
+      if(Math.random() < MOVE_BIT_IDLE_CHANCE){
+        var sig = SIGNATURE_MOVE_TYPES[ch.id];
+        var useSignature = sig && Math.random() < MOVE_BIT_SIGNATURE_CHANCE;
+        rollMoveBit(ch, [useSignature ? sig : 'fidget'], now, 1500 + Math.random()*500);
+      }
+    }
+  }
+  function activeMoveBitTransform(ch, now){
+    var bit = charMoveBit[ch.id];
+    if(!bit) return null;
+    var p = (now - bit.since) / bit.duration;
+    if(p >= 1){ delete charMoveBit[ch.id]; return null; }
+    var fn = MOVE_BIT_FN[bit.type];
+    return fn ? fn(p) : null;
+  }
+
   function drawCharacterSprite(ctx, ch, x, y, state){
     var img = CHAR_SPRITE_IMAGES[ch.id];
     if(!img || !img.complete || !img.naturalWidth) return;
     var size = CHAR_SPRITE_SIZE, half = size/2;
     ctx.save();
     ctx.translate(x, y);
-    if(state.working){
+    var bit = state.moveBit;
+    if(bit){
+      ctx.translate(bit.dx||0, bit.dy||0);
+      if(bit.rot) ctx.rotate(bit.rot);
+      if(bit.scale && bit.scale !== 1) ctx.scale(bit.scale, bit.scale);
+    } else if(state.working){
       var bob = Math.sin((state.tick+ch.phaseOffset)/14) * 3;
       var rot = Math.sin((state.tick+ch.phaseOffset)/18) * 0.035;
       ctx.translate(0, bob);
@@ -2264,8 +2445,10 @@
           if(lastAtDesk[ch.id] === true && !pos.atDesk && Math.random() < CANNED_TIP_CHANCE){
             showCannedTip(ch, pos.x, pos.y);
           }
+          maybeRollMoveBit(ch, lastAtDesk[ch.id], pos.atDesk, now);
         }
       }
+      state.moveBit = activeMoveBitTransform(ch, now);
       lastAtDesk[ch.id] = !!pos.atDesk;
       lastCharPos[ch.id] = pos;
       drawCharacterSprite(ctx, ch, pos.x, pos.y, state);
@@ -2884,6 +3067,7 @@
   renderStaticOffice();
   renderAll();
   fetchOutreach();
+  fetchApplications();
   requestAnimationFrame(animLoop);
   renderReminderBanner();
   renderWeeklyBanner();
