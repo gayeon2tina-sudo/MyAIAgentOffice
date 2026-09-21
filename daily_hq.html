@@ -2710,10 +2710,15 @@
   /* ===================== Character tips (canned) ===================== */
 
   var CANNED_TIP_CHANCE = 0.12; // "rarely" — checked once per wander-out excursion, not per frame
-  var CANNED_TIP_MS = 4200;
+  // Long enough to comfortably read the longest tip in the 500-tip bank
+  // (~127 characters, ~22 words) at a relaxed reading pace, not just the
+  // shortest one-liners. The old 4200ms was tuned for short tips only.
+  var CANNED_TIP_MS = 9000;
+  var CANNED_TIP_LEAVE_GRACE_MS = 1200; // brief grace after the mouse leaves the bubble before it actually dismisses
   var lastCharPos = {};
   var lastAtDesk = {};
   var activeBubbleCharId = null; // only one bubble on screen at a time
+  var tipDismissTimer = null;
 
   function bubbleLayer(){ return document.getElementById('officeBubbleLayer'); }
   function positionBubble(el, x, y){
@@ -2721,9 +2726,14 @@
     el.style.top = (y / OFFICE_H * 100) + '%';
   }
   function clearBubble(){
+    if(tipDismissTimer){ clearTimeout(tipDismissTimer); tipDismissTimer = null; }
     var layer = bubbleLayer();
     if(layer) layer.innerHTML = '';
     activeBubbleCharId = null;
+  }
+  function scheduleTipDismiss(ch, ms){
+    if(tipDismissTimer) clearTimeout(tipDismissTimer);
+    tipDismissTimer = setTimeout(function(){ if(activeBubbleCharId === ch.id) clearBubble(); }, ms);
   }
   function showCannedTip(ch, x, y){
     if(activeBubbleCharId) return; // don't stack bubbles
@@ -2738,8 +2748,25 @@
     layer.innerHTML = '';
     layer.appendChild(el);
     activeBubbleCharId = ch.id;
-    setTimeout(function(){ if(activeBubbleCharId === ch.id) clearBubble(); }, CANNED_TIP_MS);
+    scheduleTipDismiss(ch, CANNED_TIP_MS);
+    // Hovering the bubble pauses the countdown entirely — moving the mouse
+    // away resumes it with a short grace period rather than vanishing the
+    // instant the cursor leaves, so a stray move mid-sentence doesn't cut
+    // the tip off.
+    el.addEventListener('mouseenter', function(){
+      if(tipDismissTimer){ clearTimeout(tipDismissTimer); tipDismissTimer = null; }
+    });
+    el.addEventListener('mouseleave', function(){ scheduleTipDismiss(ch, CANNED_TIP_LEAVE_GRACE_MS); });
   }
+  // Clicking anywhere else on the page (a task checkbox, a button, empty
+  // space) dismisses an open tip early — the canvas's own click handler
+  // already covers clicks on the canvas itself (empty room, another
+  // character), so this only needs to catch everything outside it.
+  document.addEventListener('click', function(e){
+    if(!activeBubbleCharId) return;
+    if(e.target.closest('.tip-bubble') || e.target.closest('#officeCanvas')) return;
+    clearBubble();
+  });
 
   /* ===================== Igloo growth (rank made visible) =====================
      A small structure in the office hallway that visibly changes shape at
