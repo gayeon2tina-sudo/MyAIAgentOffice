@@ -1030,12 +1030,26 @@
   var APPLICATIONS_SHEET_ID = '1EFn6STRzT1eSs6kNjG4nJfs2v7Su7L1sdr25yEqYp0A';
   var APPLICATIONS_GID = '414606882';
   // Confirmed schema: "Round Status" is a fixed dropdown — "0-Prospecting"
-  // means not yet submitted (a lead under consideration, do not log it);
-  // any other value means an application was genuinely submitted at some
-  // point. "Date Applied" is deliberately NOT used as the submitted signal
-  // on its own — it's filled in on some rows that are still 0-Prospecting,
-  // which would over-count.
-  var APPLICATIONS_NOT_SUBMITTED_STATUS = '0-prospecting';
+  // means not yet submitted (a lead under consideration); any other value
+  // means an application was genuinely submitted at some point. "Date
+  // Applied" is deliberately NOT used as the submitted signal on its own —
+  // it's filled in on some rows that are still 0-Prospecting, which would
+  // over-count.
+  //
+  // Matched by substring on the lowercased status, not exact equality — an
+  // earlier version compared the whole trimmed+lowercased string against
+  // '0-prospecting' exactly, which is brittle against any real formatting
+  // variance in the sheet (extra spacing, a different dash character, an
+  // additional word) and was letting Prospecting rows silently fall through
+  // as "submitted" instead of being excluded. Substring matching on the one
+  // word that actually carries the meaning is robust to all of that.
+  function classifyApplicationStatus(statusLower){
+    if(!statusLower) return 'none';
+    if(statusLower.indexOf('prospecting') !== -1) return 'prospecting';
+    if(statusLower.indexOf('reject') !== -1) return 'rejected';
+    if(statusLower.indexOf('offer') !== -1) return 'offer';
+    return 'submitted'; // Applied, Screening, First/Second/Final Round Interview, etc.
+  }
 
   var STORAGE_PREFIX = 'dailyhq:';
   var DAY_KEY = function(d){ return STORAGE_PREFIX + 'day:' + d; };
@@ -1045,7 +1059,7 @@
   var GOALS_KEY = STORAGE_PREFIX + 'goals';
   var REMINDERS_KEY = STORAGE_PREFIX + 'reminders';
   var OUTREACH_SEEN_KEY = STORAGE_PREFIX + 'outreachSeen';
-  var APPLICATIONS_SEEN_KEY = STORAGE_PREFIX + 'applicationsSeen';
+  var APPLICATIONS_TRACKED_KEY = STORAGE_PREFIX + 'applicationsTracked';
   var SOUND_KEY = STORAGE_PREFIX + 'soundEnabled';
   var WEEKLY_BANNER_KEY = STORAGE_PREFIX + 'weeklyBannerDismissedWeek';
 
@@ -1791,7 +1805,7 @@
   var SOURCE_TAGS = {
     'claude-code': { icon:'📻', title:'Logged via Claude Code' },
     'outreach-auto': { icon:'🎣', title:'Auto-logged from the outreach tracker' },
-    'application-auto': { icon:'📨', title:'Auto-logged from the applications tracker' }
+    'application-auto': { icon:'📨', title:'From the applications tracker' }
   };
   function sourceTagHtml(t){
     var tag = SOURCE_TAGS[t.source];
@@ -2115,19 +2129,31 @@
   }
 
   /* ===================== Applications (live sheet read) =====================
-     Mirrors the outreach auto-log pattern exactly (same dedup-by-row-
-     content approach, same first-fetch baseline capture, same silent
-     skip-on-failure), but with a real submitted/not-submitted distinction
-     confirmed against the actual sheet schema — "Round Status" of
-     "0-Prospecting" means the role is still just a lead, not something
-     actually applied to, so it's never logged. */
+     Unlike outreach's one-shot auto-log, an application row has a real
+     lifecycle: Prospecting (not yet applied — a to-do, not a completion) ->
+     submitted (Applied/Screening/interview rounds) -> a terminal outcome
+     (Rejected or Offer). This tracks each row by a STABLE identity (role +
+     company, not the row's own content — the row's content necessarily
+     changes when its status changes, so hashing the whole row like the old
+     version did could never recognize "this is the same application, now
+     further along") and reconciles it against whatever task that identity
+     already produced, rather than treating every fetch as all-new rows. */
   function applicationsGvizUrl(){
     return 'https://docs.google.com/spreadsheets/d/' + APPLICATIONS_SHEET_ID + '/gviz/tq?tqx=out:json&gid=' + APPLICATIONS_GID;
   }
-  function loadApplicationsSeen(){ return safeParse(localStorage.getItem(APPLICATIONS_SEEN_KEY), []); }
-  function saveApplicationsSeen(list){ localStorage.setItem(APPLICATIONS_SEEN_KEY, JSON.stringify(list.slice(-500))); }
-  function applicationRowKey(row){
-    return (row.c || []).map(function(c){ return c ? c.v : ''; }).join('|');
+  function loadApplicationsTracked(){ return safeParse(localStorage.getItem(APPLICATIONS_TRACKED_KEY), {}); }
+  function saveApplicationsTracked(map){ localStorage.setItem(APPLICATIONS_TRACKED_KEY, JSON.stringify(map)); }
+  function applicationStableKey(role, company, idx){
+    var k = (role||'').trim().toLowerCase() + '|' + (company||'').trim().toLowerCase();
+    // Degenerate fallback if a row somehow has neither field populated —
+    // avoids every such row colliding onto the same identity.
+    return k === '|' ? (k + idx) : k;
+  }
+  function applicationTaskText(done, role, company, statusClass){
+    var who = [role, company].filter(Boolean).join(' at ');
+    if(!done) return 'Apply to' + (who ? ' ' + who : ' this role') + ' (from tracker)';
+    var suffix = statusClass === 'rejected' ? ' — Rejected' : statusClass === 'offer' ? ' — Offer!' : '';
+    return 'Applied' + (who ? ' to ' + who : '') + suffix + ' (auto-logged from tracker)';
   }
   function fetchApplications(){
     fetch(applicationsGvizUrl()).then(function(res){
@@ -2145,50 +2171,75 @@
       // logic never depends on finding this.
       var roleIdx = cols.findIndex(function(c){ return c.indexOf('role') !== -1 || c.indexOf('position') !== -1 || c.indexOf('title') !== -1; });
       var companyIdx = cols.findIndex(function(c){ return c.indexOf('company') !== -1; });
-      var submittedRows = [];
-      (data.table.rows||[]).forEach(function(row){
+      var rows = [];
+      (data.table.rows||[]).forEach(function(row, idx){
         var statusCell = row.c && row.c[statusIdx];
-        var status = (statusCell && statusCell.v ? String(statusCell.v) : '').trim().toLowerCase();
-        if(!status || status === APPLICATIONS_NOT_SUBMITTED_STATUS) return; // no status yet, or still just prospecting
+        var statusRaw = (statusCell && statusCell.v ? String(statusCell.v) : '').trim();
+        if(!statusRaw) return; // no status entered at all yet — not even a prospecting lead
         var company = companyIdx !== -1 && row.c && row.c[companyIdx] && row.c[companyIdx].v ? String(row.c[companyIdx].v) : '';
         var role = roleIdx !== -1 && row.c && row.c[roleIdx] && row.c[roleIdx].v ? String(row.c[roleIdx].v) : '';
-        submittedRows.push({ row: row, company: company, role: role });
+        rows.push({ role: role, company: company, statusClass: classifyApplicationStatus(statusRaw.toLowerCase()), idx: idx });
       });
-      autoLogNewApplications(submittedRows);
+      reconcileApplications(rows);
     }).catch(function(){
       // Sheet unreachable, wrong schema, or anything else — skip silently.
       // There's no dedicated UI counter for this (unlike outreach), so
       // there's nothing to show an error in either.
     });
   }
-  function autoLogNewApplications(submittedRows){
-    var isFirstEverFetch = localStorage.getItem(APPLICATIONS_SEEN_KEY) === null;
-    var seen = loadApplicationsSeen();
-    if(isFirstEverFetch){
-      saveApplicationsSeen(submittedRows.map(function(r){ return applicationRowKey(r.row); }));
-      return;
-    }
-    var seenSet = {};
-    seen.forEach(function(k){ seenSet[k] = true; });
-    var added = false;
-    submittedRows.forEach(function(r){
-      var key = applicationRowKey(r.row);
-      if(seenSet[key]) return;
-      seenSet[key] = true;
-      seen.push(key);
-      var detail = [r.role, r.company].filter(Boolean).join(' at ');
-      currentDay.tasks.push({
-        id: makeId('t'),
-        text: 'Application submitted' + (detail ? ' — ' + detail : '') + ' (auto-logged from tracker)',
-        category: 'job', sub: 'applications', done: true, milestone: false,
-        recurringId: null, createdAt: Date.now(), source: 'application-auto'
-      });
-      added = true;
+  function reconcileApplications(rows){
+    var isFirstEverFetch = localStorage.getItem(APPLICATIONS_TRACKED_KEY) === null;
+    var tracked = loadApplicationsTracked();
+    var anyChange = false;
+    rows.forEach(function(r){
+      var key = applicationStableKey(r.role, r.company, r.idx);
+      var entry = tracked[key];
+      if(!entry){
+        // Never tracked before. A historical row that's already past
+        // Prospecting the very first time this browser ever checks the
+        // sheet is backfilled silently (same reasoning as outreach's
+        // first-fetch baseline: don't retroactively award a fish for
+        // history the app never watched happen) — but a currently-
+        // Prospecting row is a real, current to-do with no scoring risk,
+        // so it's always added, first fetch or not.
+        if(isFirstEverFetch && r.statusClass !== 'prospecting'){
+          tracked[key] = { date: today, taskId: null, statusClass: r.statusClass };
+          return;
+        }
+        var taskId = makeId('t');
+        var done = r.statusClass !== 'prospecting';
+        currentDay.tasks.push({
+          id: taskId,
+          text: applicationTaskText(done, r.role, r.company, r.statusClass),
+          category: 'job', sub: 'applications', done: done, milestone: false,
+          recurringId: null, createdAt: Date.now(), source: 'application-auto', appKey: key
+        });
+        tracked[key] = { date: today, taskId: taskId, statusClass: r.statusClass };
+        anyChange = true;
+        return;
+      }
+      if(entry.statusClass === r.statusClass) return; // no real change since last fetch
+      if(entry.taskId){
+        // Find the task this same application already produced — possibly
+        // on an earlier day than today — and update it in place rather
+        // than creating a second one.
+        var day = entry.date === today ? currentDay : loadDay(entry.date);
+        var task = day.tasks.find(function(t){ return t.id === entry.taskId; });
+        if(task){
+          task.done = true; // any advance past Prospecting means it's submitted at minimum
+          task.text = applicationTaskText(true, r.role, r.company, r.statusClass);
+          if(day !== currentDay) saveDay(day);
+          anyChange = true;
+        }
+      }
+      entry.statusClass = r.statusClass;
     });
-    if(added){
-      saveApplicationsSeen(seen);
+    if(anyChange){
+      saveApplicationsTracked(tracked);
       saveDay(currentDay);
       renderAll();
+    } else if(isFirstEverFetch){
+      saveApplicationsTracked(tracked);
     }
   }
 
