@@ -104,7 +104,8 @@ var CATEGORY_KEYWORDS = {
   // Broadened beyond pure finance to general life upkeep, per the Life
   // Admin rename — appointments/paperwork/errands, not just money.
   budget: ['budget','runway','rent','lease','seattle','move','moving','expenses','savings','spreadsheet','bank','appointment','paperwork','errand','errands','insurance','doctor','dentist','dmv','renew','renewal','license','passport','taxes','bills','mail','forms','registration'],
-  health: ['run','running','yoga','workout','gym','walk','stretch','exercise','swim','bike','pilates','lift']
+  health: ['run','running','yoga','workout','gym','walk','stretch','exercise','swim','bike','pilates','lift'],
+  friends: ['family','friend','friends','mom','dad','sister','brother','parents','grandma','grandpa','call mom','call dad','call home','video call','facetime','birthday','anniversary','catch up','check in','care package','gift','card']
 };
 var VALID_CATEGORIES = Object.keys(CATEGORY_KEYWORDS);
 function detectCategory(text){

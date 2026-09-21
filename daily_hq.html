@@ -25,7 +25,6 @@
     --rank-deep:#5a95c9;
     --muted:#93a4b8;
     --gold:#ffb400;
-    --hub-bg:#eaf5fd;
     --wall:#3f6f9f;
     --bg:#f2f8fd;
     --bg2:#e3f1fb;
@@ -110,6 +109,8 @@
   .streak-day .bar{ width:100%; border-radius:3px 3px 0 0; background:var(--border); height:6px; }
   .streak-day .bar.hit{ background:var(--accent); height:28px; }
   .streak-day .lbl{ font-size:9px; color:var(--text-faint); }
+  .rank-progress-line{ font-size:13px; color:var(--text-dim); margin-bottom:8px; line-height:1.4; }
+  .rank-igloo-note{ font-size:12px; color:var(--text-faint); font-style:italic; }
   .points-today.bump{ transform:scale(1.15); }
 
   .day-progress-wrap{ max-width:1240px; margin:10px auto 0; padding:0 16px; }
@@ -168,14 +169,16 @@
     border:7px solid transparent; border-top-color:#fff;
   }
 
-  /* Room task panels — 5 non-hub rooms since the Content Building merge;
-     "." is a deliberately empty grid cell, not a room that got missed. */
+  /* Room task panels — 6 real departments, no separate hub room. Layout
+     mirrors the physical office art: friends/job/learning is the top row
+     (matching the top-row rooms on the canvas), portfolio/budget/health
+     the bottom row. */
   .floorplan{
     display:grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     grid-template-areas:
-      "job learning portfolio hub"
-      "budget health . hub";
+      "job friends learning"
+      "portfolio budget health";
     gap:0;
     border:5px solid var(--wall);
     border-radius:16px;
@@ -185,14 +188,13 @@
   @media (max-width:900px){
     .floorplan{ grid-template-columns: repeat(2, 1fr);
       grid-template-areas:
-        "hub hub"
-        "job learning"
-        "portfolio budget"
-        "health ."; }
+        "job friends"
+        "learning portfolio"
+        "budget health"; }
   }
   @media (max-width:600px){
     .floorplan{ grid-template-columns: 1fr;
-      grid-template-areas: "hub" "job" "learning" "portfolio" "budget" "health"; }
+      grid-template-areas: "job" "friends" "learning" "portfolio" "budget" "health"; }
   }
 
   .room{
@@ -202,11 +204,11 @@
     position:relative;
   }
   .room[data-cat="job"]{ grid-area:job; }
+  .room[data-cat="friends"]{ grid-area:friends; }
   .room[data-cat="learning"]{ grid-area:learning; }
   .room[data-cat="portfolio"]{ grid-area:portfolio; }
   .room[data-cat="budget"]{ grid-area:budget; }
   .room[data-cat="health"]{ grid-area:health; }
-  .room.hub{ grid-area:hub; border-color:var(--gold); border-width:4px; background:var(--hub-bg); }
   .room.room-flash{ animation:roomFlash .9s ease; }
   @keyframes roomFlash{
     0%{ outline:4px solid var(--accent); outline-offset:-4px; }
@@ -237,11 +239,6 @@
   .outreach-inline .nums{ color:var(--text); font-family:'Press Start 2P', monospace; font-size:11px; }
   .outreach-inline .err{ color:var(--danger); }
 
-  .hub-body{ padding:8px 12px 12px; flex:1; display:flex; flex-direction:column; gap:6px; color:#2a2010; border-top:1px dashed rgba(138,90,0,0.35); margin-top:2px; padding-top:10px; }
-  .hub-body h3{ color:#2a2010; }
-  .rank-current{ font-size:15px; font-weight:bold; }
-  .rank-line{ font-family:'Press Start 2P', monospace; font-size:10px; color:#8a5a00; line-height:1.5; }
-  .streak-line{ font-size:15px; padding-top:4px; border-top:1px dashed rgba(138,90,0,0.25); }
 
   /* Anchored to the top-right corner of the .room card (not a .task-row —
      see spawnSparkle()), clear of .flavor-toast which spans the width
@@ -352,7 +349,7 @@
   <div class="hud">
     <button class="hud-pill points" id="pointsPill" title="0 fish caught today — click to see your Catch of the Day board">🐟 <span class="val" id="pointsVal">0</span></button>
     <button class="hud-pill streak" id="streakPill" title="0 day slide streak — click to see the last two weeks">🛷 <span class="val" id="streakVal">0</span></button>
-    <button class="hud-pill rank" id="rankPill" title="Snow Patch — click to visit Chairman's Office">🧊 <span class="val" id="rankVal">Snow Patch</span></button>
+    <button class="hud-pill rank" id="rankPill" title="Snow Patch — click for rank details">🧊 <span class="val" id="rankVal">Snow Patch</span></button>
   </div>
 </header>
 
@@ -982,6 +979,30 @@
         "Health habits built during a hard season (a job search, a move) often stick better than ones built when life is easy.",
         "Being kind to yourself about an off day is itself a health habit worth practicing.",
         "Showing up imperfectly, consistently, beats showing up perfectly, rarely."
+      ] },
+    // Placed in the old Backpack Content room's rect/colors (bookshelf +
+    // armchair, warm orange) — the only currently-drawn room in the office
+    // art with no department in it. Chairman's Office's old spot was never
+    // an actual drawn room (just a corridor hit-box with a transparent
+    // card), so it wouldn't have looked like a real room at all.
+    { id:'friends', name:'Family & Friends', icon:'🎁', floor:'#fdecd2', accent:'#e0821f',
+      lead:'Hearth',
+      flavors:["Hearth made a call.", "Hearth wrapped something up."],
+      cursor:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20"><path d="M10 17 C4 12 2 8 5 5 C7 3 10 4 10 7 C10 4 13 3 15 5 C18 8 16 12 10 17 Z" fill="%23e0793e" stroke="%23222" stroke-width="1"/></svg>',
+      keywords:['family','friend','friends','mom','dad','sister','brother','parents','grandma','grandpa','call mom','call dad','call home','video call','facetime','birthday','anniversary','catch up','check in','care package','gift','card'],
+      // Same non-guilt tone as Health's tips — staying in touch is not
+      // another productivity metric, so nothing here should read as one.
+      tips:[
+        "A two-minute call still counts as staying in touch — it doesn't need to be a long one.",
+        "Sending a photo with no context is still a genuine way to say you were thinking of someone.",
+        "A birthday message sent a day late is still better than one that never comes.",
+        "Checking in without needing anything in return means more than it might seem.",
+        "A voice note usually takes less time to send than it feels like it will.",
+        "Remembering a small detail from a past conversation is a quiet way of showing you were listening.",
+        "It's fine for a catch-up call to be short — showing up matters more than the length.",
+        "A handwritten note stands out precisely because it took more effort than a text.",
+        "Reaching out first, even after a long gap, is rarely read as badly as it feels in your head.",
+        "A standing regular call with someone far away protects it from always losing to whatever's urgent that week."
       ] }
   ];
   var CAT_BY_ID = {};
@@ -1640,30 +1661,56 @@
     document.getElementById('rankVal').textContent = rankTitle;
     document.getElementById('pointsPill').title = todayFish + ' fish caught today — click to see your Catch of the Day board';
     document.getElementById('streakPill').title = streak + ' day slide streak — click to see the last two weeks';
-    document.getElementById('rankPill').title = rankTitle + " — click to visit Chairman's Office";
+    document.getElementById('rankPill').title = rankTitle + ' — click for rank details';
   }
   // HUD chips are real, routed buttons, not decoration: fish -> Catch of
   // the Day (openTrophyShelf, defined below — hoisted, safe to reference
-  // here), streak -> a small popover built fresh each click, rank -> jump
-  // to Chairman's Office (reusing the same scroll+flash the canvas room
-  // clicks already use).
+  // here), streak and rank -> a small popover built fresh each click. Since
+  // Chairman's Office was removed as a dedicated room, this popover is now
+  // the only place rank-progress detail lives (it used to also show inline
+  // in that room's card).
   document.getElementById('pointsPill').addEventListener('click', function(){ openTrophyShelf(); });
-  document.getElementById('rankPill').addEventListener('click', function(){
-    showTab('office');
-    var card = document.querySelector('.room.hub');
-    if(!card) return;
-    card.scrollIntoView({ behavior:'smooth', block:'center' });
-    card.classList.add('room-flash');
-    setTimeout(function(){ card.classList.remove('room-flash'); }, 900);
-  });
+  document.getElementById('rankPill').addEventListener('click', openRankPopover);
   document.getElementById('streakPill').addEventListener('click', openStreakPopover);
 
   function closeStreakPopover(){
     var el = document.getElementById('streakPopoverRoot');
     if(el) el.remove();
   }
+  function closeRankPopover(){
+    var el = document.getElementById('rankPopoverRoot');
+    if(el) el.remove();
+  }
+  // The igloo growth doodle itself stays drawn on the office canvas (it was
+  // never actually inside the Chairman's Office room/card — just a separate
+  // corridor decoration near where that room used to be, so removing the
+  // room doesn't touch it). This popover carries the numeric rank detail
+  // that WAS inline in that room's card, plus a pointer to the doodle so
+  // the two don't feel disconnected.
+  function openRankPopover(){
+    closeStreakPopover();
+    closeRankPopover();
+    var points = totalPointsAllTime();
+    var rank = currentRank(points);
+    var next = nextRank(points);
+    var progressLine = next
+      ? (next.min - points) + ' more fish to reach ' + next.title
+      : "Top rank reached — there's nowhere higher to climb.";
+    var root = document.createElement('div');
+    root.id = 'rankPopoverRoot';
+    root.innerHTML =
+      '<div class="streak-popover-backdrop" id="rankPopoverBackdrop"></div>' +
+      '<div class="streak-popover">' +
+        '<h4>🧊 ' + rank.title + '</h4>' +
+        '<div class="rank-progress-line">' + progressLine + '</div>' +
+        '<div class="rank-igloo-note">The igloo out in the office hallway grows as your rank does — worth a look.</div>' +
+      '</div>';
+    document.body.appendChild(root);
+    document.getElementById('rankPopoverBackdrop').addEventListener('click', closeRankPopover);
+  }
   function openStreakPopover(){
     closeStreakPopover();
+    closeRankPopover();
     var days = [];
     for(var i=13;i>=0;i--){ var d = addDays(today, -i); days.push({ date:d, hit: loadDay(d).tasks.some(function(t){ return t.done; }) }); }
     var bars = days.map(function(d){
@@ -1764,15 +1811,6 @@
           '<div class="room-body" data-role="list"></div>' +
         '</div>';
     }).join('');
-    html += '' +
-      '<div class="room hub" data-cat="hub">' +
-        '<div class="room-floor" style="background:transparent;"><h3>🏢 Chairman\'s Office</h3></div>' +
-        '<div class="hub-body">' +
-          '<div class="rank-current" id="hubRankCurrent"></div>' +
-          '<div class="rank-line" id="hubRankLine"></div>' +
-          '<div class="streak-line" id="hubStreakLine"></div>' +
-        '</div>' +
-      '</div>';
     grid.innerHTML = html;
     CATEGORIES.forEach(function(c){
       var el = grid.querySelector('.room[data-cat="'+c.id+'"]');
@@ -1912,7 +1950,6 @@
     }
     renderHUD();
     renderRoomTasks(task.category);
-    renderHubBody();
     renderDayProgress();
   });
 
@@ -2408,7 +2445,6 @@
      pose, never a sprite sheet. */
 
   var CHAR_SPRITE_SRC = {
-    hub: 'sprites/hub.png',
     job: 'sprites/job.png',
     cv: 'sprites/cv.png',
     // No 'learning' entry: no real Compiler art exists, and a mismatched
@@ -2428,10 +2464,9 @@
 
   // entrance: where this character waits in the shared hallway when not
   // needed in their room (arrival/departure state machine below) — one
-  // shared corridor row (y:460, matching the hub's own y), spread across x
-  // so everyone "off the clock" at once doesn't stack on top of each other.
+  // shared corridor row (y:460), spread across x so everyone "off the
+  // clock" at once doesn't stack on top of each other.
   var CHARACTERS_RAW = [
-    { id:'hub', catId:'hub', name:'GaYeon', seat:{x:190,y:460}, walkTarget:{x:235,y:460} },
     { id:'job', catId:'job', name:'Scout', seat:{x:210,y:295}, walkTarget:{x:210,y:360}, entrance:{x:350,y:460} },
     // Editor moved into the second desk of the (already two-desk) Job Hunt
     // room art when Job Hunt + CV & Applications merged into one room;
@@ -2448,6 +2483,9 @@
     { id:'backpack', catId:'portfolio', name:'Storyteller', seat:{x:130,y:780}, walkTarget:{x:130,y:715}, entrance:{x:1030,y:460} },
     { id:'budget', catId:'budget', name:'Ledger', seat:{x:755,y:705}, walkTarget:{x:755,y:770}, entrance:{x:1200,y:460} },
     { id:'health', catId:'health', name:'Stride', seat:{x:1215,y:735}, walkTarget:{x:1215,y:670}, entrance:{x:1370,y:460} }
+    // No real Hearth (Family & Friends) art exists yet either — same rule,
+    // same treatment as 'learning': the desk renders empty with a "not yet
+    // staffed" marker instead of a mismatched placeholder sprite.
   ];
 
   var CHARACTERS = [];
@@ -2458,21 +2496,19 @@
     });
   })();
 
-  function roomHasTasks(catId){ return catId !== 'hub' && tasksForCategory(catId).length > 0; }
-  function roomAllDone(catId){ if(catId === 'hub') return false; var t = tasksForCategory(catId); return t.length > 0 && t.every(function(x){ return x.done; }); }
+  function roomHasTasks(catId){ return tasksForCategory(catId).length > 0; }
+  function roomAllDone(catId){ var t = tasksForCategory(catId); return t.length > 0 && t.every(function(x){ return x.done; }); }
   function roomPending(catId){ return roomHasTasks(catId) && !roomAllDone(catId); }
 
   /* ===================== Arrival/departure state machine =====================
-     Each non-hub character lives in one of five phases, driven purely by
-     whether their room currently has pending (unchecked) work:
+     Each character lives in one of five phases, driven purely by whether
+     their room currently has pending (unchecked) work:
        not-arrived -> arriving -> working-wandering -> leaving -> home
                          ^_____________________________________|
      home and not-arrived render identically (idle at the shared hallway
      entrance point) — kept as separate names because they mean different
      things (never worked yet vs. sent home once already), which is worth
-     keeping visible in code even though today nothing else reads it.
-     GaYeon (catId 'hub') is excluded entirely: Chairman's Office isn't
-     driven by a task category, so she's always present, unaffected by this. */
+     keeping visible in code even though today nothing else reads it. */
   var ARRIVAL_MS = 2200;
   var charLifecycle = {};
   function lifecycleFor(ch){
@@ -2687,15 +2723,17 @@
   }
 
   /* ===================== Igloo growth (rank made visible) =====================
-     A small structure near Chairman's Office that visibly changes shape at
+     A small structure in the office hallway that visibly changes shape at
      each of the 7 rank tiers, so the rank number means something you can
      actually watch change, not just read. Drawn with plain canvas shapes
-     (no new art asset) at a fixed spot just above the hub's own position. */
-  // Centered in the corridor band (rooms end at y~370/start again at y~510),
-  // offset left of GaYeon's own seat (190) and away from her walk target
-  // (235) so her 150px-wide sprite doesn't sit directly on top of it —
-  // the first placement overlapped Job Hunt's floor mat instead of reading
-  // as something standing in the hallway.
+     (no new art asset). Lives in the open corridor, not inside any room's
+     rect, so it was never affected by the Chairman's Office room removal —
+     nothing else is drawn at this spot. */
+  // Centered in the corridor band (rooms end at y~370/start again at y~510).
+  // x:130 was originally chosen to sit clear of the Chairman's Office
+  // corridor character (seat x:190, walk target x:235) that used to render
+  // here — that character is gone now, but the position is left as-is since
+  // it already reads fine as a hallway fixture and no room needs the space.
   var IGLOO_X = 130, IGLOO_GROUND_Y = 495;
   function iglooBrick(ctx, x, y, w, h){
     ctx.fillStyle = '#dceffc';
@@ -2782,36 +2820,28 @@
     var now = Date.now();
     CHARACTERS.forEach(function(ch){
       var pos, state = { tick: tick };
-      if(ch.catId === 'hub'){
-        // GaYeon is always present in Chairman's Office — no task category
-        // drives her, so she's outside the arrival/departure system entirely.
-        if(roomAllDone(ch.catId)){ pos = { x: ch.seat.x, y: ch.seat.y }; state.happy = true; }
-        else if(roomHasTasks(ch.catId)){ pos = charPosition(ch, tick); state.working = pos.atDesk; }
-        else pos = { x: ch.seat.x, y: ch.seat.y };
+      var l = updateLifecycle(ch, now);
+      if(l.phase === 'not-arrived' || l.phase === 'home'){
+        pos = { x: ch.entrance.x, y: ch.entrance.y };
+      } else if(l.phase === 'leaving'){
+        // Room just went all-done (that's the only thing that triggers
+        // leaving) — sparkle on the walk out instead of pausing at the
+        // desk first, so finishing the last task reads as a celebration,
+        // not a delay before heading home.
+        pos = lerpPoint(l.from, l.to, easeInOut((now-l.since)/ARRIVAL_MS));
+        state.happy = true;
+      } else if(l.phase === 'arriving'){
+        pos = lerpPoint(l.from, l.to, easeInOut((now-l.since)/ARRIVAL_MS));
       } else {
-        var l = updateLifecycle(ch, now);
-        if(l.phase === 'not-arrived' || l.phase === 'home'){
-          pos = { x: ch.entrance.x, y: ch.entrance.y };
-        } else if(l.phase === 'leaving'){
-          // Room just went all-done (that's the only thing that triggers
-          // leaving) — sparkle on the walk out instead of pausing at the
-          // desk first, so finishing the last task reads as a celebration,
-          // not a delay before heading home.
-          pos = lerpPoint(l.from, l.to, easeInOut((now-l.since)/ARRIVAL_MS));
-          state.happy = true;
-        } else if(l.phase === 'arriving'){
-          pos = lerpPoint(l.from, l.to, easeInOut((now-l.since)/ARRIVAL_MS));
-        } else {
-          pos = charPosition(ch, tick);
-          state.working = pos.atDesk;
-          // A canned tip, rarely, right as a wander-out excursion begins
-          // (the atDesk:true -> false edge) — never while just sitting,
-          // never every single cycle.
-          if(lastAtDesk[ch.id] === true && !pos.atDesk && Math.random() < CANNED_TIP_CHANCE){
-            showCannedTip(ch, pos.x, pos.y);
-          }
-          maybeRollMoveBit(ch, lastAtDesk[ch.id], pos.atDesk, now);
+        pos = charPosition(ch, tick);
+        state.working = pos.atDesk;
+        // A canned tip, rarely, right as a wander-out excursion begins
+        // (the atDesk:true -> false edge) — never while just sitting,
+        // never every single cycle.
+        if(lastAtDesk[ch.id] === true && !pos.atDesk && Math.random() < CANNED_TIP_CHANCE){
+          showCannedTip(ch, pos.x, pos.y);
         }
+        maybeRollMoveBit(ch, lastAtDesk[ch.id], pos.atDesk, now);
       }
       state.moveBit = activeMoveBitTransform(ch, now);
       lastAtDesk[ch.id] = !!pos.atDesk;
@@ -2827,6 +2857,7 @@
     ctx.textAlign = 'center';
     ctx.fillStyle = 'rgba(80,60,90,0.55)';
     ctx.fillText('🚧 not yet staffed', 1180, 350);
+    ctx.fillText('🚧 not yet staffed', 742, 350);
     ctx.restore();
 
     if(catchHotspotHovered){
@@ -2857,18 +2888,20 @@
 
   var ROOM_RECTS = {
     job:       { x1:60,  y1:60,  x2:505,  y2:370 },
+    // The old 'backpack' room slot (top-middle, cozy reading nook) sat
+    // unstaffed after the Content Building merge moved Storyteller into the
+    // portfolio room — now reused for Family & Friends, the only currently-
+    // drawn room in the art that had no department in it. Chairman's Office
+    // never had a matching drawn room here (its old hit-box was just a
+    // corridor rect with no real walls/floor behind it), so this is the
+    // room that actually looks right for a new department.
+    friends:   { x1:520, y1:60,  x2:965,  y2:370 },
     learning:  { x1:985, y1:60,  x2:1465, y2:370 },
     portfolio: { x1:60,  y1:510, x2:505,  y2:830 },
     budget:    { x1:520, y1:510, x2:965,  y2:830 },
-    health:    { x1:985, y1:510, x2:1465, y2:830 },
-    hub:       { x1:100, y1:400, x2:280,  y2:500 }
+    health:    { x1:985, y1:510, x2:1465, y2:830 }
   };
-  // The old 'backpack' room slot (top-middle, cozy reading nook) is now
-  // unstaffed after the Content Building merge moved Storyteller into the
-  // portfolio room — left out of ROOM_RECTS/ROOM_LABELS entirely so it's
-  // just quiet background art, no hover/click for a room that no longer maps
-  // to any task card.
-  var ROOM_LABELS = { job:'Job Hunt', learning:'L&D', portfolio:'Content Building', budget:'Life Admin', health:'Health', hub:"Chairman's Office" };
+  var ROOM_LABELS = { job:'Job Hunt', friends:'Family & Friends', learning:'L&D', portfolio:'Content Building', budget:'Life Admin', health:'Health' };
   var hoveredRoomId = null;
   var catchHotspotHovered = false;
   // The "BIG GY INC" signboard already painted into the office art (bottom
@@ -2933,7 +2966,7 @@
       var pt = canvasPointFromEvent(canvas, e);
       if(inCatchHotspot(pt)){ openTrophyShelf(); return; }
       var ch = characterAtPoint(pt);
-      if(ch && ch.catId !== 'hub'){
+      if(ch){
         var pos = lastCharPos[ch.id];
         activeBubbleCharId = null; // clicking always shows a fresh tip, even if one is already up
         showCannedTip(ch, pos.x, pos.y);
@@ -2958,20 +2991,6 @@
       if(document.visibilityState === 'visible'){ drawOfficeDynamic(animTick); }
     }
     requestAnimationFrame(animLoop);
-  }
-
-  function renderHubBody(){
-    var points = totalPointsAllTime();
-    var rank = currentRank(points);
-    var next = nextRank(points);
-    document.getElementById('hubRankCurrent').textContent = '🧊 ' + rank.title;
-    // Distance remaining, not a transition in progress — "X → Y" read like
-    // something already underway. Spelled out as "N more fish to reach Y"
-    // instead, unambiguous at a glance.
-    document.getElementById('hubRankLine').textContent = next
-      ? (next.min - points) + ' more fish to reach ' + next.title
-      : "Top rank reached — there's nowhere higher to climb.";
-    document.getElementById('hubStreakLine').textContent = '🛷 ' + computeStreak() + ' day slide streak';
   }
 
   document.getElementById('trophyBtn').addEventListener('click', openTrophyShelf);
@@ -3468,7 +3487,6 @@
   function renderAll(){
     renderHUD();
     renderAllRoomTasks();
-    renderHubBody();
     renderDayProgress();
   }
 
