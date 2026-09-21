@@ -2661,12 +2661,31 @@
     return fn ? fn(p) : null;
   }
 
+  // Which way a character's sprite faces, derived from actual frame-to-frame
+  // movement rather than the lifecycle phase, so it works the same for
+  // arriving/leaving/wandering without special-casing each one. A small
+  // dead zone holds the last known facing at near-zero velocity (e.g. right
+  // at a wander turnaround point) instead of flickering direction on noise.
+  var charFacing = {};
+  function updateFacing(ch, x){
+    var prev = lastCharPos[ch.id];
+    var facing = charFacing[ch.id] || 1;
+    if(prev){
+      var dx = x - prev.x;
+      if(dx < -0.3) facing = -1;
+      else if(dx > 0.3) facing = 1;
+    }
+    charFacing[ch.id] = facing;
+    return facing;
+  }
+
   function drawCharacterSprite(ctx, ch, x, y, state){
     var img = CHAR_SPRITE_IMAGES[ch.id];
     if(!img || !img.complete || !img.naturalWidth) return;
     var size = CHAR_SPRITE_SIZE, half = size/2;
     ctx.save();
     ctx.translate(x, y);
+    if(state.facing === -1) ctx.scale(-1, 1);
     var bit = state.moveBit;
     if(bit){
       ctx.translate(bit.dx||0, bit.dy||0);
@@ -2844,6 +2863,7 @@
         maybeRollMoveBit(ch, lastAtDesk[ch.id], pos.atDesk, now);
       }
       state.moveBit = activeMoveBitTransform(ch, now);
+      state.facing = updateFacing(ch, pos.x);
       lastAtDesk[ch.id] = !!pos.atDesk;
       lastCharPos[ch.id] = pos;
       drawCharacterSprite(ctx, ch, pos.x, pos.y, state);
