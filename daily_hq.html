@@ -228,10 +228,13 @@
   .task-row{ display:flex; align-items:flex-start; gap:6px; padding:4px 2px; border-bottom:1px solid var(--border); position:relative; }
   .task-row:last-child{ border-bottom:none; }
   .task-row input[type=checkbox]{ width:18px; height:18px; margin-top:2px; accent-color:var(--done); cursor:pointer; }
-  .task-row .task-text{ flex:1; word-break:break-word; cursor:text; }
+  .task-row .task-text{ flex:1; word-break:break-word; cursor:pointer; }
   .task-row .task-text.done{ text-decoration:line-through; color:var(--text-faint); }
+  .task-row .task-text:not(.expanded){ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .task-text-edit{ flex:1; font:inherit; padding:2px 4px; border:1px solid var(--accent); border-radius:4px; }
   .source-tag{ font-size:13px; cursor:help; opacity:.8; }
+  .edit-btn{ background:none; border:none; color:var(--text-faint); font-size:13px; cursor:pointer; padding:0 2px; opacity:.55; }
+  .edit-btn:hover{ opacity:1; color:var(--accent); }
   .task-subsection + .task-subsection{ margin-top:10px; padding-top:8px; border-top:1px dashed var(--border); }
   .task-subsection h4{ margin:0 0 4px; font-size:12px; text-transform:uppercase; letter-spacing:.03em; color:var(--text-faint); }
   .empty-msg{ color:var(--text-faint); font-size:14px; padding:6px 2px; }
@@ -1858,13 +1861,96 @@
   function sortUncheckedFirst(tasks){
     return tasks.slice().sort(function(a, b){ return (a.done?1:0) - (b.done?1:0); });
   }
+
+  // Which task ids currently show their full stored text instead of the
+  // one-line summary — ephemeral UI state, not persisted, reset on reload
+  // (matches how outreachExpanded/other collapse states already work here).
+  var expandedTaskIds = {};
+
+  // Splits "X at Y" into its two halves for the auto-logged text formats
+  // this app generates (role at company, name at company) -- returns the
+  // whole string as `first` with an empty `second` if there's no " at ".
+  function splitAtJoin(s){
+    var idx = s.indexOf(' at ');
+    if(idx === -1) return { first: s, second: '' };
+    return { first: s.slice(0, idx), second: s.slice(idx+4) };
+  }
+
+  // Derives a short, scannable one-line summary purely from the task's
+  // already-stored text + source — no new data is stored for this, and the
+  // full original text is exactly what shows once expanded. Recognizes the
+  // exact sentence shapes this app generates for auto-logged tasks (current
+  // and the pre-fix legacy "Application submitted —" wording, so older
+  // already-saved tasks compact correctly too); anything else — including
+  // every manually-typed task — just gets length-truncated.
+  function summarizeTaskText(t){
+    var text = t.text, m;
+    if(t.source === 'application-auto'){
+      m = text.match(/^Applied(?: to (.+?))?(?: — (Rejected|Offer!))?\s*\(auto-logged from tracker\)$/);
+      if(m){
+        // splitAtJoin gives {first:role, second:company} when " at " is
+        // present; with no " at ", the one detail present is treated as the
+        // company (a bare company-only value is far more common in this
+        // sheet than a bare role-only one).
+        var rc = m[1] ? splitAtJoin(m[1]) : { first:'', second:'' };
+        var role = rc.second ? rc.first : '';
+        var company = rc.second || rc.first;
+        var label = 'Applied' + (m[2] ? ' · ' + m[2] : '') + ' — ' + (company || 'application');
+        if(company && role) label += ' (' + role + ')';
+        return label;
+      }
+      m = text.match(/^Apply to (this role|(.+?))\s*\(from tracker\)$/);
+      if(m){
+        if(m[1] === 'this role') return 'Apply — new lead';
+        var rc2 = splitAtJoin(m[2]);
+        var company2 = rc2.second || rc2.first;
+        var role2 = rc2.second ? rc2.first : '';
+        var label2 = 'Apply — ' + company2;
+        if(rc2.second) label2 += ' (' + role2 + ')';
+        return label2;
+      }
+      // Legacy pre-fix wording ("Application submitted — X at Y (...)").
+      m = text.match(/^Application submitted(?: — (.+?))?\s*\(auto[- ]logged from tracker\)$/);
+      if(m){
+        var rc3 = m[1] ? splitAtJoin(m[1]) : { first:'', second:'' };
+        var company3 = rc3.second || rc3.first;
+        var role3 = rc3.second ? rc3.first : '';
+        var label3 = 'Applied — ' + (company3 || 'application');
+        if(rc3.second) label3 += ' (' + role3 + ')';
+        return label3;
+      }
+    }
+    if(t.source === 'outreach-auto'){
+      m = text.match(/^Reached out to (.+?)\s*\(auto-logged from tracker\)$/);
+      if(m){
+        var rc4 = splitAtJoin(m[1]);
+        return 'Reached out — ' + rc4.first + (rc4.second ? ' at ' + rc4.second : '');
+      }
+      m = text.match(/^(.+?) replied\s*\(auto-logged from tracker\)$/);
+      if(m){
+        var rc5 = splitAtJoin(m[1]);
+        return 'Replied — ' + rc5.first + (rc5.second ? ' at ' + rc5.second : '');
+      }
+      if(/^Reached out \(auto-logged from tracker\)$/.test(text)) return 'Reached out — contact';
+    }
+    var MAX = 46;
+    if(text.length <= MAX) return text;
+    var truncated = text.slice(0, MAX);
+    var lastSpace = truncated.lastIndexOf(' ');
+    if(lastSpace > 20) truncated = truncated.slice(0, lastSpace);
+    return truncated + '…';
+  }
+
   function taskRowHtml(t){
+    var expanded = !!expandedTaskIds[t.id];
+    var displayText = expanded ? t.text : summarizeTaskText(t);
     return '' +
       '<div class="task-row" data-id="'+t.id+'">' +
         '<input type="checkbox" data-role="check" '+(t.done?'checked':'')+'>' +
         '<button class="star-btn '+(t.milestone?'':'off')+'" data-role="star">⭐</button>' +
-        '<span class="task-text '+(t.done?'done':'')+'" data-role="text" title="Click to fix a typo">'+escapeHtml(t.text)+'</span>' +
+        '<span class="task-text '+(t.done?'done':'')+(expanded?' expanded':'')+'" data-role="text" title="'+(expanded?'Click to collapse':'Click to expand')+'">'+escapeHtml(displayText)+'</span>' +
         sourceTagHtml(t) +
+        '<button class="edit-btn" data-role="edit" title="Fix a typo">✎</button>' +
         '<button class="del-btn" data-role="remove">✕</button>' +
       '</div>';
   }
@@ -1907,10 +1993,20 @@
     var task = currentDay.tasks.find(function(t){ return t.id === id; });
     if(!task) return;
     if(e.target.dataset.role === 'text' && !e.target.querySelector('input')){
+      // Toggle the one-line summary vs. the full stored text — a display-
+      // only view-state change, task.text itself is never touched here.
+      if(expandedTaskIds[id]) delete expandedTaskIds[id];
+      else expandedTaskIds[id] = true;
+      renderAll();
+      return;
+    }
+    if(e.target.dataset.role === 'edit'){
       // Click-to-fix-a-typo: swapped for a plain input, not a rewrite of
       // the task list UI — committing a real change teaches the typo
       // cache (learnTypoCorrection) so the same slip auto-fixes next time.
-      var span = e.target;
+      // Always edits the real full text, regardless of whether the row is
+      // currently showing its collapsed summary or the expanded version.
+      var span = row.querySelector('[data-role="text"]');
       var oldText = task.text;
       var input = document.createElement('input');
       input.type = 'text'; input.value = oldText; input.className = 'task-text-edit';
