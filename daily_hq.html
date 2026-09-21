@@ -236,15 +236,6 @@
   .outreach-inline{ font-size:13px; color:var(--text-faint); border-top:1px dashed var(--border); margin-top:6px; padding-top:6px; }
   .outreach-inline .nums{ color:var(--text); font-family:'Press Start 2P', monospace; font-size:11px; }
   .outreach-inline .err{ color:var(--danger); }
-  .outreach-chip{
-    font-family:inherit; font-size:13px; color:var(--text-faint); background:none;
-    border:none; padding:2px 0; cursor:pointer;
-  }
-  .outreach-chip:hover{ color:var(--text); }
-  .outreach-today{ margin-top:6px; display:flex; flex-direction:column; gap:3px; }
-  .outreach-contact{ display:flex; justify-content:space-between; font-size:12px; padding:2px 4px; background:var(--panel-2); border-radius:6px; }
-  .outreach-contact .status{ color:var(--text-faint); }
-  .outreach-contact.empty{ background:none; color:var(--text-faint); font-style:italic; justify-content:flex-start; }
 
   .hub-body{ padding:8px 12px 12px; flex:1; display:flex; flex-direction:column; gap:6px; color:#2a2010; border-top:1px dashed rgba(138,90,0,0.35); margin-top:2px; padding-top:10px; }
   .hub-body h3{ color:#2a2010; }
@@ -1014,7 +1005,6 @@
 
   var OUTREACH_SHEET_ID = '1tcm4mRBQOAwXR1e96_oG2ZQm8j8VN1oSaA6KOzQFIGc';
   var OUTREACH_TAB = 'Outreach Tracker';
-  var OUTREACH_REPLIED_STATUSES = ['replied', 'scheduled', 'met'];
 
   var APPLICATIONS_SHEET_ID = '1EFn6STRzT1eSs6kNjG4nJfs2v7Su7L1sdr25yEqYp0A';
   var APPLICATIONS_GID = '414606882';
@@ -1981,16 +1971,15 @@
 
   function loadOutreachSeen(){ return safeParse(localStorage.getItem(OUTREACH_SEEN_KEY), []); }
   function saveOutreachSeen(list){
-    // Capped so this can't grow forever — only the most recent rows matter
+    // Capped so this can't grow forever — only the most recent entries matter
     // for dedup, since older ones are vanishingly unlikely to reappear.
     localStorage.setItem(OUTREACH_SEEN_KEY, JSON.stringify(list.slice(-500)));
   }
-  // No stable row id in this sheet (see fetchOutreach) — the full row's
-  // content is the closest thing to one. Only changes if the row itself is
-  // edited later, which is an acceptable rare edge case, not a schema this
-  // app controls.
-  function outreachRowKey(row){
-    return (row.c || []).map(function(c){ return c ? c.v : ''; }).join('|');
+  // Dedupe key is contact + which action + which date, not the whole row —
+  // this only ever needs to distinguish "have I already logged Jane Doe's
+  // reach-out from today," not detect any edit anywhere else in the row.
+  function outreachActionKey(a){
+    return [a.name, a.company, a.action, a.dateKey].join('|');
   }
   // The gviz JSON encodes a date-formatted cell as a literal "Date(Y,M,D)"
   // string (M is 0-indexed); a plain-text column would just be whatever the
@@ -2019,40 +2008,36 @@
       if(start === -1 || end === -1) throw new Error('Unexpected response — sheet may not be shared yet.');
       var data = JSON.parse(text.substring(start, end+1));
       var cols = data.table.cols.map(function(c){ return (c.label||'').toLowerCase(); });
-      var statusIdx = cols.findIndex(function(c){ return c.indexOf('status') !== -1 && c.indexOf('scheduled') === -1 && c.indexOf('met') === -1; });
-      if(statusIdx === -1) throw new Error('Could not find a Status column in that sheet.');
       var reachedOutIdx = cols.findIndex(function(c){ return c.indexOf('reached out') !== -1; });
       if(reachedOutIdx === -1) throw new Error('Could not find a "Date Reached Out" column in that sheet.');
-      // Optional — used only to show who today's contacts were. Its absence
-      // doesn't break the counts, which is all this ever required before.
+      // Optional — a separate "Date Replied" column, if the sheet has one,
+      // is the only reliable way to know a reply happened specifically
+      // *today* (a status of "replied" alone has no date attached to it).
+      // Its absence just means reply actions never show as "today's" —
+      // never guessed from status text alone.
+      var repliedDateIdx = cols.findIndex(function(c){ return c.indexOf('replied') !== -1 && c.indexOf('date') !== -1; });
       var nameIdx = cols.findIndex(function(c){ return c.indexOf('name') !== -1; });
-      var sent = 0, replied = 0;
-      var reachedRows = [];
-      var todaysContacts = [];
-      // The tracker is agent-maintained: a row only exists once the scheduled job
-      // finds a real conversation, so "Sent" is just "has a Date Reached Out" —
-      // there's no planned-but-not-sent state to filter out by status text.
+      var companyIdx = cols.findIndex(function(c){ return c.indexOf('company') !== -1 || c.indexOf('organization') !== -1 || c.indexOf('org') !== -1; });
+      var todaysActions = [];
       (data.table.rows||[]).forEach(function(row){
+        var nameCell = nameIdx !== -1 ? row.c && row.c[nameIdx] : null;
+        var companyCell = companyIdx !== -1 ? row.c && row.c[companyIdx] : null;
+        var name = (nameCell && nameCell.v) ? String(nameCell.v) : 'Someone';
+        var company = (companyCell && companyCell.v) ? String(companyCell.v) : '';
         var reachedCell = row.c && row.c[reachedOutIdx];
-        var reachedOut = reachedCell && reachedCell.v !== null && reachedCell.v !== '';
-        if(!reachedOut) return;
-        sent++;
-        reachedRows.push(row);
-        var statusCell = row.c && row.c[statusIdx];
-        var statusRaw = (statusCell && statusCell.v ? String(statusCell.v) : '').trim();
-        var status = statusRaw.toLowerCase();
-        if(OUTREACH_REPLIED_STATUSES.indexOf(status) !== -1) replied++;
-        if(gvizDateMatchesToday(reachedCell.v)){
-          var nameCell = nameIdx !== -1 ? row.c && row.c[nameIdx] : null;
-          todaysContacts.push({
-            name: (nameCell && nameCell.v ? String(nameCell.v) : 'Contact'),
-            status: statusRaw || 'Sent'
-          });
+        if(reachedCell && reachedCell.v !== null && reachedCell.v !== '' && gvizDateMatchesToday(reachedCell.v)){
+          todaysActions.push({ name:name, company:company, action:'reached-out', dateKey:today });
+        }
+        if(repliedDateIdx !== -1){
+          var repliedCell = row.c && row.c[repliedDateIdx];
+          if(repliedCell && repliedCell.v !== null && repliedCell.v !== '' && gvizDateMatchesToday(repliedCell.v)){
+            todaysActions.push({ name:name, company:company, action:'replied', dateKey:today });
+          }
         }
       });
-      outreachData = { ok:true, loading:false, sent:sent, replied:replied, todaysContacts:todaysContacts };
+      outreachData = { ok:true, loading:false, todaysActions:todaysActions };
       renderOutreachInline();
-      autoLogNewOutreach(reachedRows);
+      autoLogTodaysOutreach(todaysActions);
     }).catch(function(err){
       outreachData = { ok:false, loading:false, error: err.message };
       renderOutreachInline();
@@ -2060,34 +2045,28 @@
     });
   }
 
-  // Adds an already-done task to Job Hunt (Outreach & Leads
-  // sub-section) for each sheet row with a "Date Reached Out" this browser
-  // hasn't already turned into a task, so the two views agree without
-  // double-counting on every subsequent fetch.
-  function autoLogNewOutreach(reachedRows){
-    // First time this browser has ever fetched the sheet: every existing row
-    // is "new" relative to an empty seen-list, but backfilling the entire
-    // sheet's history as tasks on first load isn't what "new activity" means
-    // here. Capture everything already there as the baseline, silently, and
-    // only auto-log rows that show up after this point.
-    var isFirstEverFetch = localStorage.getItem(OUTREACH_SEEN_KEY) === null;
+  // Adds a real, already-done task to Job Hunt (Outreach & Leads
+  // sub-section) for each of today's outreach actions this browser hasn't
+  // already turned into a task, named by contact + company, so the task
+  // list itself is the record of who — no separate summary widget needed.
+  // Only ever looks at actions dated today, so there's no historical
+  // backfill risk on a first-ever fetch the way a lifetime count would have.
+  function autoLogTodaysOutreach(actions){
     var seen = loadOutreachSeen();
-    if(isFirstEverFetch){
-      saveOutreachSeen(reachedRows.map(outreachRowKey));
-      return;
-    }
     var seenSet = {};
     seen.forEach(function(k){ seenSet[k] = true; });
     var added = false;
-    reachedRows.forEach(function(row){
-      var key = outreachRowKey(row);
+    actions.forEach(function(a){
+      var key = outreachActionKey(a);
       if(seenSet[key]) return;
       seenSet[key] = true;
       seen.push(key);
+      var who = a.company ? (a.name + ' at ' + a.company) : a.name;
+      var text = (a.action === 'replied' ? (who + ' replied') : ('Reached out to ' + who)) + ' (auto-logged from tracker)';
       currentDay.tasks.push({
-        id: makeId('t'), text: 'Reached out (auto-logged from tracker)',
+        id: makeId('t'), text: text,
         category: 'job', sub: 'outreach', done: true, milestone: false,
-        recurringId: null, createdAt: Date.now(), source: 'outreach-auto'
+        recurringId: null, createdAt: Date.now(), source: 'outreach-auto', outreachAction: a.action
       });
       added = true;
     });
@@ -2176,14 +2155,15 @@
     }
   }
 
-  var outreachExpanded = false; // ephemeral UI state, not persisted
+  // Status line only, scoped to today — never a lifetime number that could
+  // be misread as today's activity. The actual named entries live as real
+  // tasks in the Outreach & Leads list itself (via autoLogTodaysOutreach),
+  // not duplicated here.
   function renderOutreachInline(){
     var el = document.getElementById('outreachInline');
     if(!el) return;
-    if(outreachData.loading){ el.innerHTML = 'Loading outreach numbers…'; return; }
+    if(outreachData.loading){ el.innerHTML = 'Checking outreach tracker…'; return; }
     if(!outreachData.ok){
-      // Unchanged fallback — this redesign is additive, so a sheet failure
-      // still degrades to exactly what it always has.
       el.innerHTML = '<span class="err">Couldn\'t load the outreach sheet: ' + escapeHtml(outreachData.error||'unknown error') + '</span><br>' +
         'Make sure "LETS_GET_THIS_BREAD" → Outreach Tracker is shared as "Anyone with the link – Viewer." ' +
         '<button class="icon-btn" id="retryOutreachBtn" style="margin-top:4px;">Retry</button>';
@@ -2191,23 +2171,11 @@
       if(errBtn) errBtn.addEventListener('click', fetchOutreach);
       return;
     }
-    var contacts = outreachData.todaysContacts || [];
-    var chevron = outreachExpanded ? '▾' : '▸';
-    var html = '' +
-      '<button class="outreach-chip" id="outreachToggle" type="button">' +
-        '<span class="nums">Sent ' + outreachData.sent + '</span> · <span class="nums">Replied ' + outreachData.replied + '</span> ' + chevron +
-      '</button> ' +
-      '<button class="icon-btn" id="retryOutreachBtn">🔄</button>';
-    if(outreachExpanded){
-      html += '<div class="outreach-today">' +
-        (contacts.length
-          ? contacts.map(function(c){ return '<div class="outreach-contact"><span>' + escapeHtml(c.name) + '</span><span class="status">' + escapeHtml(c.status) + '</span></div>'; }).join('')
-          : '<div class="outreach-contact empty">Nothing logged as reached out today yet.</div>') +
-        '</div>';
-    }
-    el.innerHTML = html;
-    var toggleBtn = document.getElementById('outreachToggle');
-    if(toggleBtn) toggleBtn.addEventListener('click', function(){ outreachExpanded = !outreachExpanded; renderOutreachInline(); });
+    var count = (outreachData.todaysActions || []).length;
+    var summary = count === 0
+      ? 'Nothing from the tracker today yet.'
+      : (count + ' outreach action' + (count===1?'':'s') + ' from the tracker today — logged above.');
+    el.innerHTML = '<span class="nums">' + summary + '</span> <button class="icon-btn" id="retryOutreachBtn">🔄</button>';
     var retryBtn = document.getElementById('retryOutreachBtn');
     if(retryBtn) retryBtn.addEventListener('click', fetchOutreach);
   }
@@ -3338,10 +3306,13 @@
       dates.forEach(function(d){
         var day = loadDay(d);
         day.tasks.forEach(function(t){
+          if(t.source === 'outreach-auto'){
+            if(t.outreachAction === 'replied') replied++; else sent++;
+          }
           if(t.done){ points++; catCounts[t.category]=(catCounts[t.category]||0)+1; if(t.milestone) milestones.push({text:t.text, category:t.category, date:d}); }
         });
       });
-      return { points:points, catCounts:catCounts, milestones:milestones };
+      return { points:points, catCounts:catCounts, milestones:milestones, sent:sent, replied:replied };
     }
     var thisWeek = summarize(thisWeekDates), lastWeek = summarize(lastWeekDates);
     var maxPts = Math.max(thisWeek.points, lastWeek.points, 1);
@@ -3349,8 +3320,8 @@
     var deltaTxt = delta===0 ? 'no change vs last week' : (delta>0 ? '+'+delta+' vs last week' : delta+' vs last week');
     var catRows = CATEGORIES.map(function(c){ return '<div class="cat-breakdown-row"><span>'+c.icon+' '+c.name+'</span><span>'+thisWeek.catCounts[c.id]+'</span></div>'; }).join('');
     var milestoneList = thisWeek.milestones.length ? thisWeek.milestones.map(function(m){ var cat=CAT_BY_ID[m.category]; return '<li>⭐ '+escapeHtml(m.text)+' <span class="cat-tag">'+(cat?cat.icon+' '+cat.name:'')+' · '+prettyDate(m.date)+'</span></li>'; }).join('') : '<li class="unchecked">No catches this week.</li>';
-    var outreachSentTxt = outreachData.ok ? outreachData.sent : '—';
-    var outreachRepliedTxt = outreachData.ok ? outreachData.replied : '—';
+    var outreachSentTxt = thisWeek.sent;
+    var outreachRepliedTxt = thisWeek.replied;
     var calWeek = calendarWeekDates(today);
     var weekCalHtml = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(function(d){ return '<div class="cal-dow">'+d+'</div>'; }).join('') +
       calWeek.map(function(dStr){
@@ -3369,8 +3340,8 @@
           '</div>' +
           '<div class="stat-row">' +
             '<div class="stat-tile"><div class="num">'+thisWeek.points+'</div><div class="lbl">fish caught</div></div>' +
-            '<div class="stat-tile"><div class="num">'+outreachSentTxt+'</div><div class="lbl">outreach sent (current)</div></div>' +
-            '<div class="stat-tile"><div class="num">'+outreachRepliedTxt+'</div><div class="lbl">replied (current)</div></div>' +
+            '<div class="stat-tile"><div class="num">'+outreachSentTxt+'</div><div class="lbl">outreach sent this week</div></div>' +
+            '<div class="stat-tile"><div class="num">'+outreachRepliedTxt+'</div><div class="lbl">replied this week</div></div>' +
           '</div>' +
           goalNudgeHtml() +
           '<h3>Per-room points</h3>' + catRows +
