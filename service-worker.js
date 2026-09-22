@@ -1,4 +1,4 @@
-const CACHE_NAME = 'biggyinc-v6-daily-focus';
+const CACHE_NAME = 'biggyinc-v7-simple-daily';
 // Requests whose content actually changes between deploys (the app's own HTML —
 // everything, including all JS, lives inside daily_hq.html) must go network-first.
 // Cache-first here would mean a feature added after someone's first visit stays

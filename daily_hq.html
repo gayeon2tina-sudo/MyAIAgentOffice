@@ -418,12 +418,6 @@
   #refreshTodayStatus{font:16px "VT323",monospace;color:var(--text-faint);}
   .igloo-marker{display:inline-block;width:40px;height:40px;object-fit:contain;image-rendering:pixelated;vertical-align:middle;}
   .cal-day{min-height:72px;}.calendar-legend .igloo-marker{width:32px;height:32px;}
-  .daily-focus{padding:14px 18px;margin:12px 0;}.daily-focus h3{margin:0 0 8px;}
-  .focus-hint,#focusStatus,.priority-list{font:15px/1.5 Arial,sans-serif;}
-  .focus-controls{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-top:12px;}
-  .focus-controls label{display:flex;flex-direction:column;gap:4px;max-width:100%;font-size:18px;}
-  #focusTask{max-width:min(420px,100%);}.focus-controls select{font:16px Arial,sans-serif;padding:7px;border:1px solid var(--border);border-radius:7px;}
-  #focusClock{font:30px "VT323",monospace;}.priority-option{display:block;padding:9px 0;font:16px/1.4 Arial,sans-serif;}
 </style>
 </head>
 <body>
@@ -455,7 +449,6 @@
     <button id="dailyReviewBtn">📋 Daily review</button><button id="weeklyReviewBtn">📈 Weekly review</button>
   </div>
 
-  <section class="panel-box daily-focus" aria-label="Daily priorities and focus"><h3>Today's focus</h3><div id="dailyFocusContent"></div></section>
   <section class="weekly-banner panel-box hidden" id="weeklyBanner">
     <span id="weeklyBannerText"></span>
     <button class="icon-btn" id="weeklyBannerDismiss">✕</button>
@@ -1870,7 +1863,6 @@
     return {total:tasks.length,done:done,pct:tasks.length?Math.floor(done/tasks.length*100):0,complete:tasks.length>0&&done===tasks.length};
   }
   function renderDayProgress(){
-    renderDailyFocus();
     var build=dailyBuild(currentDay);
     document.getElementById('todayDate').textContent=new Date(today+'T12:00:00').toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'});
     document.getElementById('dayProgressPct').textContent=build.pct+'% · '+build.done+'/'+build.total+' tasks';
@@ -3586,44 +3578,6 @@
   document.getElementById('tabCalendarBtn').addEventListener('click', function(){ showTab('calendar'); });
 
 
-  function focusKey(){return STORAGE_PREFIX+'focus:'+today;}
-  function focusState(){return safeParse(localStorage.getItem(focusKey()),null);}
-  function storeFocus(state){localStorage.setItem(focusKey(),JSON.stringify(state));}
-  function priorityTasks(){var ids=currentDay.priorities||[];return currentDay.tasks.filter(function(t){return ids.indexOf(t.id)>=0&&!t.applicationArchived;});}
-  function renderDailyFocus(){
-    var root=document.getElementById('dailyFocusContent');if(!root)return;
-    var selected=priorityTasks(),pending=currentDay.tasks.filter(function(t){return !t.done&&!t.applicationArchived;});
-    pending.sort(function(a,b){return Number((currentDay.priorities||[]).includes(b.id))-Number((currentDay.priorities||[]).includes(a.id));});
-    var state=focusState(),running=state&&state.status==='running',paused=state&&state.status==='paused',finished=state&&state.status==='finished';
-    root.innerHTML='<p class="focus-hint">Choose up to three priorities. Then give one task your attention.</p>'+
-      (selected.length?'<ul class="priority-list">'+selected.map(function(t){return '<li>'+(t.done?'✓ ':'○ ')+escapeHtml(t.text)+'</li>';}).join('')+'</ul>':'<p class="focus-hint">No priorities chosen for today.</p>')+
-      '<button class="icon-btn" id="choosePrioritiesBtn">Choose priorities</button><div class="focus-controls"><label>Focus on <select id="focusTask" '+(running||paused?'disabled':'')+'>'+pending.map(function(t){return '<option value="'+escapeHtml(t.id)+'" '+(state&&state.taskId===t.id?'selected':'')+'>'+escapeHtml(t.text)+'</option>';}).join('')+'</select></label><label>Minutes <select id="focusMinutes" '+(running||paused?'disabled':'')+'><option>15</option><option selected>25</option><option>45</option></select></label><strong id="focusClock" role="timer"></strong><button class="primary" id="focusStartBtn" '+(!pending.length&&!running&&!paused?'disabled':'')+'>'+(running?'Pause':paused?'Resume':'Start focus')+'</button>'+(state?'<button class="icon-btn" id="focusResetBtn">Reset timer</button>':'')+'</div><p id="focusStatus" role="status"></p>';
-    document.getElementById('choosePrioritiesBtn').onclick=openPriorities;
-    document.getElementById('focusStartBtn').onclick=function(){
-      var value=focusState();
-      if(value&&value.status==='running'){value.remaining=Math.max(0,value.endAt-Date.now());value.status=value.remaining?'paused':'finished';}
-      else if(value&&value.status==='paused'){value.endAt=Date.now()+value.remaining;value.status='running';}
-      else{var id=document.getElementById('focusTask').value;if(!id)return;var duration=Number(document.getElementById('focusMinutes').value)*60000;value={taskId:id,taskText:currentDay.tasks.find(function(t){return t.id===id;}).text,remaining:duration,endAt:Date.now()+duration,status:'running'};}
-      storeFocus(value);renderDailyFocus();
-    };
-    var reset=document.getElementById('focusResetBtn');if(reset)reset.onclick=function(){localStorage.removeItem(focusKey());renderDailyFocus();};
-    document.getElementById('focusMinutes').onchange=updateFocusClock;
-    updateFocusClock();
-  }
-  function updateFocusClock(){
-    var clock=document.getElementById('focusClock');if(!clock)return;
-    var state=focusState(),remaining=state?(state.status==='running'?Math.max(0,state.endAt-Date.now()):state.remaining):(Number(document.getElementById('focusMinutes').value)||25)*60000;
-    if(state&&state.status==='running'&&remaining===0){state.status='finished';state.remaining=0;storeFocus(state);renderDailyFocus();return;}
-    var secs=Math.ceil(remaining/1000);clock.textContent=String(Math.floor(secs/60)).padStart(2,'0')+':'+String(secs%60).padStart(2,'0');
-    document.getElementById('focusStatus').textContent=state?(state.status==='finished'?'Focus session finished. Review “'+state.taskText+'” and check it off below if done.':(state.status==='paused'?'Paused: ':'Focusing on: ')+state.taskText):'The timer keeps time if you switch apps. Task completion stays in your hands.';
-  }
-  function openPriorities(){
-    var date=currentDay.date,tasks=currentDay.tasks.filter(function(t){return !t.applicationArchived;}),ids=currentDay.priorities||[];
-    document.getElementById('modalRoot').innerHTML='<div class="modal-backdrop"><div class="modal" role="dialog" aria-modal="true" aria-label="Daily priorities"><button class="close-x icon-btn" id="closePriorities">✕</button><h2>Daily priorities</h2><p>Choose up to three tasks for '+prettyDate(date)+'.</p>'+tasks.map(function(t){return '<label class="priority-option"><input type="checkbox" data-priority-id="'+escapeHtml(t.id)+'" '+(ids.includes(t.id)?'checked':'')+'> '+escapeHtml(t.text)+'</label>';}).join('')+(!tasks.length?'<p>Add tasks first, then choose your priorities.</p>':'')+'<p id="priorityError" role="alert"></p><button class="primary" id="savePriorities">Save priorities</button></div></div>';
-    document.getElementById('closePriorities').onclick=closeModal;
-    document.getElementById('savePriorities').onclick=function(){var chosen=Array.from(document.querySelectorAll('[data-priority-id]:checked')).map(function(el){return el.dataset.priorityId;});if(chosen.length>3){document.getElementById('priorityError').textContent='Choose no more than three priorities.';return;}var day=date===today?currentDay:loadDay(date);day.priorities=chosen;saveDay(day);closeModal();renderDailyFocus();};
-  }
-  setInterval(updateFocusClock,1000);
   /* ===================== Export ===================== */
 
   function exportData(){
