@@ -1,0 +1,10 @@
+const fs=require('fs'),vm=require('vm'),a=require('assert/strict');
+const html=fs.readFileSync(require('path').join(__dirname,'../daily_hq.html'),'utf8');
+const ctx={console,Set,Math,Date,currentDay:{date:'2026-09-22',tasks:[]},CHARACTERS:[{id:'health',catId:'health',seat:{x:1145,y:650},entrance:{x:1130,y:925},door:{x:1170,y:445}}],lastCharPos:{},roomPending:()=>false,lifecycleFor:()=>ctx.life,life:{},lerpPoint:(a,b,t)=>({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t})};vm.createContext(ctx);
+vm.runInContext(html.slice(html.indexOf('  function dailyBuild('),html.indexOf('  function renderDayProgress(')),ctx);
+a.equal(ctx.dailyBuild({tasks:[]}).complete,false);a.equal(ctx.dailyBuild({tasks:[{done:true},{done:false}]}).pct,50);a.equal(ctx.dailyBuild({tasks:[{done:true},{done:false,applicationArchived:true}]}).pct,100);a.equal(ctx.dailyBuild({tasks:[{done:true},{done:false}]}).complete,false);
+vm.runInContext(html.slice(html.indexOf('  var yardQueue ='),html.indexOf('  function drawOfficeDynamic(')),ctx);
+ctx.scheduleYardTrip({id:'one',category:'health'},false);a.equal(ctx.yardQueue.length,1,'first completion triggers trip');ctx.scheduleYardTrip({id:'one',category:'health'},false);a.equal(ctx.yardQueue.length,1,'same event not queued twice');
+ctx.updateYard(0);a.ok(ctx.yardActive);let building=false;for(let t=100;t<90000&&ctx.yardActive;t+=100){ctx.updateYard(t);building ||= !!ctx.yardActive?.building;}a.ok(building,'visits construction site');a.equal(ctx.yardActive,null,'round trip completes');a.equal(ctx.life.phase,'home','returns outside if done');
+ctx.currentDay.date='2026-09-23';ctx.roomPending=()=>true;ctx.scheduleYardTrip({id:'one',category:'health'},false);ctx.updateYard(100000);for(let t=100100;t<190000&&ctx.yardActive;t+=100)ctx.updateYard(t);a.equal(ctx.life.phase,'working-wandering','returns to work if tasks remain');
+console.log('PASS empty day, proportional progress, archived tasks, undo, first-task trip, duplicate event, building stop, return to yard/desk, new-day trip');

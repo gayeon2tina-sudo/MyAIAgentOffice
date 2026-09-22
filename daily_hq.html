@@ -207,7 +207,7 @@
      not something that should compete with the office visual above it or
      the task cards right below; keeps the page feeling continuous instead
      of like two separate sections with a paragraph wedged between them. */
-  .office-caption{ font-size:10px; line-height:1.4; color:var(--text-faint); opacity:.75; margin-top:4px; }
+  .office-caption{ font:14px Arial,sans-serif; line-height:1.4; color:var(--text-faint); opacity:.75; margin-top:4px; }
   /* Matches the canvas's own centered box exactly (same width/max-width,
      aspect-ratio instead of measuring height in JS) so a bubble positioned
      by percentage (x/1536, y/1024) lands on the right spot at any size. */
@@ -399,6 +399,31 @@
 
   .hidden{ display:none !important; }
   .footer-note{ text-align:center; color:var(--text-faint); font-size:13px; margin-top:28px; }
+
+  .today-date{font:24px/1.3 "VT323",monospace;color:var(--text);margin-bottom:5px;}
+  .add-tasks-bar{display:flex;flex-wrap:wrap;gap:8px;}
+  .floorplan{display:flex;flex-wrap:wrap;align-items:flex-start;gap:12px;background:transparent;border:0;box-shadow:none;padding:0;}
+  .room{flex:1 1 300px;min-width:0;border:2px solid #9ac4df!important;border-radius:12px;overflow:hidden;}
+  .room-floor{cursor:pointer;min-height:42px;gap:12px;}
+  .room-floor::before{content:'▸';} .room[open]>.room-floor::before{content:'▾';}
+  .room-floor h3{flex:1;}
+  .room .star-row,.room .room-purpose{display:none;}
+  .completed-tasks{margin-top:10px;font:14px/1.4 Arial,sans-serif;}
+  .completed-tasks>summary{cursor:pointer;padding:8px 0;color:var(--text-faint);}
+  .secondary-tools{margin:18px 0;} .secondary-tools>summary{cursor:pointer;}
+  .task-row .task-text.done{text-decoration:none;}
+  @media(max-width:650px){.room{flex-basis:100%;}}
+
+  .today-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+  #refreshTodayStatus{font:16px "VT323",monospace;color:var(--text-faint);}
+  .igloo-marker{display:inline-block;width:40px;height:40px;object-fit:contain;image-rendering:pixelated;vertical-align:middle;}
+  .cal-day{min-height:72px;}.calendar-legend .igloo-marker{width:32px;height:32px;}
+  .daily-focus{padding:14px 18px;margin:12px 0;}.daily-focus h3{margin:0 0 8px;}
+  .focus-hint,#focusStatus,.priority-list{font:15px/1.5 Arial,sans-serif;}
+  .focus-controls{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-top:12px;}
+  .focus-controls label{display:flex;flex-direction:column;gap:4px;max-width:100%;font-size:18px;}
+  #focusTask{max-width:min(420px,100%);}.focus-controls select{font:16px Arial,sans-serif;padding:7px;border:1px solid var(--border);border-radius:7px;}
+  #focusClock{font:30px "VT323",monospace;}.priority-option{display:block;padding:9px 0;font:16px/1.4 Arial,sans-serif;}
 </style>
 </head>
 <body>
@@ -406,28 +431,31 @@
 <header class="top">
   <h1 class="title">BIG GY INC</h1>
   <div class="hud">
-    <button class="hud-pill points" id="pointsPill" title="0 fish caught today — click to see your Catch of the Day board">🐟 <span class="val" id="pointsVal">0</span></button>
+    <button class="hud-pill points" id="pointsPill" title="0 fish caught today — click to see your Milestone history board">🐟 <span class="val" id="pointsVal">0</span></button>
     <button class="hud-pill streak" id="streakPill" title="0 day slide streak — click to see the last two weeks">🛷 <span class="val" id="streakVal">0</span></button>
     <button class="hud-pill rank" id="rankPill" title="Snow Patch — click for rank details">🧊 <span class="val" id="rankVal">Snow Patch</span></button>
   </div>
 </header>
 
 <div class="day-progress-wrap">
-  <div class="day-progress-label">Today: <span id="dayProgressPct">0%</span></div>
+  <div class="today-heading"><div id="todayDate" class="today-date"></div><button class="icon-btn" id="refreshTodayBtn">↻ Refresh today</button></div><span id="refreshTodayStatus" role="status"></span><div class="day-progress-label">Daily igloo: <span id="dayProgressPct">0%</span></div>
   <div class="day-progress-track"><div class="day-progress-fill" id="dayProgressFill"></div></div>
 </div>
 
 <main>
   <div class="view-tabs">
     <button class="tab-btn active" id="tabOfficeBtn">🏢 The Office</button>
-    <button class="tab-btn" id="tabCalendarBtn">📅 Achievements</button>
+    <button class="tab-btn" id="tabCalendarBtn">📅 Calendar</button>
   </div>
 
   <div id="officeView">
   <div class="add-tasks-bar">
     <button class="primary" id="addTasksBtn">+ Add tasks</button>
+    <button id="weeklyPlanBtn">🧭 Plan this week</button><button id="goalsBtn">Goals</button>
+    <button id="dailyReviewBtn">📋 Daily review</button><button id="weeklyReviewBtn">📈 Weekly review</button>
   </div>
 
+  <section class="panel-box daily-focus" aria-label="Daily priorities and focus"><h3>Today's focus</h3><div id="dailyFocusContent"></div></section>
   <section class="weekly-banner panel-box hidden" id="weeklyBanner">
     <span id="weeklyBannerText"></span>
     <button class="icon-btn" id="weeklyBannerDismiss">✕</button>
@@ -437,7 +465,8 @@
     <h3>The Office</h3>
     <canvas id="officeCanvas" class="pixel" width="1536" height="1024"></canvas>
     <div id="officeBubbleLayer" class="office-bubble-layer"></div>
-    <p class="office-caption">Preview: new penguin crew on the temporary illustrated background. Flat office art and the final rank artwork are pending. Every fourth newly completed task sends its character to the yard; rank-ups always do. Click a character for a tip.</p>
+    <p class="office-caption" id="iglooStatus" role="status"></p><p class="office-caption">One igloo per day. Each completed task adds an equal share; finish every task to complete it. Lifetime ranks are separate.</p>
+    <label class="office-caption"><input type="checkbox" id="autoTipsToggle" checked> Penguin encouragement</label>
     <details class="crew-details"><summary>Meet the crew · 8 penguins</summary><div id="crewGrid" class="crew-grid"></div></details>
   </section>
 
@@ -452,15 +481,10 @@
     </div>
   </section>
 
-  <div class="toolbar">
-    <button id="goalsBtn">🧭 Goals</button>
-    <button id="remindersBtn">🔔 Reminders</button>
-    <button id="dailyReviewBtn">📋 Daily Review</button>
-    <button id="weeklyReviewBtn">📈 Weekly Review</button>
-    <button id="scheduleAheadBtn">📅 Schedule ahead</button>
-    <button id="trophyBtn">🐟 Catch of the Day</button>
-    <button id="exportBtn">⬇ Export my data</button>
-  </div>
+  <details class="secondary-tools"><summary>More tools</summary><div class="toolbar">
+    <button id="remindersBtn">🔔 Reminders</button><button id="scheduleAheadBtn">📅 Schedule ahead</button>
+    <button id="trophyBtn">⭐ Milestone history</button><button id="exportBtn">⬇ Export my data</button>
+  </div></details>
 
   </div>
 
@@ -473,7 +497,7 @@
       </div>
       <div class="calendar-grid" id="calendarGrid"></div>
       <div class="calendar-legend">
-        <span><span class="cal-marker">🌟</span> milestone</span>
+        <span><img class="igloo-marker" src="sprites/yard/penguin-igloo.gif" alt="Igloo complete" width="40" height="40"> daily igloo complete</span><span><span class="cal-marker">🌟</span> milestone</span>
         <span><span class="cal-marker">●</span> tasks done</span>
         <span><span class="cal-marker">📅</span> tasks scheduled</span>
         <span><span class="cal-dot-sample empty"></span> nothing logged</span>
@@ -503,7 +527,7 @@
       ],
       flavors:["Scout found one.", "Editor stamped it.", "Scout's tracking a lead.", "Editor's letting that rest before the final pass."],
       cursor:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20"><circle cx="8" cy="8" r="6" fill="none" stroke="%23222" stroke-width="2"/><line x1="13" y1="13" x2="18" y2="18" stroke="%23222" stroke-width="2"/></svg>',
-      keywords:['job','jobs','posting','postings','role','roles','shortlist','linkedin','indeed','recruiter','apply for','pm role','pmm role','opening','openings','lead','leads','cv','resume','résumé','cover letter','tailor','application draft','submit application','cover ltr','applied','application'],
+      keywords:['outreach','follow up','networking','job','jobs','posting','postings','role','roles','shortlist','linkedin','indeed','recruiter','apply for','pm role','pmm role','opening','openings','lead','leads','cv','resume','résumé','cover letter','tailor','application draft','submit application','cover ltr','applied','application'],
       tips:[
         "Reaching out to someone who actually does the job usually gets more replies than reaching out to someone two levels above them.",
         "A short, specific follow-up after 5-7 days beats a longer message sent on day one.",
@@ -1396,7 +1420,7 @@
   function calendarWeekDates(dStr){
     var p = dStr.split('-').map(Number);
     var d = new Date(p[0], p[1]-1, p[2]);
-    var sunday = new Date(d); sunday.setDate(d.getDate() - d.getDay());
+    var sunday = new Date(d); sunday.setDate(d.getDate() - ((d.getDay()+6)%7));
     var arr = [];
     for(var i=0;i<7;i++){ var x = new Date(sunday); x.setDate(sunday.getDate()+i); arr.push(dateStr(x)); }
     return arr;
@@ -1488,14 +1512,9 @@
     var banner = document.getElementById('weeklyBanner');
     var wk = currentWeekKey();
     if(localStorage.getItem(WEEKLY_BANNER_KEY) === wk){ banner.classList.add('hidden'); return; }
-    var goalsState = ensureGoals();
-    // Whichever goal has a "this month" note set is this week's featured
-    // focus; purely informational, never framed as behind/overdue.
-    var featured = goalsState.goals.find(function(g){ return g.onTrack && g.onTrack.trim(); }) || goalsState.goals[0];
-    if(!featured){ banner.classList.add('hidden'); return; }
-    var text = '🧭 This week\'s expedition: ' + escapeHtml(featured.name) +
-      (featured.onTrack && featured.onTrack.trim() ? ' — ' + escapeHtml(featured.onTrack.trim()) : '');
-    document.getElementById('weeklyBannerText').innerHTML = text;
+    var plan=safeParse(localStorage.getItem(STORAGE_PREFIX+'weekPlan:'+wk),null);
+    document.getElementById('weeklyBannerText').textContent=plan?'This week: '+plan.outcomes.split('\n')[0]+' · '+plan.affirmation:'A new week: choose up to three outcomes and one small first step.';
+    if(!banner.querySelector('[data-week-plan]')){var btn=document.createElement('button');btn.className='icon-btn';btn.dataset.weekPlan='true';btn.textContent='Set weekly plan';btn.addEventListener('click',openWeeklyPlan);banner.appendChild(btn);}
     banner.classList.remove('hidden');
   }
   document.getElementById('weeklyBannerDismiss').addEventListener('click', function(){
@@ -1503,6 +1522,19 @@
     document.getElementById('weeklyBanner').classList.add('hidden');
   });
 
+  function openWeeklyPlan(){
+    var key=STORAGE_PREFIX+'weekPlan:'+currentWeekKey(), plan=safeParse(localStorage.getItem(key),{});
+    document.getElementById('modalRoot').innerHTML='<div class="modal-backdrop"><div class="modal" role="dialog" aria-modal="true" aria-label="Plan this week"><button class="close-x icon-btn" id="closeWeekPlan">✕</button><h2>Plan this week</h2><p>New plan each Monday. Choose outcomes you can control.</p><label>Up to three outcomes<textarea class="note-area" id="weekOutcomes" placeholder="Send 3 thoughtful outreach messages\nFinish one portfolio case study">'+escapeHtml(plan.outcomes||'')+'</textarea></label><label>One small first step<input class="note-area" id="weekFirstStep" value="'+escapeHtml(plan.firstStep||'')+'" placeholder="Draft one outreach message"></label><label>Your affirmation<input class="note-area" id="weekAffirmation" value="'+escapeHtml(plan.affirmation||'Small, consistent actions count.')+'"></label><p id="weekPlanError" role="status"></p><button class="primary" id="saveWeekPlan">Save weekly plan</button></div></div>';
+    document.getElementById('closeWeekPlan').onclick=closeModal;
+    document.getElementById('saveWeekPlan').onclick=function(){
+      var outcomes=document.getElementById('weekOutcomes').value.trim(), firstStep=document.getElementById('weekFirstStep').value.trim(), affirmation=document.getElementById('weekAffirmation').value.trim();
+      if(!outcomes||outcomes.split('\n').filter(Boolean).length>3){document.getElementById('weekPlanError').textContent='Choose between one and three outcomes.';return;}
+      localStorage.setItem(key,JSON.stringify({outcomes:outcomes,firstStep:firstStep,affirmation:affirmation}));
+      localStorage.removeItem(WEEKLY_BANNER_KEY);closeModal();renderWeeklyBanner();
+      if(firstStep){openDailyEntryModal();var input=document.getElementById('dailyEntryInput');input.value=firstStep;input.dispatchEvent(new Event('input'));}
+    };
+  }
+  document.getElementById('weeklyPlanBtn').addEventListener('click',openWeeklyPlan);
   function checkGoalNudges(goals){
     var cutoff = addDays(today, -14);
     var dates = allDayDates();
@@ -1570,7 +1602,9 @@
     });
   }
   var modalAfterClose = null;
+  var composerOnDateChange = null;
   function closeModal(){
+    composerOnDateChange = null;
     var cb = modalAfterClose;
     modalAfterClose = null;
     document.getElementById('modalRoot').innerHTML = '';
@@ -1716,7 +1750,7 @@
     document.getElementById('pointsVal').textContent = todayFish;
     document.getElementById('streakVal').textContent = streak;
     document.getElementById('rankVal').textContent = rankTitle;
-    document.getElementById('pointsPill').title = todayFish + ' fish caught today — click to see your Catch of the Day board';
+    document.getElementById('pointsPill').title = todayFish + ' fish caught today — click to see your Milestone history board';
     document.getElementById('streakPill').title = streak + ' day slide streak — click to see the last two weeks';
     document.getElementById('rankPill').title = rankTitle + ' — click for rank details';
   }
@@ -1760,7 +1794,7 @@
       '<div class="streak-popover">' +
         '<h4>🧊 ' + rank.title + '</h4>' +
         '<div class="rank-progress-line">' + progressLine + '</div>' +
-        '<div class="rank-igloo-note">The yard igloo grows as your rank does. Final stage artwork is pending.</div>' +
+        '<div class="rank-igloo-note">Lifetime rank celebrates all your completed tasks. Your daily igloo resets each day.</div>' +
       '</div>';
     document.body.appendChild(root);
     document.getElementById('rankPopoverBackdrop').addEventListener('click', closeRankPopover);
@@ -1830,15 +1864,18 @@
     setTimeout(function(){ playTone(880, 990, 320, 0.07); }, 140);
   }
 
+  function dailyBuild(day){
+    var tasks=day.tasks.filter(function(t){return !t.applicationArchived;});
+    var done=tasks.filter(function(t){return t.done;}).length;
+    return {total:tasks.length,done:done,pct:tasks.length?Math.floor(done/tasks.length*100):0,complete:tasks.length>0&&done===tasks.length};
+  }
   function renderDayProgress(){
-    var total = 0, done = 0;
-    CATEGORIES.forEach(function(c){
-      var t = tasksForCategory(c.id);
-      total += t.length; done += t.filter(function(x){ return x.done; }).length;
-    });
-    var pct = total > 0 ? Math.round(done/total*100) : 0;
-    document.getElementById('dayProgressPct').textContent = pct + '%';
-    document.getElementById('dayProgressFill').style.width = pct + '%';
+    renderDailyFocus();
+    var build=dailyBuild(currentDay);
+    document.getElementById('todayDate').textContent=new Date(today+'T12:00:00').toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+    document.getElementById('dayProgressPct').textContent=build.pct+'% · '+build.done+'/'+build.total+' tasks';
+    document.getElementById('dayProgressFill').style.width=build.pct+'%';
+    document.getElementById('iglooStatus').textContent=build.complete?'🛖 Today’s igloo is complete — recorded on your calendar.':build.total?'🧊 '+build.pct+'% built · '+(build.total-build.done)+' '+(build.total-build.done===1?'task':'tasks')+' remaining':'Choose today’s tasks to start a new igloo.';
   }
 
   /* ===================== Rooms & tasks ===================== */
@@ -1863,12 +1900,12 @@
     var grid = document.getElementById('floorplan');
     var html = CATEGORIES.map(function(c){
       return '' +
-        '<div class="room" data-cat="'+c.id+'">' +
-          '<div class="room-floor" style="background:'+c.floor+'"><h3>'+c.icon+' '+c.name+'</h3><span class="room-status" data-role="status"></span></div>' +
+        '<details class="room" data-cat="'+c.id+'">' +
+          '<summary class="room-floor" style="background:'+c.floor+'"><h3>'+c.icon+' '+c.name+'</h3><span class="room-status" data-role="status"></span></summary>' +
           '<div class="star-row" data-role="stars"></div>' +
           '<div class="room-purpose">'+escapeHtml(c.id==='job'?'Scout finds roles and contacts. Editor prepares and submits applications.':c.id==='portfolio'?'Builder creates projects. Storyteller helps you share your work.':({learning:'Compiler helps you learn and practise useful skills.',budget:'Ledger handles money and everyday admin.',health:'Stride makes room for movement, rest, and wellbeing.',friends:'Hearth keeps you connected to family and friends.'}[c.id]||''))+'</div>'+
           '<div class="room-body" data-role="list"></div>' +
-        '</div>';
+        '</details>';
     }).join('');
     grid.innerHTML = html;
     CATEGORIES.forEach(function(c){
@@ -1922,25 +1959,22 @@
     var cat = CAT_BY_ID[catId];
     var tasks = tasksForCategory(catId);
     status.textContent = tasks.length ? (tasks.filter(function(t){ return t.done; }).length + '/' + tasks.length) : '';
-    var bodyHtml;
+    if(!room.dataset.initialized){room.open=tasks.some(function(t){return !t.done;});room.dataset.initialized='true';}
+    var previousPending=Number(room.dataset.pending||0), pending=tasks.filter(function(t){return !t.done;});
+    if(pending.length>previousPending)room.open=true;
+    room.dataset.pending=pending.length;
+    var completed=tasks.filter(function(t){return t.done;});
+    var bodyHtml='';
     if(cat.subsections){
-      // Two labeled sub-sections sharing this one fish count and star row —
-      // the split is display-only grouping, never a second category. Shown
-      // whether or not either side has tasks yet, since it's a fixed part
-      // of this card's layout, not something that appears once populated.
-      bodyHtml = cat.subsections.map(function(sub){
-        var subTasks = sortUncheckedFirst(tasks.filter(function(t){ return (t.sub || 'outreach') === sub.id; }));
-        var rows = subTasks.length
-          ? subTasks.map(taskRowHtml).join('')
-          : '<div class="empty-msg">Nothing here yet.</div>';
-        var inlineHtml = sub.id === 'outreach' ? '<div class="outreach-inline" id="outreachInline"></div>' : '';
-        return '<div class="task-subsection"><h4>'+escapeHtml(sub.label)+'</h4>'+rows+inlineHtml+'</div>';
+      bodyHtml=cat.subsections.map(function(sub){
+        var subset=pending.filter(function(t){return (t.sub||'outreach')===sub.id;});
+        return subset.length?'<div class="task-subsection"><h4>'+escapeHtml(sub.label)+'</h4>'+subset.map(taskRowHtml).join('')+'</div>':'';
       }).join('');
-    } else if(tasks.length === 0){
-      bodyHtml = '<div class="empty-msg">No tasks yet — use the + Add tasks button above.</div>';
-    } else {
-      bodyHtml = sortUncheckedFirst(tasks).map(taskRowHtml).join('');
-    }
+    }else bodyHtml=pending.map(taskRowHtml).join('');
+    if(!tasks.length)bodyHtml='<p class="empty-msg">No tasks planned.</p>';
+    if(completed.length)bodyHtml+='<details class="completed-tasks"><summary>Completed · '+completed.length+'</summary>'+completed.map(taskRowHtml).join('')+'</details>';
+    if(catId==='job')bodyHtml+='<div class="outreach-inline" id="outreachInline"></div>';
+
     list.innerHTML = bodyHtml;
     if(catId === 'job') renderOutreachInline();
     renderStarRow(catId);
@@ -1999,6 +2033,7 @@
     if(task.category === 'portfolio'){ mechanics.portfolioGrowth = Math.max(0, mechanics.portfolioGrowth + (task.done?1:-1)); saveMechanics(mechanics); mechanicsChanged = true; }
     if(task.category === 'budget'){ mechanics.budgetFill = Math.max(0, mechanics.budgetFill + (task.done?1:-1)); saveMechanics(mechanics); mechanicsChanged = true; }
     if(mechanicsChanged) renderStaticOffice();
+    if(!task.done)yardRewarded.delete(currentDay.date+':'+task.id);
     if(task.done && !wasDone){
       var isFirstFishToday = currentDay.tasks.filter(function(t){ return t.done; }).length === 1;
       var momentum = registerCheckOffMomentum();
@@ -2168,6 +2203,7 @@
         category: 'job', sub: 'outreach', done: true, milestone: false,
         recurringId: null, createdAt: Date.now(), source: 'outreach-auto', outreachAction: a.action, outreachKey: key
       });
+      scheduleYardTrip(currentDay.tasks[currentDay.tasks.length-1],false);
       added = true;
     });
     if(added){
@@ -2521,14 +2557,14 @@
   };
 
   var CHARACTERS_RAW = [
-    { id:'job', catId:'job', name:'Scout', seat:{x:240,y:265}, walkTarget:{x:290,y:280}, entrance:{x:510,y:860}, door:{x:335,y:320} },
-    { id:'cv', catId:'job', name:'Editor', seat:{x:375,y:265}, walkTarget:{x:380,y:280}, entrance:{x:630,y:865}, door:{x:335,y:320} },
-    { id:'portfolio', catId:'portfolio', name:'Builder', seat:{x:310,y:650}, walkTarget:{x:375,y:655}, entrance:{x:870,y:865}, door:{x:335,y:445} },
-    { id:'backpack', catId:'portfolio', name:'Storyteller', seat:{x:205,y:650}, walkTarget:{x:220,y:670}, entrance:{x:990,y:860}, door:{x:335,y:445} },
-    { id:'budget', catId:'budget', name:'Ledger', seat:{x:610,y:655}, walkTarget:{x:665,y:655}, entrance:{x:510,y:950}, door:{x:770,y:565} },
-    { id:'learning', catId:'learning', name:'Compiler', seat:{x:1150,y:270}, walkTarget:{x:1160,y:280}, entrance:{x:630,y:955}, door:{x:1165,y:320} },
-    { id:'friends', catId:'friends', name:'Hearth', seat:{x:735,y:270}, walkTarget:{x:755,y:280}, entrance:{x:870,y:955}, door:{x:735,y:320} },
-    { id:'health', catId:'health', name:'Stride', seat:{x:1145,y:650}, walkTarget:{x:1170,y:510}, entrance:{x:990,y:950}, door:{x:1170,y:445} }
+    { id:'job', catId:'job', name:'Scout', seat:{x:240,y:265}, walkTarget:{x:290,y:280}, entrance:{x:490,y:855}, door:{x:335,y:320} },
+    { id:'cv', catId:'job', name:'Editor', seat:{x:375,y:265}, walkTarget:{x:380,y:280}, entrance:{x:590,y:870}, door:{x:335,y:320} },
+    { id:'portfolio', catId:'portfolio', name:'Builder', seat:{x:310,y:650}, walkTarget:{x:375,y:655}, entrance:{x:990,y:845}, door:{x:335,y:445} },
+    { id:'backpack', catId:'portfolio', name:'Storyteller', seat:{x:205,y:650}, walkTarget:{x:220,y:670}, entrance:{x:1090,y:855}, door:{x:335,y:445} },
+    { id:'budget', catId:'budget', name:'Ledger', seat:{x:610,y:655}, walkTarget:{x:665,y:655}, entrance:{x:490,y:940}, door:{x:770,y:565} },
+    { id:'learning', catId:'learning', name:'Compiler', seat:{x:1150,y:270}, walkTarget:{x:1160,y:280}, entrance:{x:590,y:955}, door:{x:1165,y:320} },
+    { id:'friends', catId:'friends', name:'Hearth', seat:{x:735,y:270}, walkTarget:{x:755,y:280}, entrance:{x:1050,y:940}, door:{x:735,y:320} },
+    { id:'health', catId:'health', name:'Stride', seat:{x:1145,y:650}, walkTarget:{x:1170,y:510}, entrance:{x:1150,y:950}, door:{x:1170,y:445} }
   ];
 
   var CHARACTERS = [];
@@ -2788,7 +2824,7 @@
   // Long enough to comfortably read the longest tip in the 500-tip bank
   // (~127 characters, ~22 words) at a relaxed reading pace, not just the
   // shortest one-liners. The old 4200ms was tuned for short tips only.
-  var CANNED_TIP_MS = 9000;
+  var CANNED_TIP_MS = 15000;
   var CANNED_TIP_LEAVE_GRACE_MS = 1200; // brief grace after the mouse leaves the bubble before it actually dismisses
   var lastCharPos = {};
   var lastAtDesk = {};
@@ -2834,6 +2870,22 @@
     });
     el.addEventListener('mouseleave', function(){ scheduleTipDismiss(ch, CANNED_TIP_LEAVE_GRACE_MS); });
   }
+  var autoTipIndex=0, nextAutoTipAt=Date.now()+8000;
+  var autoTipsToggle=document.getElementById('autoTipsToggle');
+  autoTipsToggle.checked=localStorage.getItem(STORAGE_PREFIX+'autoTips')!=='off';
+  autoTipsToggle.addEventListener('change',function(){localStorage.setItem(STORAGE_PREFIX+'autoTips',this.checked?'on':'off');if(!this.checked)clearBubble();});
+  function maybeAutomaticTip(){
+    if(Date.now()<nextAutoTipAt||!autoTipsToggle.checked||document.hidden||activeBubbleCharId||document.getElementById('modalRoot').children.length||document.getElementById('officeView').classList.contains('hidden'))return;
+    var rect=document.getElementById('officeCanvas').getBoundingClientRect();
+    if(rect.bottom<0||rect.top>window.innerHeight)return;
+    var ch=CHARACTERS[autoTipIndex++%CHARACTERS.length],pos=lastCharPos[ch.id]||ch.entrance;
+    showCannedTip(ch,pos.x,Math.min(pos.y,790));
+    nextAutoTipAt=Date.now()+90000;
+    var plan=safeParse(localStorage.getItem(STORAGE_PREFIX+'weekPlan:'+currentWeekKey()),null);
+    if(plan&&plan.affirmation&&autoTipIndex%3===1){var bubble=bubbleLayer().querySelector('.tip-bubble');if(bubble)bubble.textContent=ch.name+': '+plan.affirmation;}
+  }
+  setTimeout(maybeAutomaticTip,8000);
+  setInterval(maybeAutomaticTip,15000);
   // Clicking anywhere else on the page (a task checkbox, a button, empty
   // space) dismisses an open tip early — the canvas's own click handler
   // already covers clicks on the canvas itself (empty room, another
@@ -2856,7 +2908,18 @@
   // corridor character (seat x:190, walk target x:235) that used to render
   // here — that character is gone now, but the position is left as-is since
   // it already reads fine as a hallway fixture and no room needs the space.
-  var IGLOO_X = 890, IGLOO_GROUND_Y = 970;
+  var IGLOO_X = 820, IGLOO_GROUND_Y = 970;
+  function drawDailyIgloo(ctx,pct){
+    var x=IGLOO_X,y=IGLOO_GROUND_Y;
+    ctx.save();ctx.translate(x,y);ctx.scale(1.7,1.7);ctx.translate(-x,-y);ctx.fillStyle='#e9f9ff';ctx.beginPath();ctx.ellipse(x,y+5,88,15,0,0,Math.PI*2);ctx.fill();
+    if(pct===100){ctx.fillStyle='#dceffc';ctx.beginPath();ctx.arc(x,y,76,Math.PI,0);ctx.fill();ctx.strokeStyle='#7fb8e0';ctx.lineWidth=2;ctx.stroke();}
+    var blocks=[];
+    [6,6,5,4,3].forEach(function(count,row){for(var col=0;col<count;col++)blocks.push({x:x-count*12+col*24,y:y-18-row*18});});
+    var visible=Math.ceil(blocks.length*pct/100);
+    blocks.slice(0,visible).forEach(function(b){iglooBrick(ctx,b.x,b.y,23,17);});
+    if(pct===100){ctx.fillStyle='#164f75';ctx.fillRect(x-13,y-31,26,31);ctx.strokeStyle='#183e5b';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x,y-90);ctx.lineTo(x,y-118);ctx.stroke();ctx.fillStyle='#e6a425';ctx.fillRect(x,y-118,24,15);}
+    ctx.font='bold 18px Arial';ctx.textAlign='center';ctx.fillStyle='#174661';ctx.fillText(pct===100?'COMPLETE':pct+'%',x,y+31);ctx.restore();
+  }
   function iglooBrick(ctx, x, y, w, h){
     ctx.fillStyle = '#dceffc';
     roundRectPath(ctx, x, y, w, h, 3);
@@ -2939,16 +3002,16 @@
     if(yardRewarded.has(key)) return;
     yardRewarded.add(key);
     yardCompletions++;
-    if(!rankUp && yardCompletions % 4 !== 0) return;
+
     var choices = CHARACTERS.filter(function(c){ return c.catId === task.category; });
     var preferred = task.category==='job' ? (task.sub==='applications'?'cv':'job') : task.category==='portfolio' ? (task.sub==='content'?'backpack':'portfolio') : task.category;
     var ch = choices.find(function(c){return c.id===preferred;}) || choices[0];
     if(ch) yardQueue.push({ch:ch, rankUp:rankUp});
   }
   function yardRoute(ch, start){
-    if(start.y>=800)return [start,{x:start.x,y:980},{x:790,y:980},{x:790,y:950}];
+    if(start.y>=800)return [start,{x:start.x,y:980},{x:665,y:990},{x:665,y:960}];
     var door = ch.door || {x:335,y:320};
-    if(start.y>=340 && start.y<=425) return [start,{x:840,y:385},{x:840,y:620},{x:760,y:620},{x:760,y:775},{x:740,y:835},{x:785,y:900},{x:790,y:950}];
+    if(start.y>=340 && start.y<=425) return [start,{x:840,y:385},{x:840,y:620},{x:760,y:620},{x:760,y:775},{x:740,y:835},{x:785,y:900},{x:665,y:960}];
     var path = [start];
     // Approach each room's actual doorway, never cut diagonally through walls.
     if(start.y > 430 && ch.catId === 'portfolio') path.push({x:400,y:start.y},{x:400,y:490},{x:335,y:490});
@@ -2958,7 +3021,7 @@
     if(ch.catId === 'budget') path.push({x:840,y:565});
     else path.push({x:door.x,y:385},{x:840,y:385});
     path.push({x:840,y:620},{x:760,y:620},{x:760,y:775},
-      {x:740,y:835},{x:785,y:900},{x:790,y:950});
+      {x:740,y:835},{x:785,y:900},{x:665,y:960});
     return path;
   }
   function updateYard(now){
@@ -2966,7 +3029,7 @@
       var entry=yardQueue.shift(), ch=entry.ch;
       var start=lastCharPos[ch.id] || ch.seat;
       var path=yardRoute(ch,{x:start.x,y:start.y});
-      var homePath=yardRoute(ch,ch.seat);
+      var homePath=yardRoute(ch,roomPending(ch.catId)?ch.seat:ch.entrance);
       var back=homePath.slice(0,-1).reverse();
       yardActive={ch:ch,rankUp:entry.rankUp,path:path.concat([path[path.length-1]],back),
         index:0,since:now,brickIndex:path.length-1,start:now};
@@ -2976,7 +3039,7 @@
     var a=trip.path[trip.index], b=trip.path[trip.index+1];
     if(!b){
       var life=lifecycleFor(trip.ch);
-      life.phase="working-wandering"; life.since=now;
+      life.phase=roomPending(trip.ch.catId)?"working-wandering":"home"; life.since=now;
       trip.ch.phaseOffset=-(lastOfficeTick % 420);
       yardActive=null;
       return;
@@ -2998,7 +3061,7 @@
     ctx.imageSmoothingEnabled = true;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(staticCanvas, 0, 0);
-    drawIgloo(ctx, rankIndex(totalPointsAllTime()));
+    drawDailyIgloo(ctx, dailyBuild(currentDay).pct);
 
     var now = Date.now();
     updateYard(now);
@@ -3087,7 +3150,7 @@
   var hoveredRoomId = null;
   var catchHotspotHovered = false;
   // The "BIG GY INC" signboard already painted into the office art (bottom
-  // center) doubles as a second, discoverable way into Catch of the Day —
+  // center) doubles as a second, discoverable way into Milestone history —
   // in addition to the HUD fish chip, not a replacement for it.
   var CATCH_HOTSPOT = { x1:675, y1:655, x2:845, y2:700 };
 
@@ -3128,7 +3191,7 @@
         hoveredRoomId = null;
         catchHotspotHovered = true;
         canvas.style.cursor = 'pointer';
-        canvas.title = 'Catch of the Day';
+        canvas.title = 'Milestone history';
         return;
       }
       catchHotspotHovered = false;
@@ -3189,7 +3252,7 @@
       '<div class="modal-backdrop" id="trophyBackdrop">' +
         '<div class="modal">' +
           '<button class="close-x icon-btn" id="closeTrophyModal">✕</button>' +
-          '<h2>🐟 Catch of the Day</h2>' +
+          '<h2>⭐ Milestone history</h2><p>Your completed starred tasks, across all days. Star a task to mark it as a meaningful achievement.</p>' +
           (trophies.length ? '<div class="trophy-grid">' + trophies.map(function(t){
             var cat = CAT_BY_ID[t.category];
             return '<div class="trophy-item">🐟 ' + escapeHtml(t.text) + '<div class="t-date">' + (cat?cat.icon+' '+cat.name+' · ':'') + prettyDate(t.date) + '</div></div>';
@@ -3234,8 +3297,8 @@
           '<button class="close-x icon-btn" id="closeDailyModal">✕</button>' +
           '<h2>Daily Review — '+prettyDate(dateStrArg)+(autoTriggered?' (auto)':'')+'</h2>' +
           '<div class="stat-row">' +
-            '<div class="stat-tile"><div class="num">'+done.length+'</div><div class="lbl">fish caught</div></div>' +
-            '<div class="stat-tile"><div class="num">'+done.length+'</div><div class="lbl">reeled in</div></div>' +
+            '<div class="stat-tile"><div class="num">'+done.length+'</div><div class="lbl">tasks completed</div></div>' +
+            '<div class="stat-tile"><div class="num">'+dailyBuild(day).pct+'%</div><div class="lbl">igloo progress</div></div>' +
             '<div class="stat-tile"><div class="num">'+undone.length+'</div><div class="lbl">not checked</div></div>' +
           '</div>' +
           goalNudgeHtml() +
@@ -3304,6 +3367,12 @@
       save.disabled=!drafts.length;save.textContent=drafts.length?'Save '+drafts.length+' task'+(drafts.length===1?'':'s'):'Save tasks';
       document.getElementById('composerError').textContent='';
     }
+    composerOnDateChange=function(){
+      if(!dateInput.isConnected)return;
+      dateInput.min=today;
+      var shortcuts=root.querySelectorAll('[data-quick-date]');shortcuts[0].dataset.quickDate=today;shortcuts[1].dataset.quickDate=addDays(today,1);
+      if(selected<today)chooseDate(today);else refreshCalendar();
+    };
     input.addEventListener('input',syncDrafts);
     dateInput.addEventListener('change',function(){chooseDate(dateInput.value);});
     document.getElementById('composerPrev').addEventListener('click',function(){month.setMonth(month.getMonth()-1);refreshCalendar();});
@@ -3353,9 +3422,14 @@
 
   /* ===================== Weekly review ===================== */
 
+  function weeklyPlanReviewHtml(){
+    var plan=safeParse(localStorage.getItem(STORAGE_PREFIX+'weekPlan:'+currentWeekKey()),null);
+    return plan?'<h3>Your weekly outcomes</h3><ul>'+plan.outcomes.split('\n').filter(Boolean).map(function(x){return '<li>'+escapeHtml(x)+'</li>';}).join('')+'</ul><p>'+escapeHtml(plan.affirmation)+'</p>':'<p>No weekly plan yet. Use Plan this week to set your outcomes.</p>';
+  }
   function openWeeklyReview(){
-    var thisWeekDates = weekDates(today, 7);
-    var lastWeekDates = weekDates(addDays(today,-7), 7);
+    var elapsed=(new Date(today+'T12:00:00').getDay()+6)%7+1;
+    var thisWeekDates = weekDates(today, elapsed);
+    var lastWeekDates = weekDates(addDays(today,-7), elapsed);
     function summarize(dates){
       var points=0, sent=0, replied=0;
       var catCounts = {}; CATEGORIES.forEach(function(c){ catCounts[c.id]=0; });
@@ -3374,13 +3448,13 @@
     var thisWeek = summarize(thisWeekDates), lastWeek = summarize(lastWeekDates);
     var maxPts = Math.max(thisWeek.points, lastWeek.points, 1);
     var delta = thisWeek.points - lastWeek.points;
-    var deltaTxt = delta===0 ? 'no change vs last week' : (delta>0 ? '+'+delta+' vs last week' : delta+' vs last week');
+    var deltaTxt = delta===0 ? 'no change vs the same days last week' : (delta>0 ? '+'+delta+' vs the same days last week' : delta+' vs the same days last week');
     var catRows = CATEGORIES.map(function(c){ return '<div class="cat-breakdown-row"><span>'+c.icon+' '+c.name+'</span><span>'+thisWeek.catCounts[c.id]+'</span></div>'; }).join('');
-    var milestoneList = thisWeek.milestones.length ? thisWeek.milestones.map(function(m){ var cat=CAT_BY_ID[m.category]; return '<li>⭐ '+escapeHtml(m.text)+' <span class="cat-tag">'+(cat?cat.icon+' '+cat.name:'')+' · '+prettyDate(m.date)+'</span></li>'; }).join('') : '<li class="unchecked">No catches this week.</li>';
+    var milestoneList = thisWeek.milestones.length ? thisWeek.milestones.map(function(m){ var cat=CAT_BY_ID[m.category]; return '<li>⭐ '+escapeHtml(m.text)+' <span class="cat-tag">'+(cat?cat.icon+' '+cat.name:'')+' · '+prettyDate(m.date)+'</span></li>'; }).join('') : '<li class="unchecked">No completed starred tasks this week.</li>';
     var outreachSentTxt = thisWeek.sent;
     var outreachRepliedTxt = thisWeek.replied;
     var calWeek = calendarWeekDates(today);
-    var weekCalHtml = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(function(d){ return '<div class="cal-dow">'+d+'</div>'; }).join('') +
+    var weekCalHtml = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(function(d){ return '<div class="cal-dow">'+d+'</div>'; }).join('') +
       calWeek.map(function(dStr){
         var cell = calDayCellClass(dStr);
         var dayNum = Number(dStr.split('-')[2]);
@@ -3390,13 +3464,15 @@
       '<div class="modal-backdrop" id="weeklyModalBackdrop">' +
         '<div class="modal">' +
           '<button class="close-x icon-btn" id="closeWeeklyModal">✕</button>' +
-          '<h2>Weekly Review — '+prettyDate(thisWeekDates[6])+' to '+prettyDate(thisWeekDates[0])+'</h2>' +
+          '<h2>Weekly Review — '+prettyDate(thisWeekDates[thisWeekDates.length-1])+' to '+prettyDate(thisWeekDates[0])+'</h2>' +
+          '<p>'+thisWeekDates.filter(function(d){return dailyBuild(loadDay(d)).complete;}).length+' daily igloos completed this week.</p>'+
+          weeklyPlanReviewHtml()+
           '<div class="week-cal-wrap">' +
             '<div class="calendar-grid" id="weeklyReviewCalGrid">'+weekCalHtml+'</div>' +
             '<p class="office-caption">This calendar week. Click a past or today\'s day for its Daily Review, or a future day (dashed) to schedule tasks for it.</p>' +
           '</div>' +
           '<div class="stat-row">' +
-            '<div class="stat-tile"><div class="num">'+thisWeek.points+'</div><div class="lbl">fish caught</div></div>' +
+            '<div class="stat-tile"><div class="num">'+thisWeek.points+'</div><div class="lbl">tasks completed</div></div>' +
             '<div class="stat-tile"><div class="num">'+outreachSentTxt+'</div><div class="lbl">outreach sent this week</div></div>' +
             '<div class="stat-tile"><div class="num">'+outreachRepliedTxt+'</div><div class="lbl">replied this week</div></div>' +
           '</div>' +
@@ -3408,7 +3484,7 @@
             '<div class="trend-bar-row"><span class="bar-label">Last week</span><div class="trend-bar-track"><div class="trend-bar-fill" style="width:'+(lastWeek.points/maxPts*100)+'%; background:var(--muted);"></div></div><span class="bar-val">'+lastWeek.points+'</span></div>' +
           '</div>' +
           '<p style="color:var(--text-dim); font-size:14px;">'+deltaTxt+'</p>' +
-          '<h3>This week\'s catches</h3><ul class="review-list">'+milestoneList+'</ul>' +
+          '<h3>This week\'s milestones</h3><ul class="review-list">'+milestoneList+'</ul>' +
         '</div>' +
       '</div>';
     document.getElementById('modalRoot').innerHTML = html;
@@ -3436,8 +3512,8 @@
 
   function dayActivity(dateStr){
     var day = loadDay(dateStr);
-    var done = day.tasks.filter(function(t){ return t.done; });
-    return { hasActivity: done.length > 0, hasMilestone: done.some(function(t){ return t.milestone; }), hasScheduled: day.tasks.some(function(t){return !t.applicationArchived;}) };
+    var done = day.tasks.filter(function(t){ return t.done && !t.applicationArchived; });
+    return { iglooComplete:dailyBuild(day).complete, hasActivity: done.length > 0, hasMilestone: done.some(function(t){ return t.milestone; }), hasScheduled: day.tasks.some(function(t){return !t.applicationArchived;}) };
   }
   // Shared by the month calendar and the Weekly Review's calendar strip:
   // one day cell's class + marker, and what clicking it should do — past
@@ -3453,7 +3529,8 @@
       if(act.hasScheduled){ cls += ' scheduled'; marker = '📅'; }
     } else {
       var act2 = dayActivity(dateStr);
-      if(act2.hasMilestone){ cls += ' milestone'; marker = '🌟'; }
+      if(act2.iglooComplete){cls+=' milestone';marker='<img class="igloo-marker" src="sprites/yard/penguin-igloo.gif" alt="Igloo complete" width="40" height="40">';}
+      else if(act2.hasMilestone){ cls += ' milestone'; marker = '🌟'; }
       else if(act2.hasActivity){ cls += ' active'; marker = '●'; }
       else { cls += ' empty'; }
     }
@@ -3508,11 +3585,51 @@
   document.getElementById('tabOfficeBtn').addEventListener('click', function(){ showTab('office'); });
   document.getElementById('tabCalendarBtn').addEventListener('click', function(){ showTab('calendar'); });
 
+
+  function focusKey(){return STORAGE_PREFIX+'focus:'+today;}
+  function focusState(){return safeParse(localStorage.getItem(focusKey()),null);}
+  function storeFocus(state){localStorage.setItem(focusKey(),JSON.stringify(state));}
+  function priorityTasks(){var ids=currentDay.priorities||[];return currentDay.tasks.filter(function(t){return ids.indexOf(t.id)>=0&&!t.applicationArchived;});}
+  function renderDailyFocus(){
+    var root=document.getElementById('dailyFocusContent');if(!root)return;
+    var selected=priorityTasks(),pending=currentDay.tasks.filter(function(t){return !t.done&&!t.applicationArchived;});
+    pending.sort(function(a,b){return Number((currentDay.priorities||[]).includes(b.id))-Number((currentDay.priorities||[]).includes(a.id));});
+    var state=focusState(),running=state&&state.status==='running',paused=state&&state.status==='paused',finished=state&&state.status==='finished';
+    root.innerHTML='<p class="focus-hint">Choose up to three priorities. Then give one task your attention.</p>'+
+      (selected.length?'<ul class="priority-list">'+selected.map(function(t){return '<li>'+(t.done?'✓ ':'○ ')+escapeHtml(t.text)+'</li>';}).join('')+'</ul>':'<p class="focus-hint">No priorities chosen for today.</p>')+
+      '<button class="icon-btn" id="choosePrioritiesBtn">Choose priorities</button><div class="focus-controls"><label>Focus on <select id="focusTask" '+(running||paused?'disabled':'')+'>'+pending.map(function(t){return '<option value="'+escapeHtml(t.id)+'" '+(state&&state.taskId===t.id?'selected':'')+'>'+escapeHtml(t.text)+'</option>';}).join('')+'</select></label><label>Minutes <select id="focusMinutes" '+(running||paused?'disabled':'')+'><option>15</option><option selected>25</option><option>45</option></select></label><strong id="focusClock" role="timer"></strong><button class="primary" id="focusStartBtn" '+(!pending.length&&!running&&!paused?'disabled':'')+'>'+(running?'Pause':paused?'Resume':'Start focus')+'</button>'+(state?'<button class="icon-btn" id="focusResetBtn">Reset timer</button>':'')+'</div><p id="focusStatus" role="status"></p>';
+    document.getElementById('choosePrioritiesBtn').onclick=openPriorities;
+    document.getElementById('focusStartBtn').onclick=function(){
+      var value=focusState();
+      if(value&&value.status==='running'){value.remaining=Math.max(0,value.endAt-Date.now());value.status=value.remaining?'paused':'finished';}
+      else if(value&&value.status==='paused'){value.endAt=Date.now()+value.remaining;value.status='running';}
+      else{var id=document.getElementById('focusTask').value;if(!id)return;var duration=Number(document.getElementById('focusMinutes').value)*60000;value={taskId:id,taskText:currentDay.tasks.find(function(t){return t.id===id;}).text,remaining:duration,endAt:Date.now()+duration,status:'running'};}
+      storeFocus(value);renderDailyFocus();
+    };
+    var reset=document.getElementById('focusResetBtn');if(reset)reset.onclick=function(){localStorage.removeItem(focusKey());renderDailyFocus();};
+    document.getElementById('focusMinutes').onchange=updateFocusClock;
+    updateFocusClock();
+  }
+  function updateFocusClock(){
+    var clock=document.getElementById('focusClock');if(!clock)return;
+    var state=focusState(),remaining=state?(state.status==='running'?Math.max(0,state.endAt-Date.now()):state.remaining):(Number(document.getElementById('focusMinutes').value)||25)*60000;
+    if(state&&state.status==='running'&&remaining===0){state.status='finished';state.remaining=0;storeFocus(state);renderDailyFocus();return;}
+    var secs=Math.ceil(remaining/1000);clock.textContent=String(Math.floor(secs/60)).padStart(2,'0')+':'+String(secs%60).padStart(2,'0');
+    document.getElementById('focusStatus').textContent=state?(state.status==='finished'?'Focus session finished. Review “'+state.taskText+'” and check it off below if done.':(state.status==='paused'?'Paused: ':'Focusing on: ')+state.taskText):'The timer keeps time if you switch apps. Task completion stays in your hands.';
+  }
+  function openPriorities(){
+    var date=currentDay.date,tasks=currentDay.tasks.filter(function(t){return !t.applicationArchived;}),ids=currentDay.priorities||[];
+    document.getElementById('modalRoot').innerHTML='<div class="modal-backdrop"><div class="modal" role="dialog" aria-modal="true" aria-label="Daily priorities"><button class="close-x icon-btn" id="closePriorities">✕</button><h2>Daily priorities</h2><p>Choose up to three tasks for '+prettyDate(date)+'.</p>'+tasks.map(function(t){return '<label class="priority-option"><input type="checkbox" data-priority-id="'+escapeHtml(t.id)+'" '+(ids.includes(t.id)?'checked':'')+'> '+escapeHtml(t.text)+'</label>';}).join('')+(!tasks.length?'<p>Add tasks first, then choose your priorities.</p>':'')+'<p id="priorityError" role="alert"></p><button class="primary" id="savePriorities">Save priorities</button></div></div>';
+    document.getElementById('closePriorities').onclick=closeModal;
+    document.getElementById('savePriorities').onclick=function(){var chosen=Array.from(document.querySelectorAll('[data-priority-id]:checked')).map(function(el){return el.dataset.priorityId;});if(chosen.length>3){document.getElementById('priorityError').textContent='Choose no more than three priorities.';return;}var day=date===today?currentDay:loadDay(date);day.priorities=chosen;saveDay(day);closeModal();renderDailyFocus();};
+  }
+  setInterval(updateFocusClock,1000);
   /* ===================== Export ===================== */
 
   function exportData(){
     var out = { days:{}, recurring: loadRecurring(), meta: loadMeta(), mechanics: loadMechanics(), goals: loadGoals(), exportedAt: new Date().toISOString() };
     allDayDates().forEach(function(d){ out.days[d] = loadDay(d); });
+    out.weeklyPlans={};Object.keys(localStorage).filter(function(k){return k.indexOf(STORAGE_PREFIX+'weekPlan:')===0;}).forEach(function(k){out.weeklyPlans[k.split('weekPlan:')[1]]=safeParse(localStorage.getItem(k),null);});
     var blob = new Blob([JSON.stringify(out, null, 2)], { type:'application/json' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a'); a.href = url; a.download = 'biggyinc-export-' + today + '.json';
@@ -3528,6 +3645,34 @@
     renderDayProgress();
   }
 
+  function checkNewDay(){
+    var localDate=todayStr();
+    if(localDate===today)return false;
+    if(document.activeElement&&document.activeElement.classList.contains('task-text-edit'))return false;
+    saveDay(currentDay);today=localDate;currentDay=loadDay(today);applyRecurring();currentDay=loadDay(today);
+    var meta=loadMeta();meta.lastOpenedDate=today;saveMeta(meta);
+    yardQueue=[];yardActive=null;yardRewarded.clear();charLifecycle={};clearBubble();
+    todayD=new Date();calendarState={year:todayD.getFullYear(),month:todayD.getMonth()};
+    if(composerOnDateChange)composerOnDateChange();
+    renderAll();renderCalendar();renderWeeklyBanner();
+    document.getElementById('refreshTodayStatus').textContent='New day ready. Previous progress is saved.';
+    return true;
+  }
+  function refreshDailyView(manual){
+    checkNewDay();var refreshDate=today;
+    if(manual){saveDay(currentDay);renderAll();calendarState={year:new Date().getFullYear(),month:new Date().getMonth()};renderCalendar();document.getElementById('refreshTodayStatus').textContent='Today refreshed. Saved progress kept.';}
+    return syncDayFromServer(refreshDate).then(function(changed){
+      if(refreshDate!==today)return;
+      if(changed){currentDay=loadDay(today);renderAll();}
+      if(!applicationSync.lastSync||Date.now()-applicationSync.lastSync>60000)fetchApplications();
+      fetchOutreach();
+    });
+  }
+  document.getElementById('refreshTodayBtn').addEventListener('click',function(){refreshDailyView(true);});
+  setInterval(function(){if(checkNewDay())refreshDailyView(false);},30000);
+  window.addEventListener('focus',function(){refreshDailyView(false);});
+  window.addEventListener('pageshow',function(){refreshDailyView(false);});
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)refreshDailyView(false);});
   /* ===================== PWA: service worker ===================== */
 
   if('serviceWorker' in navigator){
@@ -3587,13 +3732,7 @@
   // Re-syncs on refocus so a task logged straight to the file — by a
   // Claude Code session, typically — while this tab was already open
   // shows up without needing a manual reload.
-  window.addEventListener('focus', function(){
-    syncDayFromServer(today).then(function(changed){
-      if(changed){ currentDay = loadDay(today); renderAll(); }
-      if(!applicationSync.lastSync||Date.now()-applicationSync.lastSync>60000)fetchApplications();
-      fetchOutreach();
-    });
-  });
+
   });
 
 })();

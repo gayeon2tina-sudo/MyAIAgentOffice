@@ -1,4 +1,4 @@
-const CACHE_NAME = 'biggyinc-v5-tracker-preview';
+const CACHE_NAME = 'biggyinc-v6-daily-focus';
 // Requests whose content actually changes between deploys (the app's own HTML —
 // everything, including all JS, lives inside daily_hq.html) must go network-first.
 // Cache-first here would mean a feature added after someone's first visit stays
@@ -19,6 +19,7 @@ const CORE_ASSETS = [
   './icons/icon-512.png',
   './sprites/yard/office-yard.png',
   './sprites/yard/penguin-sheet.png',
+  './sprites/yard/penguin-igloo.gif',
   './sprites/hub.png',
   './sprites/job.png',
   './sprites/cv.png',
