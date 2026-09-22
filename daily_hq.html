@@ -142,8 +142,67 @@
   .del-btn{ background:none; border:none; color:var(--text-faint); font-size:14px; cursor:pointer; padding:0 2px; }
   .del-btn:hover{ color:var(--danger); }
 
+  .task-composer{max-width:860px;}
+  .composer-intro{font:16px/1.5 Arial,sans-serif;color:var(--text-dim);}
+  .composer-layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:24px;margin:20px 0;}
+  .composer-calendar{background:#edf7fc;border-radius:12px;padding:12px;align-self:start;}
+  .composer-calendar label,.composer-writing>label{display:block;font:600 14px Arial,sans-serif;margin:10px 0;}
+  .composer-shortcuts{display:flex;gap:8px;}
+  #taskDateInput{box-sizing:border-box;width:100%;font:16px Arial,sans-serif;padding:8px;border:1px solid var(--border);border-radius:8px;background:white;}
+  .composer-month{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:16px 0 10px;font:13px Arial,sans-serif;}
+  .composer-weekdays,.composer-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;}
+  .composer-weekdays span{text-align:center;font:11px Arial,sans-serif;padding:5px 0;}
+  .composer-days button{position:relative;min-height:28px;border:0;border-radius:6px;background:white;color:#233a50;font:13px Arial,sans-serif;cursor:pointer;}
+  .composer-days button:disabled{opacity:.35;cursor:default;}
+  .composer-days [aria-pressed="true"]{background:#147d78;color:white;}
+  .composer-days .has-tasks:after{content:'';position:absolute;width:3px;height:3px;border-radius:50%;background:currentColor;bottom:2px;left:50%;}
+  .composer-hint{font:12px/1.45 Arial,sans-serif;color:var(--text-dim);}
+  #dailyEntryInput{box-sizing:border-box;min-height:145px;font:17px/1.6 Arial,sans-serif;}
+  .composer-task{padding:10px 0;border-top:1px solid var(--border);font:14px/1.4 Arial,sans-serif;overflow-wrap:anywhere;}
+  .composer-task>div{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px;}
+  .composer-task select{max-width:100%;font:14px Arial,sans-serif;padding:6px;border-radius:6px;border:1px solid var(--border);}
+  .composer-task label{font:12px Arial,sans-serif;}
+  .composer-save{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:16px;font:14px Arial,sans-serif;}
+  .composer-save button:disabled{opacity:.5;cursor:default;}
+  .composer-error{color:#9a2d25;font:14px Arial,sans-serif;}
+  .composer-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);max-width:85vw;z-index:9999;background:#166c62;color:white;padding:14px 20px;border-radius:12px;font:16px Arial,sans-serif;box-shadow:0 5px 20px #0002;}
+  #composerLeftovers{margin-top:18px;font:14px Arial,sans-serif;}
+  @media(max-width:650px){.composer-layout{grid-template-columns:minmax(0,1fr);gap:12px;}.composer-calendar{width:auto;}.composer-days button{min-height:34px;}.task-composer{padding:16px;}}
+  .application-pipeline{margin:16px 0;padding:14px 18px;}
+  .pipeline-disclosure>summary{cursor:pointer;font-size:22px;font-weight:bold;}
+  .pipeline-disclosure>summary span{font:15px Arial,sans-serif;color:var(--text-faint);margin-left:12px;}
+  .pipeline-disclosure[open]>summary{margin-bottom:16px;}
+  .outreach-inline:empty{display:none;}
+  .task-row{display:grid!important;grid-template-columns:18px 22px minmax(0,1fr) 18px 20px;}
+  .task-row .task-source-link{grid-column:3;grid-row:2;font:13px Arial,sans-serif;}
+  .task-row .del-btn{grid-column:5;grid-row:1;}
+  .task-row .task-text{font:16px/1.4 Arial,sans-serif;}
+
+  .pipeline-heading{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;}
+  .pipeline-heading h3{margin:0 0 8px;}
+  .pipeline-heading p,.pipeline-status{margin:8px 0;font-size:18px;}
+  .pipeline-tabs{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0;}
+  .pipeline-tabs [aria-pressed="true"]{background:#e1f1fa;border-color:#267aa0;}
+  .pipeline-list{max-height:520px;overflow:auto;}
+  .pipeline-card{display:flex;justify-content:space-between;gap:16px;padding:14px 4px;border-top:1px solid var(--border);}
+  .pipeline-card>div:first-child{min-width:0;flex:1;}
+  .pipeline-card h4{margin:0;font:22px 'VT323',monospace;overflow-wrap:anywhere;}
+  .pipeline-card p{margin:5px 0;font-size:17px;}
+  .pipeline-card .pipeline-issue{color:#875000;font-size:16px;}
+  .pipeline-actions{display:flex;flex-direction:column;gap:8px;flex-shrink:0;font-size:16px;}
+  .pipeline-actions input{max-width:160px;padding:5px;font:inherit;}
+  .task-source-link{font-size:14px;flex-shrink:0;align-self:center;}
+  .crew-card .crew-job{font-weight:bold;font-size:18px;line-height:1.1;}
+  .crew-card .crew-description{font:14px/1.45 Arial,sans-serif;}
+  .room-purpose{font:14px/1.4 Arial,sans-serif;padding:10px 12px;color:var(--text-faint);}
+  @media(max-width:600px){.pipeline-card{flex-direction:column;}.pipeline-actions{flex-direction:row;flex-wrap:wrap;align-items:center;}.pipeline-card h4{font-size:21px;}.application-pipeline{padding:12px;}}
+  .crew-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:8px;padding:12px 0;}
+  .crew-card{background:#edf6fb;border:1px solid var(--border);border-radius:10px;text-align:center;padding:6px;}
+  .crew-card canvas{width:140px!important;max-width:100%!important;image-rendering:pixelated;}
+  .crew-card p{margin:0 0 8px;font-size:16px;}
+  .crew-details summary{cursor:pointer;font-size:18px;padding:10px 0;}
   .office-wrap{ margin-bottom:8px; position:relative; }
-  .office-wrap canvas{ width:100%; max-width:640px; height:auto; display:block; margin:0 auto; border-radius:10px; cursor:default; }
+  .office-wrap canvas{ width:100%; max-width:1100px; height:auto; display:block; margin:0 auto; border-radius:10px; cursor:default; }
   /* Small and de-emphasized on purpose — attribution/how-it-works trivia,
      not something that should compete with the office visual above it or
      the task cards right below; keeps the page feeling continuous instead
@@ -154,7 +213,7 @@
      by percentage (x/1536, y/1024) lands on the right spot at any size. */
   .office-bubble-layer{
     position:absolute; top:0; left:50%; transform:translateX(-50%);
-    width:100%; max-width:640px; aspect-ratio:1536/1024;
+    width:100%; max-width:1100px; aspect-ratio:1536/1024;
     pointer-events:none;
   }
   .tip-bubble{
@@ -228,7 +287,7 @@
   .task-row{ display:flex; align-items:flex-start; gap:6px; padding:4px 2px; border-bottom:1px solid var(--border); position:relative; }
   .task-row:last-child{ border-bottom:none; }
   .task-row input[type=checkbox]{ width:18px; height:18px; margin-top:2px; accent-color:var(--done); cursor:pointer; }
-  .task-row .task-text{ flex:1; word-break:break-word; cursor:text; }
+  .task-row .task-text{ flex:1; min-width:0; word-break:break-word; cursor:text; }
   .task-row .task-text.done{ text-decoration:line-through; color:var(--text-faint); }
   .task-text-edit{ flex:1; font:inherit; padding:2px 4px; border:1px solid var(--accent); border-radius:4px; }
   .source-tag{ font-size:13px; cursor:help; opacity:.8; }
@@ -378,9 +437,11 @@
     <h3>The Office</h3>
     <canvas id="officeCanvas" class="pixel" width="1536" height="1024"></canvas>
     <div id="officeBubbleLayer" class="office-bubble-layer"></div>
-    <p class="office-caption">Hand-drawn on canvas — original characters, not traced from any existing game or asset pack. Everyone's at their desk when there's work waiting, wanders to their own furniture sometimes, and kicks back once their room's list is clear. Click a character for a tip.</p>
+    <p class="office-caption">Preview: new penguin crew on the temporary illustrated background. Flat office art and the final rank artwork are pending. Every fourth newly completed task sends its character to the yard; rank-ups always do. Click a character for a tip.</p>
+    <details class="crew-details"><summary>Meet the crew · 8 penguins</summary><div id="crewGrid" class="crew-grid"></div></details>
   </section>
 
+  <section id="applicationPipeline" class="panel-box application-pipeline" aria-label="Job application pipeline"></section>
   <section class="floorplan" id="floorplan"></section>
 
   <section class="reminder-banner panel-box hidden" id="reminderBanner">
@@ -426,6 +487,7 @@
 
 <div id="modalRoot"></div>
 
+<script src="application-tracker.js"></script>
 <script>
 (function(){
   "use strict";
@@ -1029,13 +1091,8 @@
 
   var APPLICATIONS_SHEET_ID = '1EFn6STRzT1eSs6kNjG4nJfs2v7Su7L1sdr25yEqYp0A';
   var APPLICATIONS_GID = '414606882';
-  // Confirmed schema: "Round Status" is a fixed dropdown — "0-Prospecting"
-  // means not yet submitted (a lead under consideration, do not log it);
-  // any other value means an application was genuinely submitted at some
-  // point. "Date Applied" is deliberately NOT used as the submitted signal
-  // on its own — it's filled in on some rows that are still 0-Prospecting,
-  // which would over-count.
-  var APPLICATIONS_NOT_SUBMITTED_STATUS = '0-prospecting';
+  // The live sheet uses unnumbered statuses. ApplicationTracker normalizes
+  // legacy numbered variants and only counts explicitly submitted states.
 
   var STORAGE_PREFIX = 'dailyhq:';
   var DAY_KEY = function(d){ return STORAGE_PREFIX + 'day:' + d; };
@@ -1374,7 +1431,7 @@
   /* ===================== Recurring + rollover ===================== */
 
   function applyRecurring(){
-    var recurring = loadRecurring().filter(function(r){ return r.active; });
+    var recurring = loadRecurring().filter(function(r){ return r.active && (!r.startDate || r.startDate <= today); });
     var changed = false;
     recurring.forEach(function(tpl){
       var exists = currentDay.tasks.some(function(t){ return t.recurringId === tpl.id; });
@@ -1683,7 +1740,7 @@
   }
   // The igloo growth doodle itself stays drawn on the office canvas (it was
   // never actually inside the Chairman's Office room/card — just a separate
-  // corridor decoration near where that room used to be, so removing the
+  // yard construction near where that room used to be, so removing the
   // room doesn't touch it). This popover carries the numeric rank detail
   // that WAS inline in that room's card, plus a pointer to the doodle so
   // the two don't feel disconnected.
@@ -1703,7 +1760,7 @@
       '<div class="streak-popover">' +
         '<h4>🧊 ' + rank.title + '</h4>' +
         '<div class="rank-progress-line">' + progressLine + '</div>' +
-        '<div class="rank-igloo-note">The igloo out in the office hallway grows as your rank does — worth a look.</div>' +
+        '<div class="rank-igloo-note">The yard igloo grows as your rank does. Final stage artwork is pending.</div>' +
       '</div>';
     document.body.appendChild(root);
     document.getElementById('rankPopoverBackdrop').addEventListener('click', closeRankPopover);
@@ -1786,9 +1843,10 @@
 
   /* ===================== Rooms & tasks ===================== */
 
-  function tasksForCategory(catId){ return currentDay.tasks.filter(function(t){ return t.category === catId; }); }
+  function tasksForCategory(catId){ return currentDay.tasks.filter(function(t){ return t.category === catId && !t.applicationArchived; }); }
 
   var SOURCE_TAGS = {
+    "application-plan": {icon:"📅",title:"Planned here. Checking this off does not update your Google Sheet."},
     'claude-code': { icon:'📻', title:'Logged via Claude Code' },
     'outreach-auto': { icon:'🎣', title:'Auto-logged from the outreach tracker' },
     'application-auto': { icon:'📨', title:'Auto-logged from the applications tracker' }
@@ -1808,6 +1866,7 @@
         '<div class="room" data-cat="'+c.id+'">' +
           '<div class="room-floor" style="background:'+c.floor+'"><h3>'+c.icon+' '+c.name+'</h3><span class="room-status" data-role="status"></span></div>' +
           '<div class="star-row" data-role="stars"></div>' +
+          '<div class="room-purpose">'+escapeHtml(c.id==='job'?'Scout finds roles and contacts. Editor prepares and submits applications.':c.id==='portfolio'?'Builder creates projects. Storyteller helps you share your work.':({learning:'Compiler helps you learn and practise useful skills.',budget:'Ledger handles money and everyday admin.',health:'Stride makes room for movement, rest, and wellbeing.',friends:'Hearth keeps you connected to family and friends.'}[c.id]||''))+'</div>'+
           '<div class="room-body" data-role="list"></div>' +
         '</div>';
     }).join('');
@@ -1847,10 +1906,11 @@
   function taskRowHtml(t){
     return '' +
       '<div class="task-row" data-id="'+t.id+'">' +
-        '<input type="checkbox" data-role="check" '+(t.done?'checked':'')+'>' +
+        '<input type="checkbox" data-role="check" '+(t.done?'checked':'')+(t.source==='application-auto'?' disabled title="Confirmed from tracker"':'')+' aria-label="Complete '+escapeHtml(t.text)+'">' +
         '<button class="star-btn '+(t.milestone?'':'off')+'" data-role="star">⭐</button>' +
         '<span class="task-text '+(t.done?'done':'')+'" data-role="text" title="Click to fix a typo">'+escapeHtml(t.text)+'</span>' +
         sourceTagHtml(t) +
+        (t.applicationKey ? '<a class="task-source-link" href="'+trackerSheetLink()+'" target="_blank" rel="noopener noreferrer" title="Open application tracker">Tracker ↗</a>' : '') +
         '<button class="del-btn" data-role="remove">✕</button>' +
       '</div>';
   }
@@ -1931,7 +1991,9 @@
     if(!task) return;
     var wasDone = task.done;
     var prevRank = currentRank(totalPointsAllTime());
+    if(task.source==='application-auto'){e.target.checked=task.done;return;}
     task.done = e.target.checked;
+    if(task.source==='application-plan') task.text=ApplicationTracker.label({company:task.applicationCompany,role:task.applicationRole},task.done);
     saveDay(currentDay);
     var mechanicsChanged = false;
     if(task.category === 'portfolio'){ mechanics.portfolioGrowth = Math.max(0, mechanics.portfolioGrowth + (task.done?1:-1)); saveMechanics(mechanics); mechanicsChanged = true; }
@@ -1947,6 +2009,7 @@
       showFlavor(task.category);
       var newRank = currentRank(totalPointsAllTime());
       if(newRank.title !== prevRank.title) showRankUp(newRank);
+      scheduleYardTrip(task, newRank.title !== prevRank.title);
     }
     renderHUD();
     renderRoomTasks(task.category);
@@ -2072,7 +2135,7 @@
           }
         }
       });
-      outreachData = { ok:true, loading:false, todaysActions:todaysActions };
+      outreachData = { ok:true, loading:false, todaysActions:todaysActions, hasReplyDates:repliedDateIdx!==-1 };
       renderOutreachInline();
       autoLogTodaysOutreach(todaysActions);
     }).catch(function(err){
@@ -2095,7 +2158,7 @@
     var added = false;
     actions.forEach(function(a){
       var key = outreachActionKey(a);
-      if(seenSet[key]) return;
+      if(seenSet[key]||currentDay.tasks.some(function(t){return t.outreachKey===key;})) return;
       seenSet[key] = true;
       seen.push(key);
       var who = a.company ? (a.name + ' at ' + a.company) : a.name;
@@ -2103,7 +2166,7 @@
       currentDay.tasks.push({
         id: makeId('t'), text: text,
         category: 'job', sub: 'outreach', done: true, milestone: false,
-        recurringId: null, createdAt: Date.now(), source: 'outreach-auto', outreachAction: a.action
+        recurringId: null, createdAt: Date.now(), source: 'outreach-auto', outreachAction: a.action, outreachKey: key
       });
       added = true;
     });
@@ -2114,83 +2177,84 @@
     }
   }
 
-  /* ===================== Applications (live sheet read) =====================
-     Mirrors the outreach auto-log pattern exactly (same dedup-by-row-
-     content approach, same first-fetch baseline capture, same silent
-     skip-on-failure), but with a real submitted/not-submitted distinction
-     confirmed against the actual sheet schema — "Round Status" of
-     "0-Prospecting" means the role is still just a lead, not something
-     actually applied to, so it's never logged. */
-  function applicationsGvizUrl(){
-    return 'https://docs.google.com/spreadsheets/d/' + APPLICATIONS_SHEET_ID + '/gviz/tq?tqx=out:json&gid=' + APPLICATIONS_GID;
+  /* Applications: stable identities, explicit status semantics, and a planning inbox. */
+  var applicationSync={loading:false,error:'',rows:[],lastSync:null,filter:'prospect'};
+  var APPLICATION_REGISTRY_KEY=STORAGE_PREFIX+'applicationRegistry:v2';
+  function applicationsGvizUrl(){return 'https://docs.google.com/spreadsheets/d/'+APPLICATIONS_SHEET_ID+'/gviz/tq?tqx=out:json&headers=1&gid='+APPLICATIONS_GID;}
+  function applicationRegistry(){return safeParse(localStorage.getItem(APPLICATION_REGISTRY_KEY),{initialized:false,records:{}});}
+  function trackerSheetLink(row){return 'https://docs.google.com/spreadsheets/d/'+APPLICATIONS_SHEET_ID+'/edit#gid='+APPLICATIONS_GID+(row?'&range=A'+row+':N'+row:'');}
+  function applicationTaskIndex(){
+    var out=[];allDayDates().forEach(function(date){loadDay(date).tasks.forEach(function(task){if(task.applicationKey||task.source==='application-auto')out.push({date:date,task:task});});});return out;
   }
-  function loadApplicationsSeen(){ return safeParse(localStorage.getItem(APPLICATIONS_SEEN_KEY), []); }
-  function saveApplicationsSeen(list){ localStorage.setItem(APPLICATIONS_SEEN_KEY, JSON.stringify(list.slice(-500))); }
-  function applicationRowKey(row){
-    return (row.c || []).map(function(c){ return c ? c.v : ''; }).join('|');
+  function reconcileApplications(rows){
+    var registry=applicationRegistry(),tasks=applicationTaskIndex(),changed={},earnedToday=[];
+    var prevRank=currentRank(totalPointsAllTime());
+    function editable(date){if(!changed[date])changed[date]=date===currentDay.date?currentDay:loadDay(date);return changed[date];}
+    rows.forEach(function(row){
+      var old=registry.records[row.key];
+      var legacy=tasks.some(function(entry){var t=entry.task;return t.done&&t.source==='application-auto'&&(t.applicationKey===row.key||(ApplicationTracker.normalize(t.text)===ApplicationTracker.normalize('Application submitted — '+row.role+' at '+row.company+' (auto-logged from tracker)')));});
+      if(!old) old={logged:legacy||(!registry.initialized&&row.kind==='submitted'&&row.appliedDate&&row.appliedDate<today)};
+      registry.records[row.key]=old;
+      old.kind=row.kind;
+      if(row.kind!=='submitted'||!row.appliedDate||old.logged)return;
+      var target=editable(row.appliedDate);
+      var task=target.tasks.find(function(t){return t.applicationKey===row.key&&!t.applicationArchived;});
+      if(!task){task={id:'application_'+encodeURIComponent(row.key),category:'job',sub:'applications',milestone:false,recurringId:null,createdAt:Date.now()};target.tasks.push(task);}
+      var alreadyDone=task.done;
+      Object.assign(task,{text:ApplicationTracker.label(row,true),done:true,source:'application-auto',applicationKey:row.key,applicationUrl:row.url,applicationDate:row.appliedDate,applicationCompany:row.company,applicationRole:row.role});
+      tasks.forEach(function(entry){if(entry.task.applicationKey===row.key&&entry.date!==row.appliedDate&&entry.task.source==='application-plan'){var day=editable(entry.date);var planned=day.tasks.find(function(t){return t.id===entry.task.id;});if(planned){planned.applicationArchived=true;planned.done=false;}}});
+      old.logged=true;old.appliedDate=row.appliedDate;
+      if(!alreadyDone&&row.appliedDate===today)earnedToday.push(task);
+    });
+    Object.keys(changed).forEach(function(date){saveDay(changed[date]);});
+    registry.initialized=true;localStorage.setItem(APPLICATION_REGISTRY_KEY,JSON.stringify(registry));
+    if(Object.keys(changed).length)renderAll();
+    var next=currentRank(totalPointsAllTime()),rankUp=next.title!==prevRank.title;
+    if(rankUp&&earnedToday.length)showRankUp(next);
+    earnedToday.forEach(function(task,index){scheduleYardTrip(task,rankUp&&index===0);});
   }
   function fetchApplications(){
-    fetch(applicationsGvizUrl()).then(function(res){
-      if(!res.ok) throw new Error('HTTP ' + res.status);
-      return res.text();
-    }).then(function(text){
-      var start = text.indexOf('{');
-      var end = text.lastIndexOf('}');
-      if(start === -1 || end === -1) throw new Error('Unexpected response.');
-      var data = JSON.parse(text.substring(start, end+1));
-      var cols = data.table.cols.map(function(c){ return (c.label||'').toLowerCase(); });
-      var statusIdx = cols.findIndex(function(c){ return c.indexOf('round status') !== -1; });
-      if(statusIdx === -1) return; // schema mismatch — skip silently, same as an unreachable sheet
-      // Optional, for a slightly more specific auto-logged task line; the
-      // logic never depends on finding this.
-      var roleIdx = cols.findIndex(function(c){ return c.indexOf('role') !== -1 || c.indexOf('position') !== -1 || c.indexOf('title') !== -1; });
-      var companyIdx = cols.findIndex(function(c){ return c.indexOf('company') !== -1; });
-      var submittedRows = [];
-      (data.table.rows||[]).forEach(function(row){
-        var statusCell = row.c && row.c[statusIdx];
-        var status = (statusCell && statusCell.v ? String(statusCell.v) : '').trim().toLowerCase();
-        if(!status || status === APPLICATIONS_NOT_SUBMITTED_STATUS) return; // no status yet, or still just prospecting
-        var company = companyIdx !== -1 && row.c && row.c[companyIdx] && row.c[companyIdx].v ? String(row.c[companyIdx].v) : '';
-        var role = roleIdx !== -1 && row.c && row.c[roleIdx] && row.c[roleIdx].v ? String(row.c[roleIdx].v) : '';
-        submittedRows.push({ row: row, company: company, role: role });
-      });
-      autoLogNewApplications(submittedRows);
-    }).catch(function(){
-      // Sheet unreachable, wrong schema, or anything else — skip silently.
-      // There's no dedicated UI counter for this (unlike outreach), so
-      // there's nothing to show an error in either.
-    });
+    if(applicationSync.loading)return;
+    applicationSync.loading=true;applicationSync.error='';renderApplicationPipeline();
+    var controller=new AbortController(),timeout=setTimeout(function(){controller.abort();},15000);
+    return fetch(applicationsGvizUrl(),{signal:controller.signal,cache:'no-store'}).then(function(res){if(!res.ok)throw new Error('Tracker request failed ('+res.status+').');return res.text();}).then(function(text){
+      var start=text.indexOf('{'),end=text.lastIndexOf('}');if(start<0||end<0)throw new Error('Tracker access is unavailable. Open the sheet to check access.');
+      var data=JSON.parse(text.slice(start,end+1));var rows=ApplicationTracker.parse(data.table,today);
+      reconcileApplications(rows);applicationSync.rows=rows;applicationSync.lastSync=Date.now();
+    }).catch(function(err){applicationSync.error=err.name==='AbortError'?'Tracker timed out. Try Refresh.':err.message;}).finally(function(){clearTimeout(timeout);applicationSync.loading=false;renderApplicationPipeline();});
   }
-  function autoLogNewApplications(submittedRows){
-    var isFirstEverFetch = localStorage.getItem(APPLICATIONS_SEEN_KEY) === null;
-    var seen = loadApplicationsSeen();
-    if(isFirstEverFetch){
-      saveApplicationsSeen(submittedRows.map(function(r){ return applicationRowKey(r.row); }));
-      return;
-    }
-    var seenSet = {};
-    seen.forEach(function(k){ seenSet[k] = true; });
-    var added = false;
-    submittedRows.forEach(function(r){
-      var key = applicationRowKey(r.row);
-      if(seenSet[key]) return;
-      seenSet[key] = true;
-      seen.push(key);
-      var detail = [r.role, r.company].filter(Boolean).join(' at ');
-      currentDay.tasks.push({
-        id: makeId('t'),
-        text: 'Application submitted' + (detail ? ' — ' + detail : '') + ' (auto-logged from tracker)',
-        category: 'job', sub: 'applications', done: true, milestone: false,
-        recurringId: null, createdAt: Date.now(), source: 'application-auto'
-      });
-      added = true;
-    });
-    if(added){
-      saveApplicationsSeen(seen);
-      saveDay(currentDay);
-      renderAll();
-    }
+  var pipelineExpanded = false;
+  function renderApplicationPipeline(){
+    var root=document.getElementById('applicationPipeline');if(!root)return;
+    var state=applicationSync,rows=state.rows,tasks=applicationTaskIndex();
+    var filtered=rows.filter(function(r){return state.filter==='review'?r.issues.length>0:r.kind===state.filter;});
+    var counts={prospect:rows.filter(function(r){return r.kind==='prospect';}).length,submitted:rows.filter(function(r){return r.kind==='submitted';}).length,review:rows.filter(function(r){return r.issues.length;}).length};
+    root.innerHTML='<details class="pipeline-disclosure" '+(pipelineExpanded?'open':'')+'><summary>Job pipeline <span>'+counts.prospect+' '+(counts.prospect===1?'role':'roles')+' to consider'+(state.error?' · Sync needs attention':'')+'</span></summary><div class="pipeline-heading"><div><h3>Job pipeline</h3><p>Scout finds opportunities. Editor turns chosen roles into applications.</p></div><button class="icon-btn" data-action="refresh" '+(state.loading?'disabled':'')+'>Refresh tracker</button></div>'+
+      '<p class="pipeline-status" role="status">'+escapeHtml(state.error|| (state.loading?'Checking tracker…':state.lastSync?'Updated '+new Date(state.lastSync).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' · Planning here does not edit your sheet.':'Tracker not checked yet.'))+'</p>'+
+      '<div class="pipeline-tabs">'+[['prospect','Roles to consider'],['submitted','Submitted'],['review','Needs review']].map(function(t){return '<button class="icon-btn" aria-pressed="'+(state.filter===t[0])+'" data-filter="'+t[0]+'">'+t[1]+' · '+counts[t[0]]+'</button>';}).join('')+'<a href="'+trackerSheetLink()+'" target="_blank" rel="noopener noreferrer">Open tracker ↗</a></div>'+
+      '<div class="pipeline-list">'+(filtered.length?filtered.map(function(row){
+        var ix=rows.indexOf(row),planned=tasks.find(function(e){return e.task.applicationKey===row.key&&!e.task.applicationArchived;});
+        var heading=ApplicationTracker.label(row,row.kind==='submitted');
+        return '<article class="pipeline-card"><div><h4>'+escapeHtml(heading)+'</h4><p>'+escapeHtml(row.status)+(row.location?' · '+escapeHtml(row.location):'')+(row.appliedDate&&row.kind==='submitted'?' · Applied '+row.appliedDate:'')+'</p>'+row.issues.map(function(issue){return '<p class="pipeline-issue">'+escapeHtml(issue)+'</p>';}).join('')+'</div><div class="pipeline-actions">'+
+          (row.url?'<a href="'+escapeHtml(row.url)+'" target="_blank" rel="noopener noreferrer">View role ↗</a>':'')+
+          '<a href="'+trackerSheetLink(row.row)+'" target="_blank" rel="noopener noreferrer">Tracker row ↗</a>'+
+          (row.kind==='prospect'?(planned?'<span>Planned for '+escapeHtml(planned.date)+'</span>':'<label>Work on <input type="date" data-plan-date="'+ix+'" min="'+today+'" value="'+today+'" aria-label="Plan date for '+escapeHtml(row.company)+'"></label><button class="icon-btn" data-plan="'+ix+'">Plan application</button>'):'')+'</div></article>';
+      }).join(''):'<p class="empty-msg">'+(state.loading?'Loading roles…':state.error?'Use Refresh tracker to try again.':'No roles in this view.')+'</p>')+'</div></details>';
+    root.querySelector('details').addEventListener('toggle',function(){pipelineExpanded=this.open;});
   }
+  document.getElementById('applicationPipeline').addEventListener('click',function(e){
+    var button=e.target.closest('button');if(!button)return;
+    if(button.dataset.action==='refresh'){fetchApplications();return;}
+    if(button.dataset.filter){applicationSync.filter=button.dataset.filter;renderApplicationPipeline();return;}
+    if(button.dataset.plan===undefined)return;
+    var index=Number(button.dataset.plan),row=applicationSync.rows[index];if(!row||row.kind!=='prospect')return;
+    var input=document.querySelector('[data-plan-date="'+index+'"]'),date=ApplicationTracker.day(input.value);
+    if(!date||date<today){input.reportValidity();return;}
+    if(applicationTaskIndex().some(function(e){return e.task.applicationKey===row.key&&!e.task.applicationArchived;})){renderApplicationPipeline();return;}
+    var target=date===currentDay.date?currentDay:loadDay(date);
+    target.tasks.push({id:'plan_'+encodeURIComponent(row.key),text:ApplicationTracker.label(row,false),category:'job',sub:'applications',done:false,milestone:false,recurringId:null,createdAt:Date.now(),source:'application-plan',applicationKey:row.key,applicationUrl:row.url,applicationCompany:row.company,applicationRole:row.role});
+    saveDay(target);renderAll();renderApplicationPipeline();
+  });
 
   // Status line only, scoped to today — never a lifetime number that could
   // be misread as today's activity. The actual named entries live as real
@@ -2199,22 +2263,16 @@
   function renderOutreachInline(){
     var el = document.getElementById('outreachInline');
     if(!el) return;
-    if(outreachData.loading){ el.innerHTML = 'Checking outreach tracker…'; return; }
+    if(outreachData.loading){ el.innerHTML = ''; return; }
     if(!outreachData.ok){
       el.innerHTML = '<span class="err">Couldn\'t load the outreach sheet: ' + escapeHtml(outreachData.error||'unknown error') + '</span><br>' +
-        'Make sure "LETS_GET_THIS_BREAD" → Outreach Tracker is shared as "Anyone with the link – Viewer." ' +
+        'Open your tracker to check access. ' +
         '<button class="icon-btn" id="retryOutreachBtn" style="margin-top:4px;">Retry</button>';
       var errBtn = document.getElementById('retryOutreachBtn');
       if(errBtn) errBtn.addEventListener('click', fetchOutreach);
       return;
     }
-    var count = (outreachData.todaysActions || []).length;
-    var summary = count === 0
-      ? 'Nothing from the tracker today yet.'
-      : (count + ' outreach action' + (count===1?'':'s') + ' from the tracker today — logged above.');
-    el.innerHTML = '<span class="nums">' + summary + '</span> <button class="icon-btn" id="retryOutreachBtn">🔄</button>';
-    var retryBtn = document.getElementById('retryOutreachBtn');
-    if(retryBtn) retryBtn.addEventListener('click', fetchOutreach);
+    el.innerHTML = '';
   }
 
   /* ===================== Office blueprint: layout ===================== */
@@ -2223,7 +2281,7 @@
 
   var officeBgImage = new Image();
   officeBgImage.onload = function(){ renderStaticOffice(); };
-  officeBgImage.src = 'sprites/office-bg.webp';
+  officeBgImage.src = 'sprites/yard/office-yard.png';
 
   /* ===================== Office blueprint: shared drawing primitives ===================== */
 
@@ -2434,8 +2492,8 @@
 
     // Data-driven mechanics overlays (real progress, not decoration) drawn on top
     // of the illustrated background art, tucked into each room's open floor rug.
-    ctx.save(); ctx.translate(270, 795); ctx.scale(1.3, 1.3); drawPortfolioStructure(ctx, -21, 0); ctx.restore();
-    ctx.save(); ctx.translate(755, 795); ctx.scale(1.3, 1.3); drawBudgetJar(ctx, -11, 0); ctx.restore();
+    ctx.save(); ctx.translate(390, 665); ctx.scale(1.3, 1.3); drawPortfolioStructure(ctx, -21, 0); ctx.restore();
+    ctx.save(); ctx.translate(695, 660); ctx.scale(1.3, 1.3); drawBudgetJar(ctx, -11, 0); ctx.restore();
   }
 
   /* ===================== Office blueprint: characters ===================== */
@@ -2444,48 +2502,33 @@
      image. Animation is transform-only — bob/rotate/translate the same static
      pose, never a sprite sheet. */
 
-  var CHAR_SPRITE_SRC = {
-    job: 'sprites/job.png',
-    cv: 'sprites/cv.png',
-    // No 'learning' entry: no real Compiler art exists, and a mismatched
-    // placeholder is worse than an empty desk — see the L&D empty-desk
-    // marker drawn in drawOfficeDynamic() below.
-    portfolio: 'sprites/portfolio.png',
-    backpack: 'sprites/backpack.png',
-    budget: 'sprites/budget.png',
-    health: 'sprites/health.png'
-  };
-  var CHAR_SPRITE_IMAGES = {};
-  Object.keys(CHAR_SPRITE_SRC).forEach(function(id){
-    var img = new Image();
-    img.src = CHAR_SPRITE_SRC[id];
-    CHAR_SPRITE_IMAGES[id] = img;
-  });
+  var penguinSheet = new Image();
+  penguinSheet.src = 'sprites/yard/penguin-sheet.png';
 
   // entrance: where this character waits in the shared hallway when not
   // needed in their room (arrival/departure state machine below) — one
   // shared corridor row (y:460), spread across x so everyone "off the
   // clock" at once doesn't stack on top of each other.
+  var CHARACTER_PROFILES = {
+    job:{title:'Roles & outreach',description:'Find roles worth pursuing, research companies, contact people, and follow up.'},
+    cv:{title:'Applications',description:'Tailor your CV and cover letter, prepare an application, and track submission.'},
+    portfolio:{title:'Portfolio & projects',description:'Build projects, case studies, and a portfolio that shows what you can do.'},
+    backpack:{title:'Writing & visibility',description:'Draft LinkedIn posts, articles, and stories that explain your work.'},
+    budget:{title:'Money & life admin',description:'Manage budgets, bills, forms, appointments, and practical errands.'},
+    health:{title:'Movement & wellbeing',description:'Make time for exercise, rest, and the habits that support your energy.'},
+    learning:{title:'Learning & skills',description:'Study, practise tools, finish courses, and turn learning into useful work.'},
+    friends:{title:'People & relationships',description:'Make time for family and friends, check-ins, birthdays, and plans together.'}
+  };
+
   var CHARACTERS_RAW = [
-    { id:'job', catId:'job', name:'Scout', seat:{x:210,y:295}, walkTarget:{x:210,y:360}, entrance:{x:350,y:460} },
-    // Editor moved into the second desk of the (already two-desk) Job Hunt
-    // room art when Job Hunt + CV & Applications merged into one room;
-    // sprite id stays 'cv' since it's just an asset filename (sprites/cv.png)
-    // and both characters now share catId 'job'.
-    { id:'cv', catId:'job', name:'Editor', seat:{x:350,y:295}, walkTarget:{x:350,y:360}, entrance:{x:520,y:460} },
-    // No real Compiler art exists yet — the L&D desk renders empty rather
-    // than substitute mismatched/placeholder art (see CHAR_SPRITE_SRC below,
-    // 'learning' is intentionally absent from CHARACTERS_RAW).
-    { id:'portfolio', catId:'portfolio', name:'Builder', seat:{x:270,y:705}, walkTarget:{x:270,y:770}, entrance:{x:860,y:460} },
-    // Storyteller moved into the Content Building room (Builder's original
-    // room/art) when the two writing/building departments merged; sprite id
-    // stays 'backpack' (sprites/backpack.png), catId is now 'portfolio'.
-    { id:'backpack', catId:'portfolio', name:'Storyteller', seat:{x:130,y:780}, walkTarget:{x:130,y:715}, entrance:{x:1030,y:460} },
-    { id:'budget', catId:'budget', name:'Ledger', seat:{x:755,y:705}, walkTarget:{x:755,y:770}, entrance:{x:1200,y:460} },
-    { id:'health', catId:'health', name:'Stride', seat:{x:1215,y:735}, walkTarget:{x:1215,y:670}, entrance:{x:1370,y:460} }
-    // No real Hearth (Family & Friends) art exists yet either — same rule,
-    // same treatment as 'learning': the desk renders empty with a "not yet
-    // staffed" marker instead of a mismatched placeholder sprite.
+    { id:'job', catId:'job', name:'Scout', seat:{x:240,y:265}, walkTarget:{x:290,y:280}, entrance:{x:510,y:860}, door:{x:335,y:320} },
+    { id:'cv', catId:'job', name:'Editor', seat:{x:375,y:265}, walkTarget:{x:380,y:280}, entrance:{x:630,y:865}, door:{x:335,y:320} },
+    { id:'portfolio', catId:'portfolio', name:'Builder', seat:{x:310,y:650}, walkTarget:{x:375,y:655}, entrance:{x:870,y:865}, door:{x:335,y:445} },
+    { id:'backpack', catId:'portfolio', name:'Storyteller', seat:{x:205,y:650}, walkTarget:{x:220,y:670}, entrance:{x:990,y:860}, door:{x:335,y:445} },
+    { id:'budget', catId:'budget', name:'Ledger', seat:{x:610,y:655}, walkTarget:{x:665,y:655}, entrance:{x:510,y:950}, door:{x:770,y:565} },
+    { id:'learning', catId:'learning', name:'Compiler', seat:{x:1150,y:270}, walkTarget:{x:1160,y:280}, entrance:{x:630,y:955}, door:{x:1165,y:320} },
+    { id:'friends', catId:'friends', name:'Hearth', seat:{x:735,y:270}, walkTarget:{x:755,y:280}, entrance:{x:870,y:955}, door:{x:735,y:320} },
+    { id:'health', catId:'health', name:'Stride', seat:{x:1145,y:650}, walkTarget:{x:1170,y:510}, entrance:{x:990,y:950}, door:{x:1170,y:445} }
   ];
 
   var CHARACTERS = [];
@@ -2509,7 +2552,7 @@
      entrance point) — kept as separate names because they mean different
      things (never worked yet vs. sent home once already), which is worth
      keeping visible in code even though today nothing else reads it. */
-  var ARRIVAL_MS = 2200;
+  var ARRIVAL_MS = 5200;
   var charLifecycle = {};
   function lifecycleFor(ch){
     var l = charLifecycle[ch.id];
@@ -2524,6 +2567,20 @@
   }
   function easeInOut(frac){ return Math.sin(Math.min(1,Math.max(0,frac)) * Math.PI/2); }
   function lerpPoint(a, b, frac){ return { x: a.x + (b.x-a.x)*frac, y: a.y + (b.y-a.y)*frac }; }
+  function commutePath(ch, phase){
+    var route=yardRoute(ch,ch.seat);
+    route=route.slice(0,-2).concat([ch.entrance]);
+    return phase==='arriving'?route.reverse():route;
+  }
+  function commutePosition(l, now){
+    var path=l.path||[l.from,l.to], scaled=Math.min(1,Math.max(0,(now-l.since)/ARRIVAL_MS))*(path.length-1);
+    var index=Math.min(path.length-2,Math.floor(scaled));
+    return lerpPoint(path[index],path[index+1],scaled-index);
+  }
+  function reverseCommute(l,now){
+    var path=l.path||[l.from,l.to], index=Math.min(path.length-2,Math.floor(Math.min(1,(now-l.since)/ARRIVAL_MS)*(path.length-1)));
+    l.path=[commutePosition(l,now)].concat(path.slice(0,index+1).reverse());
+  }
   function updateLifecycle(ch, now){
     var l = lifecycleFor(ch);
     var pending = roomPending(ch.catId);
@@ -2531,21 +2588,23 @@
       l.phase = 'arriving';
       l.from = ch.entrance;
       l.to = ch.seat;
+      l.path = commutePath(ch, l.phase);
       l.since = now;
     } else if(l.phase === 'working-wandering' && !pending){
       l.phase = 'leaving';
       l.from = ch.seat;
       l.to = ch.entrance;
+      l.path = commutePath(ch, l.phase);
       l.since = now;
     } else if(l.phase === 'arriving' && !pending){
       // Task got checked back off (or removed) mid-walk-in — turn around
       // from wherever they currently are instead of finishing the arrival
       // first, so the reversal reads as one continuous turn, not a snap.
-      var cur = lerpPoint(l.from, l.to, easeInOut((now-l.since)/ARRIVAL_MS));
-      l.phase = 'leaving'; l.from = cur; l.to = ch.entrance; l.since = now;
+      var cur = commutePosition(l, now);
+      reverseCommute(l, now); l.phase = 'leaving'; l.from = cur; l.to = ch.entrance; l.since = now;
     } else if(l.phase === 'leaving' && pending){
-      var cur2 = lerpPoint(l.from, l.to, easeInOut((now-l.since)/ARRIVAL_MS));
-      l.phase = 'arriving'; l.from = cur2; l.to = ch.seat; l.since = now;
+      var cur2 = commutePosition(l, now);
+      reverseCommute(l, now); l.phase = 'arriving'; l.from = cur2; l.to = ch.seat; l.since = now;
     } else if(l.phase === 'arriving' && now-l.since >= ARRIVAL_MS){
       l.phase = 'working-wandering'; l.since = now;
     } else if(l.phase === 'leaving' && now-l.since >= ARRIVAL_MS){
@@ -2666,46 +2725,62 @@
   // arriving/leaving/wandering without special-casing each one. A small
   // dead zone holds the last known facing at near-zero velocity (e.g. right
   // at a wander turnaround point) instead of flickering direction on noise.
-  var charFacing = {};
-  function updateFacing(ch, x){
-    var prev = lastCharPos[ch.id];
-    var facing = charFacing[ch.id] || 1;
-    if(prev){
-      var dx = x - prev.x;
-      if(dx < -0.3) facing = -1;
-      else if(dx > 0.3) facing = 1;
+  function drawCharacterSprite(ctx, ch, x, y, state){
+    if(!penguinSheet.complete || !penguinSheet.naturalWidth) return;
+    var moving=state.moving, frame=moving && Math.floor(state.tick/15)%2 ? {x:32,y:0} : {x:0,y:0};
+    ctx.save(); ctx.translate(Math.round(x),Math.round(y));
+    ctx.imageSmoothingEnabled=false;
+    if(ch.facing===-1) ctx.scale(-1,1);
+    var bob=moving ? Math.sin(state.tick/4)*2 : Math.sin((state.tick+ch.phaseOffset)/18);
+    ctx.translate(0,bob);
+    if(state.moveBit && state.moveBit.rot) ctx.rotate(state.moveBit.rot);
+    // Use actual idle poses from the sheet, with transform-based travel.
+    ctx.drawImage(penguinSheet,frame.x+4,frame.y+5,25,28,-30,-38,60,67);
+    var block=function(color,x,y,w,h){ctx.fillStyle=color;ctx.fillRect(x,y,w,h);};
+    var tri=function(color,points){ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(points[0][0],points[0][1]);points.slice(1).forEach(function(p){ctx.lineTo(p[0],p[1]);});ctx.closePath();ctx.fill();};
+    switch(ch.id){
+      case 'job': block('#1677dc',-17,-6,33,8);block('#1677dc',-17,0,8,15);break;
+      case 'cv':
+        ctx.strokeStyle='#cb333d';ctx.lineWidth=3;
+        ctx.beginPath();ctx.ellipse(7,-20,7,5,0,0,Math.PI*2);ctx.stroke();
+        block('#cb333d',-5,-22,8,3);block('#cb333d',10,6,14,8);block('#96242d',14,1,6,6);break;
+      case 'portfolio': tri('#f6c735',[[-20,-30],[0,-48],[20,-30]]);block('#e6a916',-23,-31,46,6);break;
+      case 'backpack': block('#95572f',-18,-6,32,7);block('#754224',6,5,18,20);block('#e7c8a1',9,7,3,16);break;
+      case 'budget': tri('#16934f',[[-15,-7],[-15,7],[0,0]]);tri('#16934f',[[15,-7],[15,7],[0,0]]);block('#0d6f38',-3,-3,6,6);break;
+      case 'health': block('#e56720',-17,-29,34,6);block('#ffffff',-17,24,14,7);block('#ffffff',7,24,14,7);break;
+      case 'learning':
+        block('#202c3c',-5,-24,21,5);block('#202c3c',-17,-39,36,8);
+        for(var i=0;i<6;i++) block(i%2?'#fff':'#202c3c',-17+i*6,-45,6,6);
+        block('#202c3c',18,-39,3,14);break;
+      case 'friends': block('#e55c81',5,3,22,20);block('#ffcedd',14,3,4,20);block('#ffcedd',5,10,22,4);block('#e55c81',9,-2,7,5);block('#e55c81',18,-2,7,5);break;
+      case 'hub': tri('#e9b936',[[-17,-35],[-17,-46],[-7,-40],[0,-48],[7,-40],[17,-46],[17,-35]]);break;
     }
-    charFacing[ch.id] = facing;
-    return facing;
+    ctx.restore();
+    ctx.save();ctx.font='bold 14px monospace';ctx.textAlign='center';
+    ctx.fillStyle='rgba(255,255,255,.9)';ctx.fillRect(x-45,y+34,90,19);
+    ctx.fillStyle='#19304b';ctx.fillText(ch.name,x,y+48);ctx.restore();
+    if(state.happy){ctx.save();ctx.font='24px sans-serif';ctx.fillText('✨',x+25,y-38);ctx.restore();}
   }
 
-  function drawCharacterSprite(ctx, ch, x, y, state){
-    var img = CHAR_SPRITE_IMAGES[ch.id];
-    if(!img || !img.complete || !img.naturalWidth) return;
-    var size = CHAR_SPRITE_SIZE, half = size/2;
-    ctx.save();
-    ctx.translate(x, y);
-    if(state.facing === -1) ctx.scale(-1, 1);
-    var bit = state.moveBit;
-    if(bit){
-      ctx.translate(bit.dx||0, bit.dy||0);
-      if(bit.rot) ctx.rotate(bit.rot);
-      if(bit.scale && bit.scale !== 1) ctx.scale(bit.scale, bit.scale);
-    } else if(state.working){
-      var bob = Math.sin((state.tick+ch.phaseOffset)/14) * 3;
-      var rot = Math.sin((state.tick+ch.phaseOffset)/18) * 0.035;
-      ctx.translate(0, bob);
-      ctx.rotate(rot);
-    }
-    ctx.drawImage(img, -half, -half, size, size);
-    ctx.restore();
-    if(state.happy){
-      ctx.font = '22px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('✨', x + half*0.55, y - half*0.55);
-      ctx.textAlign = 'left';
-    }
+  function renderCrewGallery(){
+    var grid=document.getElementById('crewGrid');
+    if(!grid || !penguinSheet.naturalWidth) return;
+    grid.replaceChildren();
+    var props={job:'Blue scarf',cv:'Red glasses & stamp',portfolio:'Yellow hard hat',backpack:'Brown scarf & journal',budget:'Green bowtie',health:'Headband & white shoes',learning:'Glasses & checked cap',friends:'Pink wrapped gift'};
+    CHARACTERS.forEach(function(ch){
+      var card=document.createElement('div');card.className='crew-card';
+      var canvas=document.createElement('canvas');canvas.width=160;canvas.height=140;
+      canvas.setAttribute('role','img');canvas.setAttribute('aria-label',ch.name+': '+props[ch.id]);
+      var facing=ch.facing;ch.facing=1;
+      drawCharacterSprite(canvas.getContext('2d'),ch,80,65,{tick:0});ch.facing=facing;
+      var profile=CHARACTER_PROFILES[ch.id];
+      var title=document.createElement('p');title.className='crew-job';title.textContent=profile.title;
+      var caption=document.createElement('p');caption.className='crew-description';caption.textContent=profile.description;
+      card.append(canvas,title,caption);grid.append(card);
+    });
   }
+  penguinSheet.addEventListener('load',renderCrewGallery);
+  if(penguinSheet.complete) renderCrewGallery();
 
   /* ===================== Character tips (canned) ===================== */
 
@@ -2743,7 +2818,8 @@
     if(!layer) return;
     var el = document.createElement('div');
     el.className = 'tip-bubble';
-    el.textContent = cat.tips[Math.floor(Math.random()*cat.tips.length)];
+    var profile=CHARACTER_PROFILES[ch.id];
+    el.textContent = ch.name+' — '+(profile?profile.title:cat.name)+': '+cat.tips[Math.floor(Math.random()*cat.tips.length)];
     positionBubble(el, x, y);
     layer.innerHTML = '';
     layer.appendChild(el);
@@ -2780,7 +2856,7 @@
   // corridor character (seat x:190, walk target x:235) that used to render
   // here — that character is gone now, but the position is left as-is since
   // it already reads fine as a hallway fixture and no room needs the space.
-  var IGLOO_X = 130, IGLOO_GROUND_Y = 495;
+  var IGLOO_X = 890, IGLOO_GROUND_Y = 970;
   function iglooBrick(ctx, x, y, w, h){
     ctx.fillStyle = '#dceffc';
     roundRectPath(ctx, x, y, w, h, 3);
@@ -2854,9 +2930,70 @@
     ctx.restore();
   }
 
+  // Yard excursions share the existing position/transform renderer. Only one
+  // visitor travels at a time. Freeze its lifecycle until it is home again.
+  var yardQueue = [], yardActive = null, yardCompletions = 0, lastOfficeTick = 0;
+  var yardRewarded = new Set();
+  function scheduleYardTrip(task, rankUp){
+    var key = currentDay.date + ':' + task.id;
+    if(yardRewarded.has(key)) return;
+    yardRewarded.add(key);
+    yardCompletions++;
+    if(!rankUp && yardCompletions % 4 !== 0) return;
+    var choices = CHARACTERS.filter(function(c){ return c.catId === task.category; });
+    var preferred = task.category==='job' ? (task.sub==='applications'?'cv':'job') : task.category==='portfolio' ? (task.sub==='content'?'backpack':'portfolio') : task.category;
+    var ch = choices.find(function(c){return c.id===preferred;}) || choices[0];
+    if(ch) yardQueue.push({ch:ch, rankUp:rankUp});
+  }
+  function yardRoute(ch, start){
+    if(start.y>=800)return [start,{x:start.x,y:980},{x:790,y:980},{x:790,y:950}];
+    var door = ch.door || {x:335,y:320};
+    if(start.y>=340 && start.y<=425) return [start,{x:840,y:385},{x:840,y:620},{x:760,y:620},{x:760,y:775},{x:740,y:835},{x:785,y:900},{x:790,y:950}];
+    var path = [start];
+    // Approach each room's actual doorway, never cut diagonally through walls.
+    if(start.y > 430 && ch.catId === 'portfolio') path.push({x:400,y:start.y},{x:400,y:490},{x:335,y:490});
+    if(start.y > 430 && ch.catId === 'health') path.push({x:1170,y:start.y});
+    if(ch.catId === 'budget') path.push({x:710,y:start.y},{x:710,y:565});
+    path.push(door);
+    if(ch.catId === 'budget') path.push({x:840,y:565});
+    else path.push({x:door.x,y:385},{x:840,y:385});
+    path.push({x:840,y:620},{x:760,y:620},{x:760,y:775},
+      {x:740,y:835},{x:785,y:900},{x:790,y:950});
+    return path;
+  }
+  function updateYard(now){
+    if(!yardActive && yardQueue.length){
+      var entry=yardQueue.shift(), ch=entry.ch;
+      var start=lastCharPos[ch.id] || ch.seat;
+      var path=yardRoute(ch,{x:start.x,y:start.y});
+      var homePath=yardRoute(ch,ch.seat);
+      var back=homePath.slice(0,-1).reverse();
+      yardActive={ch:ch,rankUp:entry.rankUp,path:path.concat([path[path.length-1]],back),
+        index:0,since:now,brickIndex:path.length-1,start:now};
+    }
+    var trip=yardActive;
+    if(!trip) return;
+    var a=trip.path[trip.index], b=trip.path[trip.index+1];
+    if(!b){
+      var life=lifecycleFor(trip.ch);
+      life.phase="working-wandering"; life.since=now;
+      trip.ch.phaseOffset=-(lastOfficeTick % 420);
+      yardActive=null;
+      return;
+    }
+    var building=trip.index===trip.brickIndex;
+    var duration=building ? (trip.rankUp?2400:1600) : Math.max(160,Math.hypot(b.x-a.x,b.y-a.y)/160*1000);
+    var t=Math.min(1,(now-trip.since)/duration);
+    trip.pos=lerpPoint(a,b,t);
+    trip.building=building;
+    if(building) trip.pos.y-=Math.abs(Math.sin(t*Math.PI*4))*9;
+    if(t===1){trip.index++;trip.since=now;}
+  }
+
   function drawOfficeDynamic(tick){
     var canvas = document.getElementById('officeCanvas');
     if(!canvas) return;
+    lastOfficeTick=tick;
     var ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = true;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -2864,48 +3001,52 @@
     drawIgloo(ctx, rankIndex(totalPointsAllTime()));
 
     var now = Date.now();
+    updateYard(now);
     CHARACTERS.forEach(function(ch){
       var pos, state = { tick: tick };
-      var l = updateLifecycle(ch, now);
-      if(l.phase === 'not-arrived' || l.phase === 'home'){
-        pos = { x: ch.entrance.x, y: ch.entrance.y };
-      } else if(l.phase === 'leaving'){
-        // Room just went all-done (that's the only thing that triggers
-        // leaving) — sparkle on the walk out instead of pausing at the
-        // desk first, so finishing the last task reads as a celebration,
-        // not a delay before heading home.
-        pos = lerpPoint(l.from, l.to, easeInOut((now-l.since)/ARRIVAL_MS));
-        state.happy = true;
-      } else if(l.phase === 'arriving'){
-        pos = lerpPoint(l.from, l.to, easeInOut((now-l.since)/ARRIVAL_MS));
+      if(yardActive && yardActive.ch.id === ch.id && yardActive.pos){
+        pos=yardActive.pos; state.happy=yardActive.building;
+        if(yardActive.building && yardActive.rankUp){ctx.save();ctx.strokeStyle='#efb32e';ctx.lineWidth=4;ctx.beginPath();ctx.arc(IGLOO_X,IGLOO_GROUND_Y-35,90+Math.sin(tick/8)*8,0,Math.PI*2);ctx.stroke();ctx.restore();}
+        state.moveBit={rot:Math.sin(tick/5)*0.045};
+      } else if(ch.catId === 'hub'){
+        // GaYeon is always present in Chairman's Office — no task category
+        // drives her, so she's outside the arrival/departure system entirely.
+        if(roomAllDone(ch.catId)){ pos = { x: ch.seat.x, y: ch.seat.y }; state.happy = true; }
+        else if(roomHasTasks(ch.catId)){ pos = charPosition(ch, tick); state.working = pos.atDesk; }
+        else pos = { x: ch.seat.x, y: ch.seat.y };
       } else {
-        pos = charPosition(ch, tick);
-        state.working = pos.atDesk;
-        // A canned tip, rarely, right as a wander-out excursion begins
-        // (the atDesk:true -> false edge) — never while just sitting,
-        // never every single cycle.
-        if(lastAtDesk[ch.id] === true && !pos.atDesk && Math.random() < CANNED_TIP_CHANCE){
-          showCannedTip(ch, pos.x, pos.y);
+        var l = updateLifecycle(ch, now);
+        if(l.phase === 'not-arrived' || l.phase === 'home'){
+          pos = { x: ch.entrance.x, y: ch.entrance.y };
+        } else if(l.phase === 'leaving'){
+          // Room just went all-done (that's the only thing that triggers
+          // leaving) — sparkle on the walk out instead of pausing at the
+          // desk first, so finishing the last task reads as a celebration,
+          // not a delay before heading home.
+          pos = commutePosition(l, now);
+          state.happy = true;
+        } else if(l.phase === 'arriving'){
+          pos = commutePosition(l, now);
+        } else {
+          pos = charPosition(ch, tick);
+          state.working = pos.atDesk;
+          // A canned tip, rarely, right as a wander-out excursion begins
+          // (the atDesk:true -> false edge) — never while just sitting,
+          // never every single cycle.
+          if(lastAtDesk[ch.id] === true && !pos.atDesk && Math.random() < CANNED_TIP_CHANCE){
+            showCannedTip(ch, pos.x, pos.y);
+          }
+          maybeRollMoveBit(ch, lastAtDesk[ch.id], pos.atDesk, now);
         }
-        maybeRollMoveBit(ch, lastAtDesk[ch.id], pos.atDesk, now);
       }
-      state.moveBit = activeMoveBitTransform(ch, now);
-      state.facing = updateFacing(ch, pos.x);
+      state.moveBit = state.moveBit || activeMoveBitTransform(ch, now);
       lastAtDesk[ch.id] = !!pos.atDesk;
+      var prior=lastCharPos[ch.id];
+      state.moving=!!prior && Math.hypot(pos.x-prior.x,pos.y-prior.y)>.05;
+      if(prior && Math.abs(pos.x-prior.x)>.05) ch.facing=pos.x<prior.x ? -1:1;
       lastCharPos[ch.id] = pos;
       drawCharacterSprite(ctx, ch, pos.x, pos.y, state);
     });
-
-    // L&D desk sits empty until real Compiler art exists — a mismatched
-    // placeholder sprite would be worse than no character at all. Small,
-    // clearly-temporary marker rather than silently leaving it unexplained.
-    ctx.save();
-    ctx.font = '13px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = 'rgba(80,60,90,0.55)';
-    ctx.fillText('🚧 not yet staffed', 1180, 350);
-    ctx.fillText('🚧 not yet staffed', 742, 350);
-    ctx.restore();
 
     if(catchHotspotHovered){
       ctx.save();
@@ -2934,27 +3075,21 @@
   /* ===================== Office: room hover/click (canvas coords calibrated against reference-art/office-floorplan-background.png) ===================== */
 
   var ROOM_RECTS = {
-    job:       { x1:60,  y1:60,  x2:505,  y2:370 },
-    // The old 'backpack' room slot (top-middle, cozy reading nook) sat
-    // unstaffed after the Content Building merge moved Storyteller into the
-    // portfolio room — now reused for Family & Friends, the only currently-
-    // drawn room in the art that had no department in it. Chairman's Office
-    // never had a matching drawn room here (its old hit-box was just a
-    // corridor rect with no real walls/floor behind it), so this is the
-    // room that actually looks right for a new department.
-    friends:   { x1:520, y1:60,  x2:965,  y2:370 },
-    learning:  { x1:985, y1:60,  x2:1465, y2:370 },
-    portfolio: { x1:60,  y1:510, x2:505,  y2:830 },
-    budget:    { x1:520, y1:510, x2:965,  y2:830 },
-    health:    { x1:985, y1:510, x2:1465, y2:830 }
+    friends:   { x1:575, y1:65, x2:925, y2:300 },
+    job:       { x1:150, y1:65, x2:525, y2:300 },
+    learning:  { x1:975, y1:65, x2:1360, y2:300 },
+    portfolio: { x1:150, y1:465, x2:440, y2:680 },
+    budget:    { x1:480, y1:465, x2:740, y2:680 },
+    health:    { x1:975, y1:465, x2:1360, y2:680 },
   };
-  var ROOM_LABELS = { job:'Job Hunt', friends:'Family & Friends', learning:'L&D', portfolio:'Content Building', budget:'Life Admin', health:'Health' };
+  // Hearth now occupies the top-middle reading nook for Family & Friends.
+  var ROOM_LABELS = { friends:'Family & Friends', job:'Job Hunt', learning:'L&D', portfolio:'Content Building', budget:'Life Admin', health:'Health' };
   var hoveredRoomId = null;
   var catchHotspotHovered = false;
   // The "BIG GY INC" signboard already painted into the office art (bottom
   // center) doubles as a second, discoverable way into Catch of the Day —
   // in addition to the HUD fish chip, not a replacement for it.
-  var CATCH_HOTSPOT = { x1:650, y1:845, x2:860, y2:915 };
+  var CATCH_HOTSPOT = { x1:675, y1:655, x2:845, y2:700 };
 
   function canvasPointFromEvent(canvas, evt){
     var rect = canvas.getBoundingClientRect();
@@ -3092,7 +3227,7 @@
     modalAfterClose = afterClose || null;
     var day = loadDay(dateStrArg);
     var done = day.tasks.filter(function(t){ return t.done; });
-    var undone = day.tasks.filter(function(t){ return !t.done; });
+    var undone = day.tasks.filter(function(t){ return !t.done && !t.applicationArchived; });
     var html = '' +
       '<div class="modal-backdrop" id="dailyModalBackdrop">' +
         '<div class="modal">' +
@@ -3123,233 +3258,89 @@
   }
   document.getElementById('dailyReviewBtn').addEventListener('click', function(){ openDailyReview(today, false); });
 
-  /* ===================== Schedule ahead (add tasks to a future date, picked from a calendar) ===================== */
-
-  var scheduleEntryPreview = [];
-  var scheduleTargetDate = today;
-
-  function openScheduleModal(prefillDate){
-    modalAfterClose = null;
-    scheduleEntryPreview = [];
-    scheduleTargetDate = (prefillDate && prefillDate > today) ? prefillDate : addDays(today, 1);
-    var html = '' +
-      '<div class="modal-backdrop" id="scheduleModalBackdrop">' +
-        '<div class="modal">' +
-          '<button class="close-x icon-btn" id="closeScheduleModal">✕</button>' +
-          '<h2>📅 Schedule tasks ahead</h2>' +
-          '<p style="color:var(--text-dim); font-size:14px;">Pick a date, then add tasks the same way as today\'s list — they\'ll be waiting when that day comes.</p>' +
-          '<div class="settings-row"><label>Date</label><input type="date" id="scheduleDateInput" min="'+addDays(today,1)+'" value="'+scheduleTargetDate+'"></div>' +
-          '<textarea id="scheduleEntryInput" placeholder="e.g. Prep interview outfit&#10;Send follow-up email&#10;Pay rent"></textarea>' +
-          '<div style="margin-top:8px; display:flex; gap:8px;">' +
-            '<button class="primary" id="scheduleEntryPreviewBtn">Preview tasks →</button>' +
-            '<button class="ghost" id="closeScheduleModalGhost">Cancel</button>' +
-          '</div>' +
-          '<div id="scheduleEntryPreviewList" style="margin-top:10px;"></div>' +
-          '<div id="scheduleConfirmRow" class="hidden" style="margin-top:8px;">' +
-            '<button class="pink" id="scheduleConfirmBtn">Add to that day</button>' +
-          '</div>' +
-        '</div>' +
-      '</div>';
-    document.getElementById('modalRoot').innerHTML = html;
-
-    function renderSchedulePreview(){
-      var box = document.getElementById('scheduleEntryPreviewList');
-      var confirmRow = document.getElementById('scheduleConfirmRow');
-      if(scheduleEntryPreview.length === 0){ box.innerHTML=''; confirmRow.classList.add('hidden'); return; }
-      confirmRow.classList.remove('hidden');
-      box.innerHTML = scheduleEntryPreview.map(function(p, idx){
-        var opts = '<option value="">— pick category —</option>' + CATEGORIES.map(function(c){
-          return '<option value="'+c.id+'"'+(p.category===c.id?' selected':'')+'>'+c.icon+' '+c.name+'</option>';
-        }).join('');
-        return '' +
-          '<div class="preview-row" data-idx="'+idx+'">' +
-            '<span class="txt">'+escapeHtml(p.text)+'</span>' +
-            '<select data-role="cat">'+opts+'</select>' +
-            '<button class="star-btn '+(p.milestone?'':'off')+'" data-role="star" title="milestone">⭐</button>' +
-            '<button class="del-btn" data-role="remove" title="remove">✕</button>' +
-          '</div>';
-      }).join('');
-    }
-
-    document.getElementById('scheduleDateInput').addEventListener('change', function(e){
-      if(e.target.value) scheduleTargetDate = e.target.value;
-    });
-    document.getElementById('scheduleEntryPreviewBtn').addEventListener('click', function(){
-      var raw = document.getElementById('scheduleEntryInput').value;
-      var lines = raw.split('\n').map(function(l){ return cleanTaskText(l); }).filter(Boolean);
-      scheduleEntryPreview = lines.map(function(line){ return { text: line, category: detectCategory(line), milestone:false }; });
-      renderSchedulePreview();
-    });
-    document.getElementById('scheduleEntryPreviewList').addEventListener('click', function(e){
-      var row = e.target.closest('.preview-row'); if(!row) return;
-      var idx = Number(row.dataset.idx);
-      if(e.target.dataset.role === 'star'){ scheduleEntryPreview[idx].milestone = !scheduleEntryPreview[idx].milestone; renderSchedulePreview(); }
-      else if(e.target.dataset.role === 'remove'){ scheduleEntryPreview.splice(idx,1); renderSchedulePreview(); }
-    });
-    document.getElementById('scheduleEntryPreviewList').addEventListener('change', function(e){
-      var row = e.target.closest('.preview-row'); if(!row) return;
-      var idx = Number(row.dataset.idx);
-      if(e.target.dataset.role === 'cat') scheduleEntryPreview[idx].category = e.target.value;
-    });
-    document.getElementById('scheduleConfirmBtn').addEventListener('click', function(){
-      if(scheduleTargetDate <= today){
-        alert('Pick a date after today — use the "+ Add tasks" button for today itself.');
-        return;
+  /* One task composer for today, future dates, and calendar-day entry points. */
+  function openScheduleModal(prefillDate){openDailyEntryModal(typeof prefillDate==='string'?prefillDate:addDays(today,1));}
+  document.getElementById('scheduleAheadBtn').addEventListener('click',function(){openScheduleModal(null);});
+  function openDailyEntryModal(prefillDate){
+    modalAfterClose=null;
+    var selected=typeof prefillDate==='string'&&ApplicationTracker.day(prefillDate)&&prefillDate>=today?prefillDate:today;
+    var parts=selected.split('-').map(Number),month=new Date(parts[0],parts[1]-1,1),drafts=[],saving=false;
+    var root=document.getElementById('modalRoot');
+    root.innerHTML='<div class="modal-backdrop" id="dailyEntryBackdrop"><div class="modal task-composer" role="dialog" aria-modal="true" aria-labelledby="composerTitle">'+
+      '<button class="close-x icon-btn" id="closeDailyEntryModal" aria-label="Close Add tasks">✕</button><h2 id="composerTitle">Add tasks</h2>'+
+      '<p class="composer-intro">Pick a day. One task per line. Save when you’re ready.</p><div class="composer-layout">'+
+      '<aside class="composer-calendar"><div class="composer-shortcuts"><button type="button" class="icon-btn" data-quick-date="'+today+'">Today</button><button type="button" class="icon-btn" data-quick-date="'+addDays(today,1)+'">Tomorrow</button></div>'+
+      '<label for="taskDateInput">Task date</label><input type="date" id="taskDateInput" min="'+today+'" value="'+selected+'">'+
+      '<div class="composer-month"><button type="button" class="icon-btn" id="composerPrev" aria-label="Previous month">‹</button><strong id="composerMonthLabel"></strong><button type="button" class="icon-btn" id="composerNext" aria-label="Next month">›</button></div>'+
+      '<div class="composer-weekdays" aria-hidden="true"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div><div id="composerCalendarGrid" class="composer-days"></div><p class="composer-hint">A dot means tasks are already planned.</p></aside>'+
+      '<div class="composer-writing"><label for="dailyEntryInput">What do you want to do?</label><textarea id="dailyEntryInput" placeholder="Tailor my CV for Example Co&#10;30 min run&#10;Call a friend" rows="5"></textarea>'+
+      '<p class="composer-hint">Categories appear as you type. Change any suggestion below.</p><div id="dailyEntryPreviewList"></div><p id="composerError" class="composer-error" role="alert"></p></div></div>'+
+      '<div class="composer-save"><span id="composerTarget" aria-live="polite"></span><button class="primary" id="dailyEntryConfirmBtn" disabled>Save tasks</button></div>'+
+      '<details id="composerLeftovers" class="hidden"><summary>Bring forward unfinished tasks from yesterday</summary><div id="dailyEntryLeftoverList"></div></details></div></div>';
+    var input=document.getElementById('dailyEntryInput'),dateInput=document.getElementById('taskDateInput'),preview=document.getElementById('dailyEntryPreviewList'),save=document.getElementById('dailyEntryConfirmBtn');
+    function refreshCalendar(){
+      document.getElementById('composerMonthLabel').textContent=month.toLocaleDateString(undefined,{month:'long',year:'numeric'});
+      var html='',start=new Date(month.getFullYear(),month.getMonth(),1),count=new Date(month.getFullYear(),month.getMonth()+1,0).getDate();
+      for(var pad=0;pad<start.getDay();pad++)html+='<span></span>';
+      for(var n=1;n<=count;n++){
+        var key=dateStr(new Date(month.getFullYear(),month.getMonth(),n)),planned=loadDay(key).tasks.filter(function(t){return !t.applicationArchived;}).length;
+        html+='<button type="button" data-calendar-date="'+key+'" '+(key<today?'disabled ':'')+'aria-pressed="'+(key===selected)+'" aria-label="'+prettyDate(key)+(planned?', '+planned+' tasks':'')+'" class="'+(planned?'has-tasks':'')+'">'+n+'</button>';
       }
-      var day = loadDay(scheduleTargetDate);
-      var added = 0, skipped = 0;
-      scheduleEntryPreview.forEach(function(p){
-        if(!p.category){ skipped++; return; }
-        var task = { id: makeId('t'), text: p.text, category: p.category, done:false, milestone: p.milestone, recurringId:null, createdAt: Date.now() };
-        if(p.category === 'job') task.sub = detectJobSub(p.text);
-        else if(p.category === 'portfolio') task.sub = detectContentSub(p.text);
-        day.tasks.push(task);
-        added++;
-      });
-      saveDay(day);
-      scheduleEntryPreview = [];
-      closeModal();
-      if(added > 0) alert(added + ' task' + (added===1?'':'s') + ' scheduled for ' + prettyDate(scheduleTargetDate) + '.');
-      if(skipped > 0) alert(skipped + ' line(s) had no category picked and were not added.');
-      if(!document.getElementById('calendarView').classList.contains('hidden')) renderCalendar();
-    });
-    document.getElementById('closeScheduleModal').addEventListener('click', closeModal);
-    document.getElementById('closeScheduleModalGhost').addEventListener('click', closeModal);
-    document.getElementById('scheduleModalBackdrop').addEventListener('click', function(e){ if(e.target.id==='scheduleModalBackdrop') closeModal(); });
-    document.getElementById('scheduleEntryInput').focus();
-  }
-  document.getElementById('scheduleAheadBtn').addEventListener('click', function(){ openScheduleModal(null); });
-
-  /* ===================== Daily entry pop-up (shows only while today has zero tasks) ===================== */
-
-  var dailyEntryPreview = [];
-
-  function openDailyEntryModal(){
-    modalAfterClose = null;
-    dailyEntryPreview = [];
-    var html = '' +
-      '<div class="modal-backdrop" id="dailyEntryBackdrop">' +
-        '<div class="modal">' +
-          '<button class="close-x icon-btn" id="closeDailyEntryModal">✕</button>' +
-          '<h2>What are you fishing for today?</h2>' +
-          '<p style="color:var(--text-dim); font-size:14px;">One task per line. Skip this if you\'d rather add them later — the "+ Add tasks" button near the top reopens this any time.</p>' +
-          '<textarea id="dailyEntryInput" placeholder="e.g. Review today\'s leads&#10;30 min run&#10;Draft backpack post idea"></textarea>' +
-          '<div style="margin-top:8px; display:flex; gap:8px;">' +
-            '<button class="primary" id="dailyEntryPreviewBtn">Preview tasks →</button>' +
-            '<button class="ghost" id="dailyEntryDismissBtn">Not now</button>' +
-          '</div>' +
-          '<div id="dailyEntryPreviewList" style="margin-top:10px;"></div>' +
-          '<div id="dailyEntryConfirmRow" class="hidden" style="margin-top:8px;">' +
-            '<button class="pink" id="dailyEntryConfirmBtn">Add to today\'s list</button>' +
-          '</div>' +
-          '<div id="dailyEntryLeftoverBox" class="hidden" style="margin-top:18px; border-top:2px dashed var(--border); padding-top:12px;">' +
-            '<h3 style="margin:0 0 6px;">From yesterday (unchecked)</h3>' +
-            '<div id="dailyEntryLeftoverList"></div>' +
-          '</div>' +
-        '</div>' +
-      '</div>';
-    document.getElementById('modalRoot').innerHTML = html;
-
-    function renderDailyEntryLeftovers(){
-      var prevDay = loadDay(addDays(today, -1));
-      var undone = prevDay.tasks.filter(function(t){ return !t.done; });
-      var box = document.getElementById('dailyEntryLeftoverBox');
-      var list = document.getElementById('dailyEntryLeftoverList');
-      if(undone.length === 0){ box.classList.add('hidden'); return; }
-      box.classList.remove('hidden');
-      list.innerHTML = undone.map(function(t){
-        var cat = CAT_BY_ID[t.category];
-        return '' +
-          '<div class="leftover-row" data-id="'+t.id+'">' +
-            '<span>'+(t.milestone?'⭐ ':'')+escapeHtml(t.text)+' <span class="cat-tag">'+(cat?cat.icon+' '+cat.name:'')+'</span></span>' +
-            '<button class="icon-btn" data-role="addleftover">+ add to today</button>' +
-          '</div>';
-      }).join('');
+      document.getElementById('composerCalendarGrid').innerHTML=html;
+      document.getElementById('composerTarget').textContent='Adding to '+(selected===today?'today':prettyDate(selected));
+      document.getElementById('composerPrev').disabled=dateStr(month).slice(0,7)<=today.slice(0,7);
     }
-    renderDailyEntryLeftovers();
-    document.getElementById('dailyEntryLeftoverList').addEventListener('click', function(e){
-      if(e.target.dataset.role !== 'addleftover') return;
-      var row = e.target.closest('.leftover-row');
-      var prevDay = loadDay(addDays(today, -1));
-      var t = prevDay.tasks.find(function(x){ return x.id === row.dataset.id; });
-      if(!t) return;
-      var task = { id: makeId('t'), text: t.text, category: t.category, done:false, milestone: t.milestone, recurringId:null, createdAt: Date.now() };
-      if(task.category === 'job') task.sub = t.sub || detectJobSub(t.text);
-      else if(task.category === 'portfolio') task.sub = t.sub || detectContentSub(t.text);
-      currentDay.tasks.push(task);
-      saveDay(currentDay);
-      renderAll();
-      renderDailyEntryLeftovers();
-    });
-
-    function renderDailyEntryPreview(){
-      var box = document.getElementById('dailyEntryPreviewList');
-      var confirmRow = document.getElementById('dailyEntryConfirmRow');
-      if(dailyEntryPreview.length === 0){ box.innerHTML=''; confirmRow.classList.add('hidden'); return; }
-      confirmRow.classList.remove('hidden');
-      box.innerHTML = dailyEntryPreview.map(function(p, idx){
-        var opts = '<option value="">— pick category —</option>' + CATEGORIES.map(function(c){
-          return '<option value="'+c.id+'"'+(p.category===c.id?' selected':'')+'>'+c.icon+' '+c.name+'</option>';
-        }).join('');
-        return '' +
-          '<div class="preview-row" data-idx="'+idx+'">' +
-            '<span class="txt">'+escapeHtml(p.text)+'</span>' +
-            '<select data-role="cat">'+opts+'</select>' +
-            '<button class="star-btn '+(p.milestone?'':'off')+'" data-role="star" title="milestone">⭐</button>' +
-            '<label style="font-size:13px;color:var(--text-dim);"><input type="checkbox" data-role="repeats" '+(p.repeats?'checked':'')+'> repeats</label>' +
-            '<button class="del-btn" data-role="remove" title="remove">✕</button>' +
-          '</div>';
-      }).join('');
+    function chooseDate(value){
+      if(!ApplicationTracker.day(value)||value<today)return;
+      selected=value;dateInput.value=value;var p=value.split('-').map(Number);month=new Date(p[0],p[1]-1,1);refreshCalendar();
     }
-
-    document.getElementById('dailyEntryPreviewBtn').addEventListener('click', function(){
-      var raw = document.getElementById('dailyEntryInput').value;
-      var lines = raw.split('\n').map(function(l){ return cleanTaskText(l); }).filter(Boolean);
-      dailyEntryPreview = lines.map(function(line){ return { text: line, category: detectCategory(line), milestone:false, repeats:false }; });
-      renderDailyEntryPreview();
-    });
-
-    document.getElementById('dailyEntryPreviewList').addEventListener('click', function(e){
-      var row = e.target.closest('.preview-row'); if(!row) return;
-      var idx = Number(row.dataset.idx);
-      if(e.target.dataset.role === 'star'){ dailyEntryPreview[idx].milestone = !dailyEntryPreview[idx].milestone; renderDailyEntryPreview(); }
-      else if(e.target.dataset.role === 'remove'){ dailyEntryPreview.splice(idx,1); renderDailyEntryPreview(); }
-    });
-    document.getElementById('dailyEntryPreviewList').addEventListener('change', function(e){
-      var row = e.target.closest('.preview-row'); if(!row) return;
-      var idx = Number(row.dataset.idx);
-      if(e.target.dataset.role === 'cat') dailyEntryPreview[idx].category = e.target.value;
-      if(e.target.dataset.role === 'repeats') dailyEntryPreview[idx].repeats = e.target.checked;
-    });
-    document.getElementById('dailyEntryConfirmBtn').addEventListener('click', function(){
-      var recurring = loadRecurring();
-      var recurringChanged = false;
-      dailyEntryPreview.forEach(function(p){
-        if(!p.category) return;
-        var recurringId = null;
-        if(p.repeats){
-          var tpl = recurring.find(function(r){ return r.text === p.text && r.category === p.category; });
-          if(tpl){ recurringId = tpl.id; tpl.active = true; }
-          else{ tpl = { id: makeId('rec'), text: p.text, category: p.category, active:true }; recurring.push(tpl); recurringId = tpl.id; }
-          recurringChanged = true;
-        }
-        var task = { id: makeId('t'), text: p.text, category: p.category, done:false, milestone: p.milestone, recurringId: recurringId, createdAt: Date.now() };
-        if(p.category === 'job') task.sub = detectJobSub(p.text);
-        else if(p.category === 'portfolio') task.sub = detectContentSub(p.text);
-        currentDay.tasks.push(task);
+    function syncDrafts(){
+      var previous=drafts.slice();
+      drafts=input.value.split('\n').map(function(raw,line){var text=cleanTaskText(raw);if(!text)return null;var idx=previous.findIndex(function(p){return p.raw===raw;});var old=idx>=0?previous.splice(idx,1)[0]:null;return Object.assign(old||{category:detectCategory(text),milestone:false,repeats:false},{raw:raw,text:text,line:line});}).filter(Boolean);
+      renderDrafts();
+    }
+    function renderDrafts(){
+      preview.innerHTML=drafts.map(function(p,index){return '<div class="composer-task" data-draft="'+index+'"><span>'+escapeHtml(p.text)+'</span><div><select data-draft-action="category" aria-label="Category for '+escapeHtml(p.text)+'"><option value="">Choose category</option>'+CATEGORIES.map(function(c){return '<option value="'+c.id+'"'+(p.category===c.id?' selected':'')+'>'+c.icon+' '+c.name+'</option>';}).join('')+'</select><button type="button" class="star-btn '+(p.milestone?'':'off')+'" data-draft-action="star" aria-label="Mark '+escapeHtml(p.text)+' as a milestone" aria-pressed="'+p.milestone+'">⭐</button><label><input type="checkbox" data-draft-action="repeat" '+(p.repeats?'checked':'')+'> Daily</label><button type="button" class="del-btn" data-draft-action="remove" aria-label="Remove '+escapeHtml(p.text)+'">✕</button></div></div>';}).join('');
+      save.disabled=!drafts.length;save.textContent=drafts.length?'Save '+drafts.length+' task'+(drafts.length===1?'':'s'):'Save tasks';
+      document.getElementById('composerError').textContent='';
+    }
+    input.addEventListener('input',syncDrafts);
+    dateInput.addEventListener('change',function(){chooseDate(dateInput.value);});
+    document.getElementById('composerPrev').addEventListener('click',function(){month.setMonth(month.getMonth()-1);refreshCalendar();});
+    document.getElementById('composerNext').addEventListener('click',function(){month.setMonth(month.getMonth()+1);refreshCalendar();});
+    document.querySelector('.composer-calendar').addEventListener('click',function(e){var button=e.target.closest('button');if(!button)return;var date=button.dataset.quickDate||button.dataset.calendarDate;if(date)chooseDate(date);});
+    preview.addEventListener('change',function(e){var row=e.target.closest('[data-draft]');if(!row)return;var p=drafts[Number(row.dataset.draft)];if(e.target.dataset.draftAction==='category')p.category=e.target.value;if(e.target.dataset.draftAction==='repeat')p.repeats=e.target.checked;});
+    preview.addEventListener('click',function(e){var row=e.target.closest('[data-draft]');if(!row)return;var p=drafts[Number(row.dataset.draft)];if(e.target.dataset.draftAction==='star'){p.milestone=!p.milestone;renderDrafts();}if(e.target.dataset.draftAction==='remove'){var lines=input.value.split('\n');lines.splice(p.line,1);input.value=lines.join('\n');syncDrafts();}});
+    save.addEventListener('click',function(){
+      if(saving)return;syncDrafts();
+      if(!drafts.length)return;
+      if(!dateInput.checkValidity()||!ApplicationTracker.day(dateInput.value)||dateInput.value<today){dateInput.reportValidity();return;}
+      selected=dateInput.value;
+      var missing=drafts.findIndex(function(p){return !p.category;});
+      if(missing>=0){document.getElementById('composerError').textContent='Choose a category for the highlighted task. Your text is still here.';preview.querySelectorAll('select')[missing].focus();return;}
+      saving=true;save.disabled=true;
+      var target=selected===currentDay.date?currentDay:loadDay(selected),recurring=loadRecurring(),recurringChanged=false;
+      drafts.forEach(function(p){
+        var recurringId=null;
+        if(p.repeats){var tpl=recurring.find(function(r){return r.text===p.text&&r.category===p.category;});if(!tpl){tpl={id:makeId('rec'),text:p.text,category:p.category,active:true,startDate:selected};recurring.push(tpl);}else{tpl.active=true;if(tpl.startDate&&selected<tpl.startDate)tpl.startDate=selected;}recurringId=tpl.id;recurringChanged=true;}
+        var task={id:makeId('t'),text:p.text,category:p.category,done:false,milestone:p.milestone,recurringId:recurringId,createdAt:Date.now()};
+        if(p.category==='job')task.sub=detectJobSub(p.text);else if(p.category==='portfolio')task.sub=detectContentSub(p.text);
+        target.tasks.push(task);
       });
-      var skipped = dailyEntryPreview.filter(function(p){ return !p.category; }).length;
-      saveDay(currentDay);
-      if(recurringChanged) saveRecurring(recurring);
-      dailyEntryPreview = [];
-      closeModal();
-      renderAll();
-      if(skipped > 0) alert(skipped + ' line(s) had no category picked and were not added. Add them from the box further down the page.');
+      saveDay(target);if(recurringChanged)saveRecurring(recurring);var count=drafts.length;closeModal();renderAll();
+      if(!document.getElementById('calendarView').classList.contains('hidden'))renderCalendar();
+      var toast=document.createElement('div');toast.className='composer-toast';toast.setAttribute('role','status');toast.textContent=count+' task'+(count===1?'':'s')+' added to '+(selected===today?'today':prettyDate(selected));document.body.appendChild(toast);setTimeout(function(){toast.remove();},4000);
     });
-    document.getElementById('closeDailyEntryModal').addEventListener('click', closeModal);
-    document.getElementById('dailyEntryDismissBtn').addEventListener('click', closeModal);
-    document.getElementById('dailyEntryBackdrop').addEventListener('click', function(e){ if(e.target.id==='dailyEntryBackdrop') closeModal(); });
-    document.getElementById('dailyEntryInput').focus();
+    var leftovers=loadDay(addDays(today,-1)).tasks.filter(function(t){return !t.done&&!t.applicationArchived;});
+    if(leftovers.length){
+      document.getElementById('composerLeftovers').classList.remove('hidden');var list=document.getElementById('dailyEntryLeftoverList');
+      list.innerHTML=leftovers.map(function(t,i){return '<div class="leftover-row"><span>'+escapeHtml(t.text)+'</span><button class="icon-btn" data-leftover="'+i+'">Add to draft</button></div>';}).join('');
+      list.addEventListener('click',function(e){if(e.target.dataset.leftover===undefined)return;var t=leftovers[Number(e.target.dataset.leftover)];input.value+=(input.value.trim()?'\n':'')+t.text;syncDrafts();var last=drafts[drafts.length-1];last.category=t.category;last.milestone=t.milestone;renderDrafts();e.target.disabled=true;e.target.textContent='In draft';});
+    }
+    document.getElementById('closeDailyEntryModal').addEventListener('click',closeModal);
+    document.getElementById('dailyEntryBackdrop').addEventListener('click',function(e){if(e.target.id==='dailyEntryBackdrop')closeModal();});
+    document.querySelector('.task-composer').addEventListener('keydown',function(e){if(e.key==='Escape')closeModal();if((e.metaKey||e.ctrlKey)&&e.key==='Enter'){e.preventDefault();save.click();}if(e.key==='Tab'){var focusable=Array.from(document.querySelectorAll('.task-composer button:not(:disabled),.task-composer input:not(:disabled),.task-composer textarea,.task-composer select,.task-composer summary')).filter(function(el){return el.offsetParent!==null;});var first=focusable[0],last=focusable[focusable.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}});
+    refreshCalendar();input.focus();
   }
 
   // Checked fresh at each app open against today's live task count — never a
@@ -3446,7 +3437,7 @@
   function dayActivity(dateStr){
     var day = loadDay(dateStr);
     var done = day.tasks.filter(function(t){ return t.done; });
-    return { hasActivity: done.length > 0, hasMilestone: done.some(function(t){ return t.milestone; }), hasScheduled: day.tasks.length > 0 };
+    return { hasActivity: done.length > 0, hasMilestone: done.some(function(t){ return t.milestone; }), hasScheduled: day.tasks.some(function(t){return !t.applicationArchived;}) };
   }
   // Shared by the month calendar and the Weekly Review's calendar strip:
   // one day cell's class + marker, and what clicking it should do — past
@@ -3599,6 +3590,8 @@
   window.addEventListener('focus', function(){
     syncDayFromServer(today).then(function(changed){
       if(changed){ currentDay = loadDay(today); renderAll(); }
+      if(!applicationSync.lastSync||Date.now()-applicationSync.lastSync>60000)fetchApplications();
+      fetchOutreach();
     });
   });
   });

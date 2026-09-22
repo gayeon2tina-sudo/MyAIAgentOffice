@@ -1,4 +1,4 @@
-const CACHE_NAME = 'biggyinc-v3';
+const CACHE_NAME = 'biggyinc-v5-tracker-preview';
 // Requests whose content actually changes between deploys (the app's own HTML —
 // everything, including all JS, lives inside daily_hq.html) must go network-first.
 // Cache-first here would mean a feature added after someone's first visit stays
@@ -11,12 +11,14 @@ function isNetworkFirst(pathname) {
 const CORE_ASSETS = [
   './index.html',
   './daily_hq.html',
+  './application-tracker.js',
   './manifest.json',
   './icons/icon-32.png',
   './icons/icon-180.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
-  './sprites/office-bg.webp',
+  './sprites/yard/office-yard.png',
+  './sprites/yard/penguin-sheet.png',
   './sprites/hub.png',
   './sprites/job.png',
   './sprites/cv.png',
