@@ -465,6 +465,7 @@
 
   <section id="applicationPipeline" class="panel-box application-pipeline" aria-label="Job application pipeline"></section>
   <section class="floorplan" id="floorplan"></section>
+  <p class="office-caption"><button id="linkedinReviewBtn">Import LinkedIn review</button> Private to this browser. LinkedIn is not automatically synced.</p>
 
   <section class="reminder-banner panel-box hidden" id="reminderBanner">
     <p style="margin:0 0 8px;">Want a nudge if tasks are still open later today? Reminders only fire while this app is open (a foreground or backgrounded tab/window) — not if it's fully closed.</p>
@@ -1877,6 +1878,7 @@
   var SOURCE_TAGS = {
     "application-plan": {icon:"📅",title:"Planned here. Checking this off does not update your Google Sheet."},
     'claude-code': { icon:'📻', title:'Logged via Claude Code' },
+    'linkedin-review': {icon:'🔗',title:'Verified LinkedIn activity imported privately into this browser'},
     'outreach-auto': { icon:'🎣', title:'Auto-logged from the outreach tracker' },
     'application-auto': { icon:'📨', title:'Auto-logged from the applications tracker' }
   };
@@ -2266,9 +2268,26 @@
         return '<article class="pipeline-card"><div><h4>'+escapeHtml(heading)+'</h4><p>'+escapeHtml(row.status)+(row.location?' · '+escapeHtml(row.location):'')+(row.appliedDate&&row.kind==='submitted'?' · Applied '+row.appliedDate:'')+'</p>'+row.issues.map(function(issue){return '<p class="pipeline-issue">'+escapeHtml(issue)+'</p>';}).join('')+'</div><div class="pipeline-actions">'+
           (row.url?'<a href="'+escapeHtml(row.url)+'" target="_blank" rel="noopener noreferrer">View role ↗</a>':'')+
           '<a href="'+trackerSheetLink(row.row)+'" target="_blank" rel="noopener noreferrer">Tracker row ↗</a>'+
-          (row.kind==='prospect'?(planned?'<span>Planned for '+escapeHtml(planned.date)+'</span>':'<label>Work on <input type="date" data-plan-date="'+ix+'" min="'+today+'" value="'+today+'" aria-label="Plan date for '+escapeHtml(row.company)+'"></label><button class="icon-btn" data-plan="'+ix+'">Plan application</button>'):'')+'</div></article>';
+          (row.kind==='prospect'?((planned?'<span>'+(planned.task.done?'Marked done here':'Planned')+' · '+escapeHtml(planned.date)+'</span>':'')+'<label>Work on <input type="date" required data-plan-date="'+ix+'" min="'+today+'" value="'+(planned&&planned.date>today?planned.date:today)+'" aria-label="Plan date for '+escapeHtml(row.company)+'"></label><button class="icon-btn" data-plan="'+ix+'">'+(planned?(planned.task.done?'Reopen & reschedule':'Reschedule application'):'Plan application')+'</button>'):'')+'</div></article>';
       }).join(''):'<p class="empty-msg">'+(state.loading?'Loading roles…':state.error?'Use Refresh tracker to try again.':'No roles in this view.')+'</p>')+'</div></details>';
     root.querySelector('details').addEventListener('toggle',function(){pipelineExpanded=this.open;});
+  }
+  function planApplication(row,date){
+    if(row.kind!=='prospect'||!ApplicationTracker.day(date)||date<today)return false;
+    var entries=applicationTaskIndex().filter(function(e){return e.task.applicationKey===row.key&&!e.task.applicationArchived;});
+    var target=date===currentDay.date?currentDay:loadDay(date);
+    var previous=entries.length?entries[0].task:null;
+    // Keep an archive marker so local-server merging cannot resurrect the old plan.
+    entries.forEach(function(entry){
+      if(entry.date===date)return;
+      var oldDay=entry.date===currentDay.date?currentDay:loadDay(entry.date);
+      oldDay.tasks.forEach(function(t){if(t.applicationKey===row.key){t.applicationArchived=true;t.done=false;}});
+      saveDay(oldDay);
+    });
+    var task=target.tasks.find(function(t){return t.applicationKey===row.key;});
+    if(!task){task=Object.assign({},previous||{id:'plan_'+encodeURIComponent(row.key),milestone:false,recurringId:null,createdAt:Date.now()});target.tasks.push(task);}
+    Object.assign(task,{text:ApplicationTracker.label(row,false),category:'job',sub:'applications',done:false,applicationArchived:false,source:'application-plan',applicationKey:row.key,applicationUrl:row.url,applicationCompany:row.company,applicationRole:row.role});
+    saveDay(target);return true;
   }
   document.getElementById('applicationPipeline').addEventListener('click',function(e){
     var button=e.target.closest('button');if(!button)return;
@@ -2278,11 +2297,41 @@
     var index=Number(button.dataset.plan),row=applicationSync.rows[index];if(!row||row.kind!=='prospect')return;
     var input=document.querySelector('[data-plan-date="'+index+'"]'),date=ApplicationTracker.day(input.value);
     if(!date||date<today){input.reportValidity();return;}
-    if(applicationTaskIndex().some(function(e){return e.task.applicationKey===row.key&&!e.task.applicationArchived;})){renderApplicationPipeline();return;}
-    var target=date===currentDay.date?currentDay:loadDay(date);
-    target.tasks.push({id:'plan_'+encodeURIComponent(row.key),text:ApplicationTracker.label(row,false),category:'job',sub:'applications',done:false,milestone:false,recurringId:null,createdAt:Date.now(),source:'application-plan',applicationKey:row.key,applicationUrl:row.url,applicationCompany:row.company,applicationRole:row.role});
-    saveDay(target);renderAll();renderApplicationPipeline();
+    planApplication(row,date);renderAll();renderApplicationPipeline();renderCalendar();
   });
+
+  function importLinkedInReview(payload){
+    if(!payload||!Array.isArray(payload.events)||payload.events.length>1000)throw new Error('Paste a review containing an events list.');
+    var allowed=['sent','responded','received_reply','connection'];
+    var events=payload.events.map(function(e){
+      if(!e||typeof e.name!=='string'||!e.name.trim()||e.name.length>150||!ApplicationTracker.day(e.date)||e.date>today||allowed.indexOf(e.kind)===-1)throw new Error('Each event needs a name, valid past/today date, and activity type.');
+      return {name:e.name.trim(),date:e.date,kind:e.kind};
+    });
+    var saved=safeParse(localStorage.getItem(STORAGE_PREFIX+'linkedinEvents'),[]),changed={},added=0;
+    events.forEach(function(e){
+      var key=[e.name.toLowerCase(),e.date,e.kind].join('|');
+      if(saved.some(function(v){return v.key===key;}))return;
+      saved.push(Object.assign({key:key},e));
+      // Replies received and new connections are context, not completed work.
+      if(e.kind!=='sent'&&e.kind!=='responded')return;
+      var day=changed[e.date]||(changed[e.date]=e.date===currentDay.date?currentDay:loadDay(e.date));
+      var text=(e.kind==='sent'?'Reached out to ':'Responded to ')+e.name+' on LinkedIn';
+      if(!day.tasks.some(function(t){return t.linkedinKey===key||t.text===text;})){
+        day.tasks.push({id:'linkedin_'+encodeURIComponent(key),text:text,category:'job',sub:'outreach',done:true,milestone:false,recurringId:null,createdAt:Date.now(),source:'linkedin-review',linkedinKey:key});added++;
+      }
+    });
+    Object.keys(changed).forEach(function(date){saveDay(changed[date]);});
+    localStorage.setItem(STORAGE_PREFIX+'linkedinEvents',JSON.stringify(saved));
+    renderAll();renderCalendar();return added;
+  }
+  function openLinkedInReview(){
+    document.getElementById('modalRoot').innerHTML='<div class="modal-backdrop"><div class="modal" role="dialog" aria-modal="true" aria-label="Import LinkedIn review"><button class="close-x icon-btn" id="closeLinkedin">✕</button><h2>Import LinkedIn review</h2><p>Paste the verified review from your outreach check. Sent messages and your responses become completed Job Hunt tasks on their original dates. Replies received and connections are saved separately, without earning task credit. No message bodies are needed.</p><label>Review JSON<textarea class="note-area" id="linkedinJson" placeholder="Paste review JSON here"></textarea></label><p id="linkedinImportStatus" role="status"></p><button class="primary" id="saveLinkedin">Import activity</button></div></div>';
+    var history=safeParse(localStorage.getItem(STORAGE_PREFIX+'linkedinEvents'),[]).slice(-30).reverse();
+    var list=document.createElement('ul');history.forEach(function(e){var item=document.createElement('li');item.textContent=e.date+' · '+({sent:'Sent message',responded:'You responded',received_reply:'Reply received',connection:'Connected'}[e.kind])+' · '+e.name;list.appendChild(item);});document.getElementById('linkedinImportStatus').after(list);
+    document.getElementById('closeLinkedin').onclick=function(){document.getElementById('modalRoot').innerHTML='';};
+    document.getElementById('saveLinkedin').onclick=function(){try{var n=importLinkedInReview(JSON.parse(document.getElementById('linkedinJson').value));document.getElementById('linkedinImportStatus').textContent=n+' completed tasks added. Previously imported activity was skipped.';}catch(err){document.getElementById('linkedinImportStatus').textContent=err.message;}};
+  }
+  document.getElementById('linkedinReviewBtn').addEventListener('click',openLinkedInReview);
 
   // Status line only, scoped to today — never a lifetime number that could
   // be misread as today's activity. The actual named entries live as real
