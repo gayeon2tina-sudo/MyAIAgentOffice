@@ -1935,13 +1935,14 @@
     return tasks.slice().sort(function(a, b){ return (a.done?1:0) - (b.done?1:0); });
   }
   function taskRowHtml(t){
+    var postingUrl = ApplicationTracker.safeUrl(t.applicationUrl);
     return '' +
       '<div class="task-row" data-id="'+t.id+'">' +
         '<input type="checkbox" data-role="check" '+(t.done?'checked':'')+(t.source==='application-auto'?' disabled title="Confirmed from tracker"':'')+' aria-label="Complete '+escapeHtml(t.text)+'">' +
         '<button class="star-btn '+(t.milestone?'':'off')+'" data-role="star">⭐</button>' +
         '<span class="task-text '+(t.done?'done':'')+'" data-role="text" title="Click to fix a typo">'+escapeHtml(t.text)+'</span>' +
         sourceTagHtml(t) +
-        (t.applicationKey ? '<a class="task-source-link" href="'+trackerSheetLink()+'" target="_blank" rel="noopener noreferrer" title="Open application tracker">Tracker ↗</a>' : '') +
+        (t.applicationKey && postingUrl ? '<a class="task-source-link" href="'+escapeHtml(postingUrl)+'" target="_blank" rel="noopener noreferrer" title="Open job posting">Job posting ↗</a>' : '') +
         '<button class="del-btn" data-role="remove">✕</button>' +
       '</div>';
   }

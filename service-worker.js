@@ -1,4 +1,4 @@
-const CACHE_NAME = 'biggyinc-v8-reschedule';
+const CACHE_NAME = 'biggyinc-v9-job-posting';
 // Requests whose content actually changes between deploys (the app's own HTML —
 // everything, including all JS, lives inside daily_hq.html) must go network-first.
 // Cache-first here would mean a feature added after someone's first visit stays
