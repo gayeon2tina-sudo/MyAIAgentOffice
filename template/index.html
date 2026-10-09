@@ -1086,6 +1086,13 @@
         "A standing regular call with someone far away protects it from always losing to whatever's urgent that week."
       ] }
   ];
+  CATEGORIES.forEach(function(c){
+    var custom=(window.HQSettings.departments||{})[c.id];
+    if(!custom)return;
+    c.name=custom.name||c.name;c.purpose=custom.purpose||'Your tasks and goals for '+escapeHtml(c.name)+'.';
+    c.subsections=null;
+    c.flavors=['One step forward for '+escapeHtml(c.name)+'.','Your progress counts.'];
+  });
   var CAT_BY_ID = {};
   CATEGORIES.forEach(function(c){ CAT_BY_ID[c.id] = c; });
 
@@ -1827,9 +1834,9 @@
     var html = CATEGORIES.map(function(c){
       return '' +
         '<details class="room" data-cat="'+c.id+'">' +
-          '<summary class="room-floor" style="background:'+c.floor+'"><h3>'+c.icon+' '+c.name+'</h3><span class="room-status" data-role="status"></span></summary>' +
+          '<summary class="room-floor" style="background:'+c.floor+'"><h3>'+c.icon+' '+escapeHtml(c.name)+'</h3><span class="room-status" data-role="status"></span></summary>' +
           '<div class="star-row" data-role="stars"></div>' +
-          '<div class="room-purpose">'+escapeHtml(c.id==='job'?'Scout finds roles and contacts. Editor prepares and submits applications.':c.id==='portfolio'?'Builder creates projects. Storyteller helps you share your work.':({learning:'Compiler helps you learn and practise useful skills.',budget:'Ledger handles money and everyday admin.',health:'Stride makes room for movement, rest, and wellbeing.',friends:'Hearth keeps you connected to family and friends.'}[c.id]||''))+'</div>'+
+          '<div class="room-purpose">'+escapeHtml(c.purpose|| (c.id==='job'?'Scout finds roles and contacts. Editor prepares and submits applications.':c.id==='portfolio'?'Builder creates projects. Storyteller helps you share your work.':({learning:'Compiler helps you learn and practise useful skills.',budget:'Ledger handles money and everyday admin.',health:'Stride makes room for movement, rest, and wellbeing.',friends:'Hearth keeps you connected to family and friends.'}[c.id]||'')))+'</div>'+
           '<div class="room-body" data-role="list"></div>' +
         '</details>';
     }).join('');
@@ -2178,6 +2185,7 @@
     earnedToday.forEach(function(task,index){scheduleYardTrip(task,rankUp&&index===0);});
   }
   function fetchApplications(){
+    if(!window.HQSettings.jobMode && !(window.HQSettings.jobMode===undefined && APPLICATIONS_SHEET_ID))return;
     if(!APPLICATIONS_SHEET_ID){applicationSync.error="Connect your tracker in Setup & guide, or add tasks manually.";renderApplicationPipeline();return;}
     if(applicationSync.loading)return;
     applicationSync.loading=true;applicationSync.error='';renderApplicationPipeline();
@@ -2191,6 +2199,7 @@
   var pipelineExpanded = false;
   function renderApplicationPipeline(){
     var root=document.getElementById('applicationPipeline');if(!root)return;
+    root.hidden=!(window.HQSettings.jobMode===true||(window.HQSettings.jobMode===undefined&&APPLICATIONS_SHEET_ID));if(root.hidden)return;
     var state=applicationSync,rows=state.rows,tasks=applicationTaskIndex();
     var filtered=rows.filter(function(r){return state.filter==='review'?r.issues.length>0:r.kind===state.filter;});
     var counts={prospect:rows.filter(function(r){return r.kind==='prospect';}).length,submitted:rows.filter(function(r){return r.kind==='submitted';}).length,review:rows.filter(function(r){return r.issues.length;}).length};
@@ -3124,6 +3133,7 @@
   };
   // Hearth now occupies the top-middle reading nook for Family & Friends.
   var ROOM_LABELS = { friends:'Family & Friends', job:'Job Hunt', learning:'L&D', portfolio:'Content Building', budget:'Life Admin', health:'Health' };
+  CATEGORIES.forEach(function(c){ROOM_LABELS[c.id]=c.name;});
   var hoveredRoomId = null;
   var catchHotspotHovered = false;
   // The "YOUR INC" signboard already painted into the office art (bottom
@@ -3340,7 +3350,7 @@
       renderDrafts();
     }
     function renderDrafts(){
-      preview.innerHTML=drafts.map(function(p,index){return '<div class="composer-task" data-draft="'+index+'"><span>'+escapeHtml(p.text)+'</span><div><select data-draft-action="category" aria-label="Category for '+escapeHtml(p.text)+'"><option value="">Choose category</option>'+CATEGORIES.map(function(c){return '<option value="'+c.id+'"'+(p.category===c.id?' selected':'')+'>'+c.icon+' '+c.name+'</option>';}).join('')+'</select><button type="button" class="star-btn '+(p.milestone?'':'off')+'" data-draft-action="star" aria-label="Mark '+escapeHtml(p.text)+' as a milestone" aria-pressed="'+p.milestone+'">⭐</button><label><input type="checkbox" data-draft-action="repeat" '+(p.repeats?'checked':'')+'> Daily</label><button type="button" class="del-btn" data-draft-action="remove" aria-label="Remove '+escapeHtml(p.text)+'">✕</button></div></div>';}).join('');
+      preview.innerHTML=drafts.map(function(p,index){return '<div class="composer-task" data-draft="'+index+'"><span>'+escapeHtml(p.text)+'</span><div><select data-draft-action="category" aria-label="Category for '+escapeHtml(p.text)+'"><option value="">Choose category</option>'+CATEGORIES.map(function(c){return '<option value="'+c.id+'"'+(p.category===c.id?' selected':'')+'>'+c.icon+' '+escapeHtml(c.name)+'</option>';}).join('')+'</select><button type="button" class="star-btn '+(p.milestone?'':'off')+'" data-draft-action="star" aria-label="Mark '+escapeHtml(p.text)+' as a milestone" aria-pressed="'+p.milestone+'">⭐</button><label><input type="checkbox" data-draft-action="repeat" '+(p.repeats?'checked':'')+'> Daily</label><button type="button" class="del-btn" data-draft-action="remove" aria-label="Remove '+escapeHtml(p.text)+'">✕</button></div></div>';}).join('');
       save.disabled=!drafts.length;save.textContent=drafts.length?'Save '+drafts.length+' task'+(drafts.length===1?'':'s'):'Save tasks';
       document.getElementById('composerError').textContent='';
     }
@@ -3426,7 +3436,7 @@
     var maxPts = Math.max(thisWeek.points, lastWeek.points, 1);
     var delta = thisWeek.points - lastWeek.points;
     var deltaTxt = delta===0 ? 'no change vs the same days last week' : (delta>0 ? '+'+delta+' vs the same days last week' : delta+' vs the same days last week');
-    var catRows = CATEGORIES.map(function(c){ return '<div class="cat-breakdown-row"><span>'+c.icon+' '+c.name+'</span><span>'+thisWeek.catCounts[c.id]+'</span></div>'; }).join('');
+    var catRows = CATEGORIES.map(function(c){ return '<div class="cat-breakdown-row"><span>'+c.icon+' '+escapeHtml(c.name)+'</span><span>'+thisWeek.catCounts[c.id]+'</span></div>'; }).join('');
     var milestoneList = thisWeek.milestones.length ? thisWeek.milestones.map(function(m){ var cat=CAT_BY_ID[m.category]; return '<li>⭐ '+escapeHtml(m.text)+' <span class="cat-tag">'+(cat?cat.icon+' '+cat.name:'')+' · '+prettyDate(m.date)+'</span></li>'; }).join('') : '<li class="unchecked">No completed starred tasks this week.</li>';
     var outreachSentTxt = thisWeek.sent;
     var outreachRepliedTxt = thisWeek.replied;
