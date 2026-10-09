@@ -1,0 +1,37 @@
+(function(){
+'use strict';
+const KEY='friendhq:settings:v1';
+try{window.HQSettings=JSON.parse(localStorage.getItem(KEY))||{};}catch(e){window.HQSettings={};}
+window.HQCompanyName=()=> (window.HQSettings.name||'Your')+' INC';
+function sheet(value){if(!value.trim())return {id:'',gid:'0'};let u;try{u=new URL(value);}catch(e){throw Error('Paste the full Google Sheets link.');}const m=u.pathname.match(/^\/spreadsheets\/d\/([\w-]+)/);if(u.hostname!=='docs.google.com'||!m)throw Error('Use a Google Sheets link, not a job posting link.');const gid=new URLSearchParams(u.hash.slice(1)).get('gid')||u.searchParams.get('gid')||'0';if(!/^\d+$/.test(gid))throw Error('The sheet tab ID must be a number.');return {id:m[1],gid};}
+window.openHQSetup=function(){
+let dialog=document.getElementById('hqSetup');if(dialog){dialog.showModal();return;}
+dialog=document.createElement('dialog');dialog.id='hqSetup';dialog.innerHTML=`
+<form id="hqSettingsForm"><h2>Your own little company</h2><p>Plan your day, finish tasks, and build an igloo with your penguin team.</p>
+<label>Company name <span>(we add INC)</span><input id="hqName" required maxlength="32" placeholder="e.g. Luna" autocomplete="organization"></label>
+<p class="hq-note">No account or password needed. Your name, tasks and progress stay in this browser. They do not sync across devices. Use Export regularly. Installing the app uses the generic name “My HQ”; your company name appears inside the app and browser tab.</p>
+<details><summary>Connect your job tracker (optional)</summary>
+<ol><li><a href="job-tracker.csv" download>Download the blank job tracker</a>, then import it into a new Google Sheet.</li><li>Keep the column headings. Give every role a unique, permanent Role ID. Put the actual job-posting URL in Application Link.</li><li>Use <strong>Prospecting</strong> for roles you have not applied to. After submitting, set Round Status to <strong>Applied</strong> and Date Applied to the real submission date. Later supported statuses: Screening Interview, First Round Interview, Second Round Interview, Final Round Interview, Rejected, Offer, No Reply.</li><li>For automatic reading, the sheet must be viewable without signing in (Share → Anyone with the link → Viewer). Anyone with that link can read it. Use a separate sheet without private notes or contact details. If you prefer to keep it private, leave this disconnected and add tasks manually.</li><li>Open the correct sheet tab, copy its full address, and paste it below.</li></ol>
+<label>Job tracker link<input id="hqSheet" type="url" placeholder="https://docs.google.com/spreadsheets/d/…/edit#gid=0"></label>
+<p>Planning or rescheduling here does not edit your sheet. Refresh tracker reads changes. Historical submissions from before your first connection are not backfilled as completed tasks. A submission needs both a supported status and a valid Date Applied.</p></details>
+<details><summary>Outreach tracker (optional)</summary>
+<p>Optional sheet: <a href="outreach-tracker.csv" download>download the outreach headings</a>. Use Name, Company, Date Reached Out and Date Replied. The same public-view access requirement applies; avoid private contact information. Dates must be actual event dates.</p>
+<label>Optional outreach sheet link<input id="hqOutreach" type="url"></label><label>Outreach tab name<input id="hqOutreachTab" placeholder="Outreach Tracker"></label></details>
+<details><summary>How to use your HQ</summary><ol><li>Open Goals and choose outcomes that matter to you.</li><li>Use Plan this week to set weekly outcomes; Add tasks to schedule small steps.</li><li>Complete today's tasks to build today's igloo. Adding unfinished work reopens it.</li><li>Review your day and week. The calendar keeps your daily history.</li></ol><p>Calendar planning is built in. Google Calendar account sync and automatic LinkedIn monitoring are not included. Optional browser reminders require permission and depend on the app/browser being available.</p></details>
+<details><summary>Prompts to copy into your assistant</summary>
+<label>Plan my week<textarea readonly rows="4">Help me plan a realistic week. Ask for my fixed appointments, available time, deadlines and three important outcomes. Break each outcome into small tasks with a date, duration and category: Job Hunt, Family & Friends, L&D, Content Building, Life Admin or Health. Do not invent appointments or mark work complete.</textarea></label>
+<label>Prepare job tracker rows<textarea readonly rows="4">Help me organize these job links into rows with: Role ID, Company, Role, Round Status, Date Applied, Application Link, Location, Notes. Use a stable unique Role ID and the actual posting URL. Mark unsubmitted roles Prospecting and leave Date Applied blank. Never infer that I applied. Ask about missing details.</textarea></label>
+</details>
+<p id="hqSetupError" role="alert"></p><div class="hq-actions"><button type="submit">Save & open my office</button><button type="button" id="hqCancel">Close</button></div></form>`;
+const style=document.createElement('style');style.textContent='#hqSetup{width:min(660px,calc(100vw - 32px));max-height:85vh;box-sizing:border-box;border:3px solid #9dcfee;border-radius:20px;padding:26px;color:#23334b;background:#f4faff;font:16px/1.5 system-ui;overflow:auto}#hqSetup::backdrop{background:#172f49aa}#hqSetup h2{margin-top:0}#hqSetup label{display:block;margin:16px 0;font-weight:600}#hqSetup input,#hqSetup textarea{display:block;width:100%;box-sizing:border-box;font:inherit;border:1px solid #86b9d8;border-radius:8px;padding:10px;background:white;color:#23334b}#hqSetup details{padding:14px 0;border-top:1px solid #bdd9eb}#hqSetup summary{cursor:pointer;font-weight:700}#hqSetup a{color:#12618b}#hqSetup .hq-note{font-size:14px}#hqSetup button{font:inherit;padding:10px 15px;border:1px solid #2b827c;border-radius:8px;cursor:pointer;background:#d8f3ef}#hqSetup .hq-actions{display:flex;gap:10px;flex-wrap:wrap}#hqSetupError{color:#a12626}';document.head.append(style);document.body.append(dialog);
+const cfg=window.HQSettings;
+dialog.querySelector('#hqName').value=cfg.name||'';
+dialog.querySelector('#hqSheet').value=cfg.sheetId?'https://docs.google.com/spreadsheets/d/'+cfg.sheetId+'/edit#gid='+cfg.gid:'';
+dialog.querySelector('#hqOutreach').value=cfg.outreachId?'https://docs.google.com/spreadsheets/d/'+cfg.outreachId+'/edit':'';
+dialog.querySelector('#hqOutreachTab').value=cfg.outreachTab||'Outreach Tracker';
+dialog.querySelector('#hqCancel').onclick=()=>dialog.close();
+dialog.querySelector('form').onsubmit=e=>{e.preventDefault();try{const name=dialog.querySelector('#hqName').value.trim().replace(/\s+inc\.?$/i,'').trim();if(!name)throw Error('Choose a company name.');const jobs=sheet(dialog.querySelector('#hqSheet').value),outreach=sheet(dialog.querySelector('#hqOutreach').value);localStorage.setItem(KEY,JSON.stringify({name,sheetId:jobs.id,gid:jobs.gid,outreachId:outreach.id,outreachTab:dialog.querySelector('#hqOutreachTab').value.trim()||'Outreach Tracker'}));location.reload();}catch(err){dialog.querySelector('#hqSetupError').textContent=err.message;}};
+dialog.showModal();
+};
+window.addEventListener('DOMContentLoaded',()=>{if(!window.HQSettings.name)window.openHQSetup();});
+})();
