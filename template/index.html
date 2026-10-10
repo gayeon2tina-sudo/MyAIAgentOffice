@@ -424,7 +424,7 @@
 <body>
 
 <header class="top">
-  <h1 class="title">YOUR INC</h1><button class="icon-btn" onclick="window.openHQSetup()">Setup &amp; guide</button>
+  <h1 class="title">YOUR INC</h1>
   <div class="hud">
     <button class="hud-pill points" id="pointsPill" title="0 fish caught today — click to see your Milestone history board">🐟 <span class="val" id="pointsVal">0</span></button>
     <button class="hud-pill streak" id="streakPill" title="0 day slide streak — click to see the last two weeks">🛷 <span class="val" id="streakVal">0</span></button>
@@ -441,6 +441,7 @@
   <div class="view-tabs">
     <button class="tab-btn active" id="tabOfficeBtn">🏢 The Office</button>
     <button class="tab-btn" id="tabCalendarBtn">📅 Calendar</button>
+    <button class="tab-btn" type="button" onclick="window.openHQSetup()">⚙ Settings</button>
   </div>
 
   <div id="officeView">
@@ -2186,7 +2187,7 @@
   }
   function fetchApplications(){
     if(!window.HQSettings.jobMode && !(window.HQSettings.jobMode===undefined && APPLICATIONS_SHEET_ID))return;
-    if(!APPLICATIONS_SHEET_ID){applicationSync.error="Connect your tracker in Setup & guide, or add tasks manually.";renderApplicationPipeline();return;}
+    if(!APPLICATIONS_SHEET_ID){applicationSync.error="Connect your tracker in Settings, or add tasks manually.";renderApplicationPipeline();return;}
     if(applicationSync.loading)return;
     applicationSync.loading=true;applicationSync.error='';renderApplicationPipeline();
     var controller=new AbortController(),timeout=setTimeout(function(){controller.abort();},15000);
