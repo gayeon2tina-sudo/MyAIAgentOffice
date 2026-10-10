@@ -4,7 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Your INC — Daily HQ</title>
-<script src="setup.js?v=20261010-faq"></script>
+<script src="vendor/supabase-2.57.4.js"></script>
+<script src="cloud.js?v=20261010-cloud1"></script>
+<script src="setup.js?v=20261010-cloud1"></script>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#ee7b11">
 <link rel="icon" href="../icons/icon-32.png" sizes="32x32">
@@ -502,15 +504,16 @@
     </section>
   </div>
 
-  <p class="footer-note">Data lives only in this browser (localStorage). Export regularly if you don't want to depend on one browser.</p>
+  <p class="footer-note">Check the save status above. Browser-only progress stays on this device. Signed-in accounts can download full backups in Account & backup.</p>
 </main>
 
 <div id="modalRoot"></div>
 
 <script src="../application-tracker.js"></script>
 <script>
-(function(){
+(async function(){
   "use strict";
+  await window.HQSetupReady;
 
   /* ===================== Config ===================== */
 
@@ -1159,7 +1162,7 @@
   }
   function defaultDay(d){ return { date:d, tasks:[], outreach:{}, note:'', reviewed:false }; }
   function loadDay(d){
-    var day = safeParse(localStorage.getItem(DAY_KEY(d)), null);
+    var day = safeParse(HQStore.getItem(DAY_KEY(d)), null);
     if(!day) return defaultDay(d);
     if(!Array.isArray(day.tasks)) day.tasks = [];
     if(typeof day.note !== 'string') day.note = '';
@@ -1198,32 +1201,32 @@
       }
     });
   }
-  function saveDay(day){localStorage.setItem(DAY_KEY(day.date),JSON.stringify(day));}
+  function saveDay(day){HQStore.setItem(DAY_KEY(day.date),JSON.stringify(day));}
   function syncDayFromServer(){return Promise.resolve(false);}
-  function loadRecurring(){ return safeParse(localStorage.getItem(RECURRING_KEY), []); }
-  function saveRecurring(list){ localStorage.setItem(RECURRING_KEY, JSON.stringify(list)); }
+  function loadRecurring(){ return safeParse(HQStore.getItem(RECURRING_KEY), []); }
+  function saveRecurring(list){ HQStore.setItem(RECURRING_KEY, JSON.stringify(list)); }
 
-  function loadMeta(){ return safeParse(localStorage.getItem(META_KEY), { lastOpenedDate:null }); }
-  function saveMeta(meta){ localStorage.setItem(META_KEY, JSON.stringify(meta)); }
+  function loadMeta(){ return safeParse(HQStore.getItem(META_KEY), { lastOpenedDate:null }); }
+  function saveMeta(meta){ HQStore.setItem(META_KEY, JSON.stringify(meta)); }
 
-  function loadMechanics(){ return safeParse(localStorage.getItem(MECH_KEY), { portfolioGrowth:0, budgetFill:0 }); }
-  function saveMechanics(m){ localStorage.setItem(MECH_KEY, JSON.stringify(m)); }
+  function loadMechanics(){ return safeParse(HQStore.getItem(MECH_KEY), { portfolioGrowth:0, budgetFill:0 }); }
+  function saveMechanics(m){ HQStore.setItem(MECH_KEY, JSON.stringify(m)); }
 
-  function loadGoals(){ return safeParse(localStorage.getItem(GOALS_KEY), null); }
-  function saveGoals(g){ localStorage.setItem(GOALS_KEY, JSON.stringify(g)); }
+  function loadGoals(){ return safeParse(HQStore.getItem(GOALS_KEY), null); }
+  function saveGoals(g){ HQStore.setItem(GOALS_KEY, JSON.stringify(g)); }
 
   var REMINDER_DEFAULTS = { enabled:false, intervalHours:2, activeStart:'08:00', activeEnd:'22:00', lastReminderAt:0, bannerDismissed:false };
   function loadReminderSettings(){
-    var s = safeParse(localStorage.getItem(REMINDERS_KEY), null);
+    var s = safeParse(HQStore.getItem(REMINDERS_KEY), null);
     if(!s) return Object.assign({}, REMINDER_DEFAULTS);
     return Object.assign({}, REMINDER_DEFAULTS, s);
   }
-  function saveReminderSettings(s){ localStorage.setItem(REMINDERS_KEY, JSON.stringify(s)); }
+  function saveReminderSettings(s){ HQStore.setItem(REMINDERS_KEY, JSON.stringify(s)); }
 
   function allDayDates(){
     var out = [];
-    for(var i=0;i<localStorage.length;i++){
-      var key = localStorage.key(i);
+    for(var i=0;i<HQStore.length;i++){
+      var key = HQStore.key(i);
       if(key.indexOf(STORAGE_PREFIX + 'day:') === 0) out.push(key.slice((STORAGE_PREFIX+'day:').length));
     }
     return out.sort();
@@ -1237,7 +1240,7 @@
      wording, and never touches anything that looks like a real acronym. */
   var TYPO_ACRONYM_ALLOWLIST = ['AWS','CV','PM','PMM','UX','UI','API','US','USA','PDF','HTML','CSS','JS','SQL','AI','ML','HR','CEO','CFO','CTO','DMV','ID','SEO','FAQ','ASAP','DIY','ETA','FYI','LLC'];
   var TYPO_CACHE_KEY = STORAGE_PREFIX + 'typoCache';
-  function loadTypoCache(){ return safeParse(localStorage.getItem(TYPO_CACHE_KEY), {}); }
+  function loadTypoCache(){ return safeParse(HQStore.getItem(TYPO_CACHE_KEY), {}); }
   function saveTypoCache(cache){
     // Capped the same way the outreach-seen list is — only recent
     // corrections matter, this can't grow forever.
@@ -1247,7 +1250,7 @@
       keys.slice(-300).forEach(function(k){ trimmed[k] = cache[k]; });
       cache = trimmed;
     }
-    localStorage.setItem(TYPO_CACHE_KEY, JSON.stringify(cache));
+    HQStore.setItem(TYPO_CACHE_KEY, JSON.stringify(cache));
   }
   // A word that's an accidental double-capital slip (holding Shift a beat
   // too long) — "APply" -> "Apply", "BEzeos" -> "Bezeos" — not a real
@@ -1445,26 +1448,26 @@
   function renderWeeklyBanner(){
     var banner = document.getElementById('weeklyBanner');
     var wk = currentWeekKey();
-    if(localStorage.getItem(WEEKLY_BANNER_KEY) === wk){ banner.classList.add('hidden'); return; }
-    var plan=safeParse(localStorage.getItem(STORAGE_PREFIX+'weekPlan:'+wk),null);
+    if(HQStore.getItem(WEEKLY_BANNER_KEY) === wk){ banner.classList.add('hidden'); return; }
+    var plan=safeParse(HQStore.getItem(STORAGE_PREFIX+'weekPlan:'+wk),null);
     document.getElementById('weeklyBannerText').textContent=plan?'This week: '+plan.outcomes.split('\n')[0]+' · '+plan.affirmation:'A new week: choose up to three outcomes and one small first step.';
     if(!banner.querySelector('[data-week-plan]')){var btn=document.createElement('button');btn.className='icon-btn';btn.dataset.weekPlan='true';btn.textContent='Set weekly plan';btn.addEventListener('click',openWeeklyPlan);banner.appendChild(btn);}
     banner.classList.remove('hidden');
   }
   document.getElementById('weeklyBannerDismiss').addEventListener('click', function(){
-    localStorage.setItem(WEEKLY_BANNER_KEY, currentWeekKey());
+    HQStore.setItem(WEEKLY_BANNER_KEY, currentWeekKey());
     document.getElementById('weeklyBanner').classList.add('hidden');
   });
 
   function openWeeklyPlan(){
-    var key=STORAGE_PREFIX+'weekPlan:'+currentWeekKey(), plan=safeParse(localStorage.getItem(key),{});
+    var key=STORAGE_PREFIX+'weekPlan:'+currentWeekKey(), plan=safeParse(HQStore.getItem(key),{});
     document.getElementById('modalRoot').innerHTML='<div class="modal-backdrop"><div class="modal" role="dialog" aria-modal="true" aria-label="Plan this week"><button class="close-x icon-btn" id="closeWeekPlan">✕</button><h2>Plan this week</h2><p>New plan each Monday. Choose outcomes you can control.</p><label>Up to three outcomes<textarea class="note-area" id="weekOutcomes" placeholder="Send 3 thoughtful outreach messages\nFinish one portfolio case study">'+escapeHtml(plan.outcomes||'')+'</textarea></label><label>One small first step<input class="note-area" id="weekFirstStep" value="'+escapeHtml(plan.firstStep||'')+'" placeholder="Draft one outreach message"></label><label>Your affirmation<input class="note-area" id="weekAffirmation" value="'+escapeHtml(plan.affirmation||'Small, consistent actions count.')+'"></label><p id="weekPlanError" role="status"></p><button class="primary" id="saveWeekPlan">Save weekly plan</button></div></div>';
     document.getElementById('closeWeekPlan').onclick=closeModal;
     document.getElementById('saveWeekPlan').onclick=function(){
       var outcomes=document.getElementById('weekOutcomes').value.trim(), firstStep=document.getElementById('weekFirstStep').value.trim(), affirmation=document.getElementById('weekAffirmation').value.trim();
       if(!outcomes||outcomes.split('\n').filter(Boolean).length>3){document.getElementById('weekPlanError').textContent='Choose between one and three outcomes.';return;}
-      localStorage.setItem(key,JSON.stringify({outcomes:outcomes,firstStep:firstStep,affirmation:affirmation}));
-      localStorage.removeItem(WEEKLY_BANNER_KEY);closeModal();renderWeeklyBanner();
+      HQStore.setItem(key,JSON.stringify({outcomes:outcomes,firstStep:firstStep,affirmation:affirmation}));
+      HQStore.removeItem(WEEKLY_BANNER_KEY);closeModal();renderWeeklyBanner();
       if(firstStep){openDailyEntryModal();var input=document.getElementById('dailyEntryInput');input.value=firstStep;input.dispatchEvent(new Event('input'));}
     };
   }
@@ -1763,8 +1766,8 @@
 
   /* ===================== Sound effects (default OFF, synthesized — no
      external audio asset needed) ===================== */
-  function soundEnabled(){ return localStorage.getItem(SOUND_KEY) === '1'; }
-  function setSoundEnabled(v){ localStorage.setItem(SOUND_KEY, v ? '1' : '0'); }
+  function soundEnabled(){ return HQStore.getItem(SOUND_KEY) === '1'; }
+  function setSoundEnabled(v){ HQStore.setItem(SOUND_KEY, v ? '1' : '0'); }
   var sharedAudioCtx = null;
   function audioCtx(){
     if(!sharedAudioCtx){
@@ -2039,11 +2042,11 @@
     return 'https://docs.google.com/spreadsheets/d/' + OUTREACH_SHEET_ID + '/gviz/tq?tqx=out:json&sheet=' + encodeURIComponent(OUTREACH_TAB);
   }
 
-  function loadOutreachSeen(){ return safeParse(localStorage.getItem(OUTREACH_SEEN_KEY), []); }
+  function loadOutreachSeen(){ return safeParse(HQStore.getItem(OUTREACH_SEEN_KEY), []); }
   function saveOutreachSeen(list){
     // Capped so this can't grow forever — only the most recent entries matter
     // for dedup, since older ones are vanishingly unlikely to reappear.
-    localStorage.setItem(OUTREACH_SEEN_KEY, JSON.stringify(list.slice(-500)));
+    HQStore.setItem(OUTREACH_SEEN_KEY, JSON.stringify(list.slice(-500)));
   }
   // Dedupe key is contact + which action + which date, not the whole row —
   // this only ever needs to distinguish "have I already logged Jane Doe's
@@ -2153,7 +2156,7 @@
   var applicationSync={loading:false,error:'',rows:[],lastSync:null,filter:'prospect'};
   var APPLICATION_REGISTRY_KEY=STORAGE_PREFIX+'applicationRegistry:v2';
   function applicationsGvizUrl(){return 'https://docs.google.com/spreadsheets/d/'+APPLICATIONS_SHEET_ID+'/gviz/tq?tqx=out:json&headers=1&gid='+APPLICATIONS_GID;}
-  function applicationRegistry(){return safeParse(localStorage.getItem(APPLICATION_REGISTRY_KEY),{initialized:false,records:{}});}
+  function applicationRegistry(){return safeParse(HQStore.getItem(APPLICATION_REGISTRY_KEY),{initialized:false,records:{}});}
   function trackerSheetLink(row){if(!APPLICATIONS_SHEET_ID)return '#';return 'https://docs.google.com/spreadsheets/d/'+APPLICATIONS_SHEET_ID+'/edit#gid='+APPLICATIONS_GID+(row?'&range=A'+row+':N'+row:'');}
   function applicationTaskIndex(){
     var out=[];allDayDates().forEach(function(date){loadDay(date).tasks.forEach(function(task){if(task.applicationKey||task.source==='application-auto')out.push({date:date,task:task});});});return out;
@@ -2179,7 +2182,7 @@
       if(!alreadyDone&&row.appliedDate===today)earnedToday.push(task);
     });
     Object.keys(changed).forEach(function(date){saveDay(changed[date]);});
-    registry.initialized=true;localStorage.setItem(APPLICATION_REGISTRY_KEY,JSON.stringify(registry));
+    registry.initialized=true;HQStore.setItem(APPLICATION_REGISTRY_KEY,JSON.stringify(registry));
     if(Object.keys(changed).length)renderAll();
     var next=currentRank(totalPointsAllTime()),rankUp=next.title!==prevRank.title;
     if(rankUp&&earnedToday.length)showRankUp(next);
@@ -2252,7 +2255,7 @@
       if(!e||typeof e.name!=='string'||!e.name.trim()||e.name.length>150||!ApplicationTracker.day(e.date)||e.date>today||allowed.indexOf(e.kind)===-1)throw new Error('Each event needs a name, valid past/today date, and activity type.');
       return {name:e.name.trim(),date:e.date,kind:e.kind};
     });
-    var saved=safeParse(localStorage.getItem(STORAGE_PREFIX+'linkedinEvents'),[]),changed={},added=0;
+    var saved=safeParse(HQStore.getItem(STORAGE_PREFIX+'linkedinEvents'),[]),changed={},added=0;
     events.forEach(function(e){
       var key=[e.name.toLowerCase(),e.date,e.kind].join('|');
       if(saved.some(function(v){return v.key===key;}))return;
@@ -2266,12 +2269,12 @@
       }
     });
     Object.keys(changed).forEach(function(date){saveDay(changed[date]);});
-    localStorage.setItem(STORAGE_PREFIX+'linkedinEvents',JSON.stringify(saved));
+    HQStore.setItem(STORAGE_PREFIX+'linkedinEvents',JSON.stringify(saved));
     renderAll();renderCalendar();return added;
   }
   function openLinkedInReview(){
     document.getElementById('modalRoot').innerHTML='<div class="modal-backdrop"><div class="modal" role="dialog" aria-modal="true" aria-label="Import LinkedIn review"><button class="close-x icon-btn" id="closeLinkedin">✕</button><h2>Import LinkedIn review</h2><p>Paste the verified review from your outreach check. Sent messages and your responses become completed Job Hunt tasks on their original dates. Replies received and connections are saved separately, without earning task credit. No message bodies are needed.</p><label>Review JSON<textarea class="note-area" id="linkedinJson" placeholder="Paste review JSON here"></textarea></label><p id="linkedinImportStatus" role="status"></p><button class="primary" id="saveLinkedin">Import activity</button></div></div>';
-    var history=safeParse(localStorage.getItem(STORAGE_PREFIX+'linkedinEvents'),[]).slice(-30).reverse();
+    var history=safeParse(HQStore.getItem(STORAGE_PREFIX+'linkedinEvents'),[]).slice(-30).reverse();
     var list=document.createElement('ul');history.forEach(function(e){var item=document.createElement('li');item.textContent=e.date+' · '+({sent:'Sent message',responded:'You responded',received_reply:'Reply received',connection:'Connected'}[e.kind])+' · '+e.name;list.appendChild(item);});document.getElementById('linkedinImportStatus').after(list);
     document.getElementById('closeLinkedin').onclick=function(){document.getElementById('modalRoot').innerHTML='';};
     document.getElementById('saveLinkedin').onclick=function(){try{var n=importLinkedInReview(JSON.parse(document.getElementById('linkedinJson').value));document.getElementById('linkedinImportStatus').textContent=n+' completed tasks added. Previously imported activity was skipped.';}catch(err){document.getElementById('linkedinImportStatus').textContent=err.message;}};
@@ -2858,8 +2861,8 @@
   }
   var autoTipIndex=0, nextAutoTipAt=Date.now()+8000;
   var autoTipsToggle=document.getElementById('autoTipsToggle');
-  autoTipsToggle.checked=localStorage.getItem(STORAGE_PREFIX+'autoTips')!=='off';
-  autoTipsToggle.addEventListener('change',function(){localStorage.setItem(STORAGE_PREFIX+'autoTips',this.checked?'on':'off');if(!this.checked)clearBubble();});
+  autoTipsToggle.checked=HQStore.getItem(STORAGE_PREFIX+'autoTips')!=='off';
+  autoTipsToggle.addEventListener('change',function(){HQStore.setItem(STORAGE_PREFIX+'autoTips',this.checked?'on':'off');if(!this.checked)clearBubble();});
   function maybeAutomaticTip(){
     if(Date.now()<nextAutoTipAt||!autoTipsToggle.checked||document.hidden||activeBubbleCharId||document.getElementById('modalRoot').children.length||document.getElementById('officeView').classList.contains('hidden'))return;
     var rect=document.getElementById('officeCanvas').getBoundingClientRect();
@@ -2867,7 +2870,7 @@
     var ch=CHARACTERS[autoTipIndex++%CHARACTERS.length],pos=lastCharPos[ch.id]||ch.entrance;
     showCannedTip(ch,pos.x,Math.min(pos.y,790));
     nextAutoTipAt=Date.now()+90000;
-    var plan=safeParse(localStorage.getItem(STORAGE_PREFIX+'weekPlan:'+currentWeekKey()),null);
+    var plan=safeParse(HQStore.getItem(STORAGE_PREFIX+'weekPlan:'+currentWeekKey()),null);
     if(plan&&plan.affirmation&&autoTipIndex%3===1){var bubble=bubbleLayer().querySelector('.tip-bubble');if(bubble)bubble.textContent=ch.name+': '+plan.affirmation;}
   }
   setTimeout(maybeAutomaticTip,8000);
@@ -3411,7 +3414,7 @@
   /* ===================== Weekly review ===================== */
 
   function weeklyPlanReviewHtml(){
-    var plan=safeParse(localStorage.getItem(STORAGE_PREFIX+'weekPlan:'+currentWeekKey()),null);
+    var plan=safeParse(HQStore.getItem(STORAGE_PREFIX+'weekPlan:'+currentWeekKey()),null);
     return plan?'<h3>Your weekly outcomes</h3><ul>'+plan.outcomes.split('\n').filter(Boolean).map(function(x){return '<li>'+escapeHtml(x)+'</li>';}).join('')+'</ul><p>'+escapeHtml(plan.affirmation)+'</p>':'<p>No weekly plan yet. Use Plan this week to set your outcomes.</p>';
   }
   function openWeeklyReview(){
@@ -3579,7 +3582,7 @@
   function exportData(){
     var out = { days:{}, recurring: loadRecurring(), meta: loadMeta(), mechanics: loadMechanics(), goals: loadGoals(), exportedAt: new Date().toISOString() };
     allDayDates().forEach(function(d){ out.days[d] = loadDay(d); });
-    out.weeklyPlans={};Object.keys(localStorage).filter(function(k){return k.indexOf(STORAGE_PREFIX+'weekPlan:')===0;}).forEach(function(k){out.weeklyPlans[k.split('weekPlan:')[1]]=safeParse(localStorage.getItem(k),null);});
+    out.weeklyPlans={};HQStore.keys().filter(function(k){return k.indexOf(STORAGE_PREFIX+'weekPlan:')===0;}).forEach(function(k){out.weeklyPlans[k.split('weekPlan:')[1]]=safeParse(HQStore.getItem(k),null);});
     var blob = new Blob([JSON.stringify(out, null, 2)], { type:'application/json' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a'); a.href = url; a.download = 'my-hq-export-' + today + '.json';
@@ -3644,7 +3647,7 @@
   buildFloorplan();
   var pendingReviewDate = initDayRollover();
   // The on-disk file (local server only) is the source of truth when it
-  // exists — pull it into localStorage before anything else reads today's
+  // exists — pull it into HQStore before anything else reads today's
   // data, so a task logged directly to the file (by a Claude Code session,
   // or by this same browser earlier) is never stale relative to it.
   syncDayFromServer(today).then(function(){
