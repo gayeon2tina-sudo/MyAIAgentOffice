@@ -1,5 +1,5 @@
-const CACHE='friendhq-v4-cloud1';
-const ASSETS=['./','./setup.js?v=20261010-cloud1','./cloud.js?v=20261010-cloud1','./vendor/supabase-2.57.4.js','./manifest.json','../application-tracker.js','../sprites/yard/office-yard.png','../sprites/yard/penguin-sheet.png','../sprites/yard/penguin-igloo.gif'];
+const CACHE='friendhq-v5-google1';
+const ASSETS=['./','./setup.js?v=20261012-google1','./cloud.js?v=20261012-google1','./vendor/supabase-2.57.4.js','./manifest.json','../application-tracker.js','../sprites/yard/office-yard.png','../sprites/yard/penguin-sheet.png','../sprites/yard/penguin-igloo.gif'];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));});
 self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));
 self.addEventListener('fetch',e=>{

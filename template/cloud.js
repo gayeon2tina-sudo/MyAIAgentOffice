@@ -41,10 +41,22 @@ window.HQStore={
  removeItem(k){if(!allowed(k))return;if(blocked)throw Error('Saving paused');if(user){if(!Object.hasOwn(record.payload,k))return;delete record.payload[k];changed();}else native.removeItem(k);}
 };
 async function loginGate(){
- const d=panel('Welcome to your HQ','Sign in with an email link to save your office to your account, or continue with this browser only.');
- const note=document.createElement('p');note.textContent='Email sign-in is in setup: currently available only to the project owner. Friends can use browser-only mode until the email service is connected.';d.append(note);
- const form=document.createElement('form');const l=document.createElement('label');l.textContent='Email address';const input=document.createElement('input');input.type='email';input.required=true;input.autocomplete='email';l.append(input);form.append(l);const send=document.createElement('button');send.textContent='Email me a sign-in link';form.append(send);const msg=document.createElement('p');msg.setAttribute('role','status');form.append(msg);d.append(form);
- form.onsubmit=async e=>{e.preventDefault();send.disabled=true;msg.textContent='Sending…';try{if(!client)throw Error('Sign-in service unavailable. Reload while online.');const {error}=await client.auth.signInWithOtp({email:input.value.trim(),options:{emailRedirectTo:RETURN}});if(error)throw error;msg.textContent='Check your inbox and spam folder. Open the newest link to sign in. Keep this page open.';}catch(e){msg.textContent='Could not send the link. Email delivery is currently limited to the project owner; otherwise try again later.';}finally{setTimeout(()=>send.disabled=false,60000);}};
+ const d=panel('Welcome to your HQ','Sign in with Google to save your office to your private account, or continue with this browser only.');
+ const note=document.createElement('p');note.textContent='Google shares your name, email and profile picture for sign-in. Your existing browser office stays here until you choose to copy it to your account.';d.append(note);
+ const msg=document.createElement('p');msg.setAttribute('role','status');
+ const signIn=button(d,'Continue with Google',async()=>{
+  signIn.disabled=true;msg.textContent='Opening Google…';
+  try{
+   if(!client)throw Error('Sign-in unavailable');
+   const {data,error}=await client.auth.signInWithOAuth({provider:'google',options:{redirectTo:RETURN,skipBrowserRedirect:true,queryParams:{prompt:'select_account'}}});
+   if(error||!data?.url)throw error||Error('No sign-in URL');
+   window.location.assign(data.url);
+  }catch(e){msg.textContent='Could not open Google sign-in. Please try again while online. Your browser progress is unchanged.';signIn.disabled=false;}
+ });
+ d.append(msg);
+ const privacy=document.createElement('a');privacy.href='privacy.html';privacy.target='_blank';privacy.rel='noopener';privacy.textContent='Privacy and data storage';d.append(privacy);
+ const authError=new URLSearchParams(location.hash.slice(1)).get('error_description')||new URLSearchParams(location.search).get('error_description');
+ if(authError){msg.textContent='Sign-in was not completed. Try again or continue in this browser.';history.replaceState(null,'',location.pathname);}
  return new Promise(resolve=>button(d,'Continue in this browser only',()=>{d.remove();resolve();}));
 }
 async function account(){
@@ -73,7 +85,7 @@ async function initialize(){
   if(record.revision===0&&!Object.keys(record.payload).length&&Object.keys(guestData()).length){await new Promise(resolve=>{const d=panel('Bring your existing office?','This browser has an office saved without an account. Copy it into your signed-in account only if it belongs to you. The original browser copy will remain.');button(d,'Copy my browser office to this account',()=>{record.payload=guestData();changed();d.remove();resolve();});button(d,'Start a separate office',()=>{d.remove();resolve();});});}
   if(record.dirty)sync();
  }
- const bar=document.createElement('div');bar.id='hqCloudBar';const status=document.createElement('span');status.id='hqCloudStatus';status.textContent=state;bar.append(status);button(bar,user?'Account & backup':'Email sign-in',account);document.body.prepend(bar);
+ const bar=document.createElement('div');bar.id='hqCloudBar';const status=document.createElement('span');status.id='hqCloudStatus';status.textContent=state;bar.append(status);button(bar,user?'Account & backup':'Sign in',account);document.body.prepend(bar);
  client?.auth.onAuthStateChange((event,session)=>{if(opened&&((session?.user?.id||null)!==(user?.id||null)))setTimeout(()=>location.reload(),0);});opened=true;
  window.addEventListener('online',sync);
  window.addEventListener('beforeunload',e=>{if(record?.dirty){e.preventDefault();e.returnValue='';}});
