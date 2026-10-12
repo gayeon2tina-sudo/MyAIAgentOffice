@@ -41,7 +41,7 @@ window.HQStore={
  removeItem(k){if(!allowed(k))return;if(blocked)throw Error('Saving paused');if(user){if(!Object.hasOwn(record.payload,k))return;delete record.payload[k];changed();}else native.removeItem(k);}
 };
 async function loginGate(){
- const d=panel('Welcome to your HQ','Sign in with Google to save your office to your private account, or continue with this browser only.');
+ const d=panel('Welcome to Waddle HQ','Sign in with Google to save your office to your private account, or continue with this browser only.');
  const note=document.createElement('p');note.textContent='Google shares your name, email and profile picture for sign-in. Your existing browser office stays here until you choose to copy it to your account.';d.append(note);
  const msg=document.createElement('p');msg.setAttribute('role','status');
  const signIn=button(d,'Continue with Google',async()=>{

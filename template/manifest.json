@@ -1,6 +1,6 @@
 {
-  "name": "My INC \u2014 Daily HQ",
-  "short_name": "My HQ",
+  "name": "Waddle HQ",
+  "short_name": "Waddle HQ",
   "description": "Your personal penguin productivity office",
   "start_url": "./",
   "scope": "./",
