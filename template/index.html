@@ -421,6 +421,7 @@
   #refreshTodayStatus{font:16px "VT323",monospace;color:var(--text-faint);}
   .igloo-marker{display:inline-block;width:40px;height:40px;object-fit:contain;image-rendering:pixelated;vertical-align:middle;}
   .cal-day{min-height:72px;}.calendar-legend .igloo-marker{width:32px;height:32px;}
+#ideaFilters{display:flex;flex-wrap:wrap;gap:12px;margin:16px 0} #ideaForm{display:grid;gap:12px;padding:12px 0} #ideaForm label{display:grid;gap:6px} #ideaForm input.note-area{min-height:0;height:auto;padding:10px;box-sizing:border-box} #ideaForm label:has(input[type=checkbox]){display:flex;align-items:center} #ideaList article{margin:12px 0}
 </style>
 </head>
 <body>
@@ -449,7 +450,7 @@
   <div id="officeView">
   <div class="add-tasks-bar">
     <button class="primary" id="addTasksBtn">+ Add tasks</button>
-    <button id="weeklyPlanBtn">🧭 Plan this week</button><button id="goalsBtn">Goals</button>
+    <button id="ideaBankBtn">💡 Idea bank</button><button id="weeklyPlanBtn">🧭 Plan this week</button><button id="goalsBtn">Goals</button>
     <button id="dailyReviewBtn">📋 Daily review</button><button id="weeklyReviewBtn">📈 Weekly review</button>
   </div>
 
@@ -744,7 +745,7 @@
       ],
       flavors:["Builder added a beam.", "Storyteller lit up with an idea.", "Builder touched up a section.", "Storyteller double checked, all clear."],
       cursor:'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 20 20"><rect x="9" y="2" width="2" height="12" fill="%238a5a2b"/><rect x="3" y="1" width="10" height="5" rx="1" fill="%236b4fc9" stroke="%23222" stroke-width="1"/></svg>',
-      keywords:['portfolio','webflow','lovable','site','website','page copy','landing page','backpack','blog','post idea','content','draft post','newsletter','write about','write a post','article','publish','edit video','video editing','social media','linkedin post'],
+      keywords:['portfolio','webflow','lovable','site','website','page copy','landing page','backpack','blog','post idea','content','draft post','newsletter','write about','write a post','article','publish','edit video','video editing','social media','linkedin post','case study'],
       tips:[
         "Writing regularly beats waiting for the perfect idea to strike.",
         "Documenting your process is often more interesting to readers than just showing the polished result.",
@@ -1473,10 +1474,81 @@
     document.getElementById('weeklyBanner').classList.add('hidden');
   });
 
+  /* Idea bank: undated ideas never contribute to daily completion. */
+  var IDEA_KEY=STORAGE_PREFIX+'ideas:v1';
+  function loadIdeas(){return safeParse(HQStore.getItem(IDEA_KEY),[]);}
+  function saveIdeas(items){HQStore.setItem(IDEA_KEY,JSON.stringify(items));}
+  function ideaTask(idea){
+    var dates=allDayDates();
+    for(var i=0;i<dates.length;i++){
+      var day=dates[i]===currentDay.date?currentDay:loadDay(dates[i]);
+      var task=day.tasks.find(function(t){return t.ideaId===idea.id;});
+      if(task)return {day:day,task:task};
+    }
+    return null;
+  }
+  function ideaStage(idea,link){return link?(link.task.done?'done':'scheduled'):(idea.week?'week':'backlog');}
+  function openIdeaBank(initialView){
+    var items=loadIdeas(), view=initialView||'backlog';
+    var root=document.getElementById('modalRoot');
+    root.innerHTML='<div class="modal-backdrop"><div class="modal" role="dialog" aria-modal="true" aria-label="Idea bank" style="max-width:800px"><button class="close-x icon-btn" id="closeIdeas" aria-label="Close idea bank">✕</button><h2>Idea bank & this week</h2><p>Capture possibilities here. Pull a small step into your week when you have room. Only scheduled tasks count toward an igloo.</p><div id="ideaFilters"></div><p id="ideaWorkload" role="status"></p><details id="ideaCapture"><summary>+ Capture an idea</summary><form id="ideaForm"><label>Idea or next step<input class="note-area" id="ideaTitle" required maxlength="200" placeholder="Draft a portfolio case study"></label><label>Project (optional)<input class="note-area" id="ideaProject" maxlength="100" placeholder="My portfolio"></label><label>Department<select id="ideaCategory" required></select></label><label>Estimated minutes<input class="note-area" id="ideaMinutes" type="number" min="5" max="480" step="5" value="30" required></label><label><input id="ideaSide" type="checkbox"> Side project</label><button class="primary" type="submit">Save idea</button></form></details><p id="ideaNotice" role="status"></p><div id="ideaList"></div><details><summary>Weekly reflection</summary><p>Review unfinished work: schedule it, return it to the idea bank, or set it aside. Nothing rolls forward automatically.</p><label>What worked? What got stuck? What will you change?<textarea class="note-area" id="ideaReflection"></textarea></label><button id="saveIdeaReflection">Save reflection</button></details></div></div>';
+    document.getElementById('closeIdeas').onclick=closeModal;
+    var filters=document.getElementById('ideaFilters');
+    function select(label,values){var l=document.createElement('label');l.textContent=label+' ';var s=document.createElement('select');values.forEach(function(v){var o=document.createElement('option');o.value=v[0];o.textContent=v[1];s.appendChild(o);});l.appendChild(s);filters.appendChild(l);s.onchange=renderIdeas;return s;}
+    var stage=select('View',[['backlog','Idea bank'],['week','This week'],['scheduled','Scheduled'],['done','Done'],['all','All active'],['archived','Set aside']]);stage.value=view;
+    var department=select('Department',[['','All departments']].concat(CATEGORIES.map(function(c){return [c.id,c.name];})));
+    var side=select('Type',[['','All ideas'],['side','Side projects']]);
+    var cat=document.getElementById('ideaCategory');CATEGORIES.forEach(function(c){var o=document.createElement('option');o.value=c.id;o.textContent=c.name;cat.appendChild(o);});
+    document.getElementById('ideaTitle').oninput=function(){var detected=detectCategory(this.value);if(detected)cat.value=detected;};
+    var reflectKey=STORAGE_PREFIX+'sprintReflection:'+currentWeekKey();document.getElementById('ideaReflection').value=HQStore.getItem(reflectKey)||'';
+    document.getElementById('saveIdeaReflection').onclick=function(){HQStore.setItem(reflectKey,document.getElementById('ideaReflection').value);document.getElementById('ideaNotice').textContent='Reflection saved for this week.';};
+    document.getElementById('ideaForm').onsubmit=function(e){e.preventDefault();var title=document.getElementById('ideaTitle').value.trim();if(!title)return;items.push({id:makeId('idea'),text:title,project:document.getElementById('ideaProject').value.trim(),category:cat.value,minutes:Number(document.getElementById('ideaMinutes').value),sideProject:document.getElementById('ideaSide').checked,createdAt:Date.now(),week:null});saveIdeas(items);this.reset();document.getElementById('ideaCapture').open=false;stage.value='backlog';renderIdeas();document.getElementById('ideaNotice').textContent='Idea saved. It has no deadline yet.';};
+    function action(parent,label,fn){var b=document.createElement('button');b.type='button';b.textContent=label;b.style.margin='4px';b.onclick=fn;parent.appendChild(b);}
+    function renderIdeas(){
+      var list=document.getElementById('ideaList');list.replaceChildren();var week=currentWeekKey(),count=0,minutes=0,shown=0;
+      items.forEach(function(idea){if(!idea.archived&&idea.week===week){count++;minutes+=Number(idea.minutes)||30;}});
+      document.getElementById('ideaWorkload').textContent='This week: '+count+' selected steps · about '+Math.round(minutes/60*10)/10+' hours. This estimate covers ideas selected here; leave room for appointments and other tasks.';
+      items.forEach(function(idea){
+        var linked=ideaTask(idea),status=ideaStage(idea,linked);
+        if(stage.value==='archived'?!idea.archived:idea.archived)return;
+        if(department.value&&idea.category!==department.value)return;
+        if(side.value&&!idea.sideProject)return;
+        if(stage.value==='week'){if(idea.week!==week&&!(idea.week&&idea.week<week&&status!=='done'))return;}
+        else if(stage.value!=='all'&&stage.value!=='archived'&&stage.value!==status)return;
+        shown++;var card=document.createElement('section');card.style.cssText='border-top:1px solid #acd2ec;padding:14px 0';var title=document.createElement('strong');title.textContent=idea.text;card.appendChild(title);
+        var meta=document.createElement('p');meta.textContent=(CAT_BY_ID[idea.category]?.name||idea.category)+' · '+(idea.minutes||30)+' min'+(idea.project?' · '+idea.project:'')+(idea.sideProject?' · Side project':'')+(linked?' · '+(linked.task.done?'Completed':'Scheduled')+' '+linked.day.date:idea.week?' · Week of '+idea.week:' · No date');card.appendChild(meta);
+        if(idea.week&&idea.week<week&&status!=='done'){var note=document.createElement('p');note.textContent='From an earlier week — choose what happens next.';card.appendChild(note);}
+        if(idea.archived){action(card,'Bring back',function(){idea.archived=false;saveIdeas(items);renderIdeas();});}
+        else if(status!=='done'){
+          if(!linked){action(card,'Pull into this week',function(){idea.week=week;saveIdeas(items);stage.value='week';renderIdeas();});}
+          var date=document.createElement('input');date.type='date';date.min=today;date.value=linked&&linked.day.date>=today?linked.day.date:today;date.setAttribute('aria-label','Schedule '+idea.text);card.appendChild(date);
+          action(card,linked?'Move to date':'Schedule task',function(){
+            if(!date.checkValidity()||!ApplicationTracker.day(date.value)||date.value<today){date.reportValidity();return;}
+            var dest=date.value===currentDay.date?currentDay:loadDay(date.value);
+            var task=linked?linked.task:{id:makeId('t'),ideaId:idea.id,text:idea.text,category:idea.category,done:false,milestone:false,recurringId:null,createdAt:Date.now()};
+            if(task.category==='job')task.sub=detectJobSub(task.text);if(task.category==='portfolio')task.sub=detectContentSub(task.text);
+            // Save destination first, so a failed write cannot discard the original.
+            if(!dest.tasks.some(function(t){return t.ideaId===idea.id;}))dest.tasks.push(task);saveDay(dest);
+            if(linked&&linked.day.date!==dest.date){linked.day.tasks=linked.day.tasks.filter(function(t){return t.id!==task.id;});saveDay(linked.day);}
+            idea.week=idea.week||week;saveIdeas(items);renderAll();if(!document.getElementById('calendarView').classList.contains('hidden'))renderCalendar();renderIdeas();document.getElementById('ideaNotice').textContent='Scheduled for '+date.value+'.';
+          });
+          if(!linked&&idea.week)action(card,'Return to idea bank',function(){idea.week=null;saveIdeas(items);renderIdeas();});
+          if(!linked)action(card,'Set aside',function(){idea.archived=true;idea.week=null;saveIdeas(items);renderIdeas();});
+          if(linked)action(card,'Unschedule to idea bank',function(){linked.day.tasks=linked.day.tasks.filter(function(t){return t.id!==linked.task.id;});saveDay(linked.day);idea.week=null;saveIdeas(items);renderAll();if(!document.getElementById('calendarView').classList.contains('hidden'))renderCalendar();renderIdeas();});
+        }
+        list.appendChild(card);
+      });
+      if(!shown){var empty=document.createElement('p');empty.textContent='Nothing in this view yet. Capture an idea or choose another view.';list.appendChild(empty);}
+    }
+    renderIdeas();
+  }
+  document.getElementById('ideaBankBtn').onclick=function(){openIdeaBank('backlog');};
+
   function openWeeklyPlan(){
     var key=STORAGE_PREFIX+'weekPlan:'+currentWeekKey(), plan=safeParse(HQStore.getItem(key),{});
-    document.getElementById('modalRoot').innerHTML='<div class="modal-backdrop"><div class="modal" role="dialog" aria-modal="true" aria-label="Plan this week"><button class="close-x icon-btn" id="closeWeekPlan">✕</button><h2>Plan this week</h2><p>New plan each Monday. Choose outcomes you can control.</p><label>Up to three outcomes<textarea class="note-area" id="weekOutcomes" placeholder="Send 3 thoughtful outreach messages\nFinish one portfolio case study">'+escapeHtml(plan.outcomes||'')+'</textarea></label><label>One small first step<input class="note-area" id="weekFirstStep" value="'+escapeHtml(plan.firstStep||'')+'" placeholder="Draft one outreach message"></label><label>Your affirmation<input class="note-area" id="weekAffirmation" value="'+escapeHtml(plan.affirmation||'Small, consistent actions count.')+'"></label><p id="weekPlanError" role="status"></p><button class="primary" id="saveWeekPlan">Save weekly plan</button></div></div>';
+    document.getElementById('modalRoot').innerHTML='<div class="modal-backdrop"><div class="modal" role="dialog" aria-modal="true" aria-label="Plan this week"><button class="close-x icon-btn" id="closeWeekPlan">✕</button><h2>Plan this week</h2><p>New plan each Monday. Choose outcomes you can control.</p><label>Up to three outcomes<textarea class="note-area" id="weekOutcomes" placeholder="Send 3 thoughtful outreach messages\nFinish one portfolio case study">'+escapeHtml(plan.outcomes||'')+'</textarea></label><label>One small first step<input class="note-area" id="weekFirstStep" value="'+escapeHtml(plan.firstStep||'')+'" placeholder="Draft one outreach message"></label><label>Your affirmation<input class="note-area" id="weekAffirmation" value="'+escapeHtml(plan.affirmation||'Small, consistent actions count.')+'"></label><p id="weekPlanError" role="status"></p><button class="primary" id="saveWeekPlan">Save weekly plan</button><button id="weekIdeas">Choose steps from idea bank</button></div></div>';
     document.getElementById('closeWeekPlan').onclick=closeModal;
+    document.getElementById('weekIdeas').onclick=function(){HQStore.setItem(key,JSON.stringify({outcomes:document.getElementById('weekOutcomes').value.trim(),firstStep:document.getElementById('weekFirstStep').value.trim(),affirmation:document.getElementById('weekAffirmation').value.trim()}));renderWeeklyBanner();openIdeaBank('week');};
     document.getElementById('saveWeekPlan').onclick=function(){
       var outcomes=document.getElementById('weekOutcomes').value.trim(), firstStep=document.getElementById('weekFirstStep').value.trim(), affirmation=document.getElementById('weekAffirmation').value.trim();
       if(!outcomes||outcomes.split('\n').filter(Boolean).length>3){document.getElementById('weekPlanError').textContent='Choose between one and three outcomes.';return;}
@@ -3343,7 +3415,7 @@
       '<div class="composer-weekdays" aria-hidden="true"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div><div id="composerCalendarGrid" class="composer-days"></div><p class="composer-hint">A dot means tasks are already planned.</p></aside>'+
       '<div class="composer-writing"><label for="dailyEntryInput">What do you want to do?</label><textarea id="dailyEntryInput" placeholder="Tailor my CV for Example Co&#10;30 min run&#10;Call a friend" rows="5"></textarea>'+
       '<p class="composer-hint">Categories appear as you type. Change any suggestion below.</p><div id="dailyEntryPreviewList"></div><p id="composerError" class="composer-error" role="alert"></p></div></div>'+
-      '<div class="composer-save"><span id="composerTarget" aria-live="polite"></span><button class="primary" id="dailyEntryConfirmBtn" disabled>Save tasks</button></div>'+
+      '<div class="composer-save"><span id="composerTarget" aria-live="polite"></span><button id="saveDraftIdeas" type="button">Save to idea bank instead</button><button class="primary" id="dailyEntryConfirmBtn" disabled>Save tasks</button></div>'+
       '<details id="composerLeftovers" class="hidden"><summary>Bring forward unfinished tasks from yesterday</summary><div id="dailyEntryLeftoverList"></div></details></div></div>';
     var input=document.getElementById('dailyEntryInput'),dateInput=document.getElementById('taskDateInput'),preview=document.getElementById('dailyEntryPreviewList'),save=document.getElementById('dailyEntryConfirmBtn');
     function refreshCalendar(){
@@ -3377,6 +3449,12 @@
       dateInput.min=today;
       var shortcuts=root.querySelectorAll('[data-quick-date]');shortcuts[0].dataset.quickDate=today;shortcuts[1].dataset.quickDate=addDays(today,1);
       if(selected<today)chooseDate(today);else refreshCalendar();
+    };
+    document.getElementById('saveDraftIdeas').onclick=function(){
+      syncDrafts();if(!drafts.length)return;
+      var missing=drafts.findIndex(function(p){return !p.category;});
+      if(missing>=0){document.getElementById('composerError').textContent='Choose a department before saving your ideas.';return;}
+      var ideas=loadIdeas();drafts.forEach(function(p){ideas.push({id:makeId('idea'),text:p.text,category:p.category,minutes:30,sideProject:false,project:'',week:null,createdAt:Date.now()});});saveIdeas(ideas);openIdeaBank('backlog');
     };
     input.addEventListener('input',syncDrafts);
     dateInput.addEventListener('change',function(){chooseDate(dateInput.value);});
@@ -3596,7 +3674,7 @@
   function exportData(){
     var out = { days:{}, recurring: loadRecurring(), meta: loadMeta(), mechanics: loadMechanics(), goals: loadGoals(), exportedAt: new Date().toISOString() };
     allDayDates().forEach(function(d){ out.days[d] = loadDay(d); });
-    out.weeklyPlans={};HQStore.keys().filter(function(k){return k.indexOf(STORAGE_PREFIX+'weekPlan:')===0;}).forEach(function(k){out.weeklyPlans[k.split('weekPlan:')[1]]=safeParse(HQStore.getItem(k),null);});
+    out.ideas=loadIdeas();out.sprintReflections={};for(var ri=0;ri<HQStore.length;ri++){var rk=HQStore.key(ri);if(rk.indexOf(STORAGE_PREFIX+'sprintReflection:')===0)out.sprintReflections[rk]=HQStore.getItem(rk);}out.weeklyPlans={};HQStore.keys().filter(function(k){return k.indexOf(STORAGE_PREFIX+'weekPlan:')===0;}).forEach(function(k){out.weeklyPlans[k.split('weekPlan:')[1]]=safeParse(HQStore.getItem(k),null);});
     var blob = new Blob([JSON.stringify(out, null, 2)], { type:'application/json' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a'); a.href = url; a.download = 'my-hq-export-' + today + '.json';
